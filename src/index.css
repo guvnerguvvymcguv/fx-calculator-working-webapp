@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #10051A; /* Nearly black purple */
+  --foreground: #C7B3FF; /* Complimentary light purple-gray font */
+  --primary: #1E0B3A; /* Darker purple accents */
+  --secondary: #6D28D9; /* Purple for buttons/titles */
+  --accent-red: #EF4444; /* Competitor highlights */
+  --accent-green: #22C55E; /* Savings/your rate */
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
