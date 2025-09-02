@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useContext, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { Play, X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Import our custom hooks and components
