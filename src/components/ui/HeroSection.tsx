@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Card } from '../../components/ui/card';
 import { ArrowRight } from 'lucide-react';
 import { MockCalculator } from './MockCalculator.tsx';
 
