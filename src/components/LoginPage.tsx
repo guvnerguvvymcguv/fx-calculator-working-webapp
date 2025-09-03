@@ -3,7 +3,7 @@ import { Card, CardContent } from './ui/card';
 
 const LoginPage = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 to-indigo-900 flex items-center justify-center p-4">
+    <div className="min-h-screen backgroundColor: '#10051A flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
         <CardContent className="p-8">
           <div className="text-center mb-8">
