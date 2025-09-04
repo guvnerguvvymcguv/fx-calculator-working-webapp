@@ -5,6 +5,7 @@ import { Card, CardContent } from './ui/card';
 import { ArrowLeft } from 'lucide-react';
 import { signIn } from '../lib/auth';
 import { AuthContext } from '../App';
+import { supabase } from '../lib/supabase'; // Added import
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -34,9 +35,17 @@ const LoginPage = () => {
       setError(signInError.message);
       setIsLoading(false);
     } else if (data.user) {
-      // Success! Update auth context and redirect
+      // Success! Update auth context
       authContext?.login();
-      navigate('/calculator');
+      
+      // Check the user session is properly set
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Logged in user:', user);
+      
+      // Small delay to ensure auth state is propagated
+      setTimeout(() => {
+        navigate('/calculator');
+      }, 100);
     }
   };
 
