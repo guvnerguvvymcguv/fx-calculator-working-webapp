@@ -56,67 +56,85 @@ export default function CompanySignup() {
   };
   
   const handleCheckout = async () => {
-    setIsLoading(true);
-    const pricing = calculatePrice();
-    
-    try {
-      // Create the company and admin account in Supabase
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: adminEmail,
-        password: adminPassword,
-        options: {
-          data: {
-            full_name: adminName,
-            company_name: companyName,
-            role: 'admin'
-          }
+  setIsLoading(true);
+  const pricing = calculatePrice();
+  
+  try {
+    // Sign up new user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: adminEmail,
+      password: adminPassword,
+      options: {
+        data: {
+          full_name: adminName,
+          company_name: companyName,
+          role: 'admin'
         }
-      });
-      
-      if (authError) throw authError;
-      
-      // Create company record
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: companyName,
-          domain: companyDomain,
-          admin_seats: adminSeats,
-          junior_seats: juniorSeats,
-          subscription_seats: pricing.totalSeats,
-          price_per_month: parseFloat(pricing.totalPrice),
-          subscription_status: 'trialing',
-          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
-        })
-        .select()
-        .single();
-      
-      if (companyError) throw companyError;
-      
-      // Create user profile
-      if (authData.user) {
-        await supabase.from('user_profiles').insert({
-          id: authData.user.id,
-          email: adminEmail,
-          company_id: company.id,
-          role: 'admin',
-          role_type: 'super_admin',
-          full_name: adminName
-        });
       }
-      
-      // For now, redirect to a success page
-      // In production, you'd create a Stripe checkout session here
-      alert('Company registered! Starting your 2-month free trial.');
-      navigate('/calculator');
-      
-    } catch (error) {
-      console.error('Signup error:', error);
-      alert('Error creating account. Please try again.');
-    } finally {
-      setIsLoading(false);
+    });
+    
+    if (authError) {
+      // Check if user already exists error
+      if (authError.message.includes('already registered')) {
+        alert('This email is already registered. Please use a different email or sign in.');
+        return;
+      }
+      throw authError;
     }
-  };
+    
+    if (!authData.user) {
+      throw new Error('Failed to create user account');
+    }
+    
+    // Create company record
+    const { data: company, error: companyError } = await supabase
+      .from('companies')
+      .insert({
+        name: companyName,
+        domain: companyDomain,
+        admin_seats: adminSeats,
+        junior_seats: juniorSeats,
+        subscription_seats: pricing.totalSeats,
+        price_per_month: parseFloat(pricing.totalPrice),
+        discount_percentage: parseInt(pricing.discount),
+        subscription_status: 'trialing',
+        trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
+      })
+      .select()
+      .single();
+    
+    if (companyError) throw companyError;
+    
+    // Create user profile
+    const { error: profileError } = await supabase.from('user_profiles').insert({
+      id: authData.user.id,
+      email: adminEmail,
+      company_id: company.id,
+      role: 'admin',
+      role_type: 'super_admin',
+      full_name: adminName
+    });
+    
+    if (profileError) throw profileError;
+    
+    // Sign in the user
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: adminEmail,
+      password: adminPassword
+    });
+    
+    if (!signInError) {
+      alert('Company registered successfully! Starting your 2-month free trial.');
+      navigate('/calculator');
+    }
+    
+  } catch (error: any) {
+    console.error('Signup error:', error);
+    alert(error.message || 'Error creating account. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
   
   const pricing = calculatePrice();
   
