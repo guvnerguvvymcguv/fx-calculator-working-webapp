@@ -7,6 +7,7 @@ import LandingPage from './components/LandingPage.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import CalculatorPage from './components/CalculatorPage.tsx';
 import PricingPage from './components/PricingPage.tsx';
+import ProtectedRoute from './components/ProtectedRoute.tsx';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -64,9 +65,9 @@ function AppContent() {
         <Route 
           path="/calculator" 
           element={
-            isAuthenticated ? 
-              <CalculatorPage /> : 
-              <Navigate to="/login" replace />
+            <ProtectedRoute>
+              <CalculatorPage />
+            </ProtectedRoute>
           } 
         />
 
