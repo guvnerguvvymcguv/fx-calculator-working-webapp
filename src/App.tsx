@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
 // Import your components
@@ -17,8 +17,10 @@ interface AuthContextType {
 
 export const AuthContext = React.createContext<AuthContextType | null>(null);
 
-function App() {
+// Wrapper component to use navigation hooks
+function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navigate = useNavigate();
 
   const login = () => {
     setIsAuthenticated(true);
@@ -30,49 +32,58 @@ function App() {
 
   // Handler functions for sign in/out
   const handleSignIn = () => {
-    login();
+    // Navigate to login page
+    navigate('/login');
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     logout();
+    // Optionally navigate to home after sign out
+    navigate('/');
   };
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
-      <BrowserRouter>
-        <Routes>
-          {/* Landing Page - now with auth props */}
-          <Route 
-            path="/" 
-            element={
-              <LandingPage 
-                isAuthenticated={isAuthenticated}
-                onSignIn={handleSignIn}
-                onSignOut={handleSignOut}
-              />
-            } 
-          />
-          
-          {/* Login Page */}
-          <Route path="/login" element={<LoginPage />} />
-          
-          {/* Protected Calculator Page */}
-          <Route 
-            path="/calculator" 
-            element={
-              isAuthenticated ? 
-                <CalculatorPage /> : 
-                <Navigate to="/login" replace />
-            } 
-          />
+      <Routes>
+        {/* Landing Page - now with auth props */}
+        <Route 
+          path="/" 
+          element={
+            <LandingPage 
+              isAuthenticated={isAuthenticated}
+              onSignIn={handleSignIn}
+              onSignOut={handleSignOut}
+            />
+          } 
+        />
+        
+        {/* Login Page */}
+        <Route path="/login" element={<LoginPage />} />
+        
+        {/* Protected Calculator Page */}
+        <Route 
+          path="/calculator" 
+          element={
+            isAuthenticated ? 
+              <CalculatorPage /> : 
+              <Navigate to="/login" replace />
+          } 
+        />
 
-          <Route path="/pricing" element={<PricingPage />} />
-          
-          {/* Redirect any unknown routes to landing page */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+        <Route path="/pricing" element={<PricingPage />} />
+        
+        {/* Redirect any unknown routes to landing page */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </AuthContext.Provider>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
   );
 }
 
