@@ -8,6 +8,7 @@ import LoginPage from './components/LoginPage.tsx';
 import CalculatorPage from './components/CalculatorPage.tsx';
 import PricingPage from './components/PricingPage.tsx';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
+import CompanySignup from './components/CompanySignup';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -72,6 +73,8 @@ function AppContent() {
         />
 
         <Route path="/pricing" element={<PricingPage />} />
+
+        <Route path="/signup" element={<CompanySignup />} />
         
         {/* Redirect any unknown routes to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />

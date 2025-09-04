@@ -17,10 +17,21 @@ import { signOut, getCurrentUser } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { saveCalculation } from '../lib/calculations';
 
+// Helper function to get user profile
+const getUserProfile = async (userId: string) => {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('company_id')
+    .eq('id', userId)
+    .single();
+  return data;
+};
+
 export default function CalculatorPage() {
   const [selectedPair, setSelectedPair] = useState(DEFAULT_PAIR);
   const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
@@ -53,43 +64,81 @@ export default function CalculatorPage() {
       navigate('/login');
     } else {
       // User is authenticated
+      setCurrentUser(user);
       setIsLoading(false);
     }
   };
 
   const handleCalculate = async () => {
-  try {
-    const results = calculator.calculateSavings();
-    console.log('Calculation results:', results); // Debug log
-    
-    // Save calculation to database
-    const calculationData = {
-      currencyPair: selectedPair,
-      yourRate: parseFloat(calculator.yourRate),
-      competitorRate: parseFloat(calculator.competitorRate),
-      clientName: calculator.competitorName,
-      tradeAmount: parseFloat(calculator.tradeAmount),
-      tradesPerYear: parseInt(calculator.tradesPerYear),
-      selectedPips: [calculator.selectedPips],
-      results: results,
-      timestamp: new Date().toISOString()
-    };
-    
-    const { success, error } = await saveCalculation(calculationData);
-    
-    if (success) {
-      console.log('Calculation saved successfully');
-    } else {
-      console.error('Failed to save calculation:', error);
+    try {
+      const results = calculator.calculateSavings();
+      console.log('Calculation results:', results);
+      
+      // Get user profile for company_id
+      const profile = await getUserProfile(currentUser.id);
+      
+      // Calculate values for activity log
+      const yourRateWithPips = parseFloat(calculator.yourRate) + (calculator.selectedPips / 10000);
+      const competitorRateFloat = parseFloat(calculator.competitorRate);
+      const pipsDifference = Math.round((yourRateWithPips - competitorRateFloat) * 10000);
+      const savingsPerTrade = parseFloat(results.savingsPerTrade.replace(/[^0-9.-]/g, ''));
+      
+      // Save calculation to database
+      const calculationData = {
+        currencyPair: selectedPair,
+        yourRate: parseFloat(calculator.yourRate),
+        competitorRate: competitorRateFloat,
+        clientName: calculator.competitorName,
+        tradeAmount: parseFloat(calculator.tradeAmount),
+        tradesPerYear: parseInt(calculator.tradesPerYear),
+        selectedPips: [calculator.selectedPips],
+        results: results,
+        timestamp: new Date().toISOString()
+      };
+      
+      const { success, error } = await saveCalculation(calculationData);
+      
+      if (success) {
+        console.log('Calculation saved successfully');
+        
+        // Log to activity_logs table
+        const { error: logError } = await supabase
+          .from('activity_logs')
+          .insert({
+            user_id: currentUser.id,
+            company_id: profile?.company_id,
+            action_type: 'calculation',
+            calculation_data: {
+              currency_pair: selectedPair,
+              your_rate: parseFloat(calculator.yourRate),
+              competitor_rate: competitorRateFloat,
+              amount: parseFloat(calculator.tradeAmount),
+              trades_per_year: parseInt(calculator.tradesPerYear),
+              margin: calculator.selectedPips
+            },
+            client_name: calculator.competitorName,
+            currency_pair: selectedPair,
+            your_rate: yourRateWithPips,
+            competitor_rate: competitorRateFloat,
+            amount: parseFloat(calculator.tradeAmount),
+            pips_difference: pipsDifference,
+            savings_amount: savingsPerTrade
+          });
+
+        if (logError) {
+          console.error('Failed to log activity:', logError);
+        }
+      } else {
+        console.error('Failed to save calculation:', error);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        alert(error.message);
+      } else {
+        alert('An error occurred during calculation');
+      }
     }
-  } catch (error) {
-    if (error instanceof Error) {
-      alert(error.message);
-    } else {
-      alert('An error occurred during calculation');
-    }
-  }
-};
+  };
 
   const handleSignOut = async () => {
     const { error } = await signOut();

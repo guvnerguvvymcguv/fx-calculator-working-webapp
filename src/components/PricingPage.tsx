@@ -6,11 +6,6 @@ import { ArrowLeft } from 'lucide-react';
 
 const PricingPage = () => {
   const navigate = useNavigate();
-  
-  const handleSubscribe = () => {
-    // Open in new tab (recommended)
-    window.open('https://buy.stripe.com/7sY9AM3RF6THgKVda14Vy01', '_blank');
-  };
 
   return (
     <div className="min-h-screen bg-[#10051A] p-8 relative">
@@ -130,11 +125,11 @@ const PricingPage = () => {
 
         <div className="text-center">
           <Button 
-            onClick={handleSubscribe}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-6 px-12 text-lg rounded-lg"
+            onClick={() => navigate('/signup')}
+            className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition duration-200 shadow-lg"
           >
             Start Free Trial
-          </Button>
+         </Button>
           <p className="text-gray-400 mt-4">60 days free</p>
         </div>
       </div>
