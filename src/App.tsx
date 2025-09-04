@@ -28,12 +28,30 @@ function App() {
     setIsAuthenticated(false);
   };
 
+  // Handler functions for sign in/out
+  const handleSignIn = () => {
+    login();
+  };
+
+  const handleSignOut = async () => {
+    logout();
+  };
+
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
       <BrowserRouter>
         <Routes>
-          {/* Landing Page */}
-          <Route path="/" element={<LandingPage />} />
+          {/* Landing Page - now with auth props */}
+          <Route 
+            path="/" 
+            element={
+              <LandingPage 
+                isAuthenticated={isAuthenticated}
+                onSignIn={handleSignIn}
+                onSignOut={handleSignOut}
+              />
+            } 
+          />
           
           {/* Login Page */}
           <Route path="/login" element={<LoginPage />} />

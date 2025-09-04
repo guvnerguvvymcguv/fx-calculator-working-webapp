@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Play, X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -12,12 +12,18 @@ import PricingSection from "./ui/PricingSection";
 import { Footer } from './ui/Footer';
 import { MockCalculator } from './ui/MockCalculator';
 import { HistoricalChart } from './ui/HistoricalChart';
-import { AuthContext } from '../App';
 import { MOCK_CHART_DATA, filterDataByTimeframe } from '../constants/mockChartData';
 
-export default function LandingPage() {
+// Add interface for props
+interface LandingPageProps {
+  isAuthenticated: boolean;
+  onSignIn: () => void;
+  onSignOut: () => void;
+}
+
+// Update component to accept props
+export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: LandingPageProps) {
   const navigate = useNavigate();
-  const authContext = useContext(AuthContext);
 
   // State for mock historical interface
   const [selectedPair, setSelectedPair] = useState('GBPUSD');
@@ -28,16 +34,11 @@ export default function LandingPage() {
 
   // Handle all the callback functions
   const handleSignUp = (): void => {
-    // For now, redirect to login - in real app this would be signup page
     navigate('/login');
   };
 
   const handleLogin = (): void => {
     navigate('/login');
-  };
-
-  const handleLogout = (): void => {
-    authContext?.logout();
   };
 
   const handleGetStarted = (): void => {
@@ -52,7 +53,6 @@ export default function LandingPage() {
   const mockChartData = filterDataByTimeframe(MOCK_CHART_DATA[selectedPair] || [], 5); // 5D timeframe
   
   const handleMockPriceSelect = (price: number): void => {
-    // Just log for demo purposes - in real app this would do something
     console.log('Selected price:', price);
   };
 
@@ -96,11 +96,11 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#10051A', color: '#C7B3FF' }}>
       
-      {/* Navigation */}
+      {/* Navigation - Updated to use props */}
       <Navbar 
-        isSignedIn={authContext?.isAuthenticated || false}
-        onSignIn={handleLogin}
-        onSignOut={handleLogout}
+        isSignedIn={isAuthenticated}
+        onSignIn={onSignIn || handleLogin}
+        onSignOut={onSignOut}
       />
 
       {/* Hero Section */}
