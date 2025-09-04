@@ -6,6 +6,7 @@ import { useState } from 'react';
 import LandingPage from './components/LandingPage.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import CalculatorPage from './components/CalculatorPage.tsx';
+import PricingPage from './components/PricingPage.tsx';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -46,6 +47,8 @@ function App() {
                 <Navigate to="/login" replace />
             } 
           />
+
+          <Route path="/pricing" element={<PricingPage />} />
           
           {/* Redirect any unknown routes to landing page */}
           <Route path="*" element={<Navigate to="/" replace />} />

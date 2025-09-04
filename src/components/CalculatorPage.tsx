@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -10,40 +10,95 @@ import { Calculator, TrendingUp, DollarSign, History } from 'lucide-react';
 // Import our custom hooks and constants
 import { useFXCalculator } from '../hooks/useFXCalculator';
 import { useLiveRates } from '../hooks/useLiveRates';
-import { useHistoricalRates } from '../hooks/useHistoricalRates';
 import { FX_PAIRS, DEFAULT_PAIR } from '../constants/fxPairs';
 import { Navbar } from './ui/Navbar';
 import { HistoricalRateModal } from './ui/HistoricalRateModal';
-import { AuthContext } from '../App';
+import { signOut, getCurrentUser } from '../lib/auth';
+import { supabase } from '../lib/supabase';
+import { saveCalculation } from '../lib/calculations';
 
 export default function CalculatorPage() {
   const [selectedPair, setSelectedPair] = useState(DEFAULT_PAIR);
   const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const authContext = useContext(AuthContext);
   
   // Use our custom hooks for clean separation of concerns
   const calculator = useFXCalculator();
   // Don't auto-update Your Rate - let users type freely
   const liveRates = useLiveRates(selectedPair);
-  const historicalRates = useHistoricalRates(selectedPair);
 
-  const handleCalculate = () => {
-    try {
-      const results = calculator.calculateSavings();
-      console.log('Calculation results:', results); // Debug log
-    } catch (error) {
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert('An error occurred during calculation');
+  // Check authentication on component mount
+  useEffect(() => {
+    checkAuth();
+    
+    // Set up auth state listener
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        navigate('/login');
       }
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  const checkAuth = async () => {
+    const { user, error } = await getCurrentUser();
+    
+    if (error || !user) {
+      // Not authenticated, redirect to login
+      navigate('/login');
+    } else {
+      // User is authenticated
+      setIsLoading(false);
     }
   };
 
-  const handleSignOut = () => {
-    authContext?.logout();
-    navigate('/login');
+  const handleCalculate = async () => {
+  try {
+    const results = calculator.calculateSavings();
+    console.log('Calculation results:', results); // Debug log
+    
+    // Save calculation to database
+    const calculationData = {
+      currencyPair: selectedPair,
+      yourRate: parseFloat(calculator.yourRate),
+      competitorRate: parseFloat(calculator.competitorRate),
+      clientName: calculator.competitorName,
+      tradeAmount: parseFloat(calculator.tradeAmount),
+      tradesPerYear: parseInt(calculator.tradesPerYear),
+      selectedPips: [calculator.selectedPips],
+      results: results,
+      timestamp: new Date().toISOString()
+    };
+    
+    const { success, error } = await saveCalculation(calculationData);
+    
+    if (success) {
+      console.log('Calculation saved successfully');
+    } else {
+      console.error('Failed to save calculation:', error);
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      alert(error.message);
+    } else {
+      alert('An error occurred during calculation');
+    }
+  }
+};
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      console.error('Error signing out:', error);
+      alert('Error signing out. Please try again.');
+    } else {
+      navigate('/login');
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -55,6 +110,15 @@ export default function CalculatorPage() {
   const handleHistoricalRateSelect = (price: number) => {
     calculator.setYourRate(price.toFixed(4));
   };
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#10051A' }}>
+        <div className="text-purple-300">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#10051A' }}>
@@ -335,12 +399,7 @@ export default function CalculatorPage() {
         isOpen={isHistoricalModalOpen}
         onClose={() => setIsHistoricalModalOpen(false)}
         onPriceSelect={handleHistoricalRateSelect}
-        chartData={historicalRates.chartData}
-        selectedPair={historicalRates.selectedPair}
-        availablePairs={historicalRates.availablePairs}
-        selectedTimeframe={historicalRates.selectedTimeframe}
-        onPairChange={historicalRates.setSelectedPair}
-        onTimeframeChange={historicalRates.setSelectedTimeframe}
+        selectedPair={selectedPair}
       />
     </div>
   );

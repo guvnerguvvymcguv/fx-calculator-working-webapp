@@ -3,6 +3,8 @@
  * Following KISS principle - simple, testable math functions
  */
 
+import { supabase } from './supabase';
+
 interface ValidationInputs {
   yourRate: string;
   competitorRate: string;
@@ -19,6 +21,18 @@ interface ValidationResult {
     tradeAmount: number;
     tradesPerYear: number;
   };
+}
+
+interface CalculationData {
+  currencyPair: string;
+  yourRate: number;
+  competitorRate: number;
+  clientName: string;
+  tradeAmount: number;
+  tradesPerYear: number;
+  selectedPips?: number[];
+  results: any;
+  timestamp: string;
 }
 
 /**
@@ -102,3 +116,60 @@ export const generateRateFluctuation = (baseRate: number, maxFluctuation: number
   const fluctuation = (Math.random() - 0.5) * maxFluctuation;
   return baseRate + (baseRate * fluctuation);
 };
+
+/**
+ * Save calculation to database
+ */
+export async function saveCalculation(data: CalculationData) {
+  try {
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('User not authenticated');
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Get user's company_id from user_profiles
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    // Prepare calculation data for database
+    const calculationRecord = {
+      user_id: user.id,
+      company_id: profile?.company_id || null,
+      calculation_data: data,
+      client_name: data.clientName,
+      trade_details: {
+        currency_pair: data.currencyPair,
+        your_rate: data.yourRate,
+        competitor_rate: data.competitorRate,
+        trade_amount: data.tradeAmount,
+        trades_per_year: data.tradesPerYear
+      },
+      savings_amount: data.results?.totalSavings || 0
+    };
+
+    // Insert into calculations table
+    const { data: savedCalc, error } = await supabase
+      .from('calculations')
+      .insert(calculationRecord)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving calculation:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('Calculation saved successfully:', savedCalc);
+    return { success: true, data: savedCalc };
+
+  } catch (error) {
+    console.error('Unexpected error saving calculation:', error);
+    return { success: false, error: 'Failed to save calculation' };
+  }
+}

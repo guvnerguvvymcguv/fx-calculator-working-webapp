@@ -1,25 +1,11 @@
-export interface FXPair {
-  value: string;
-  label: string;
-  baseRate: number;
-}
-
-/**
- * FX Pairs configuration data
- * Single source of truth for all currency pairs
- */
-export const FX_PAIRS: FXPair[] = [
-  { value: 'GBPUSD', label: 'GBP/USD', baseRate: 1.3550 },
-  { value: 'GBPEUR', label: 'GBP/EUR', baseRate: 1.1685 },
-  { value: 'EURUSD', label: 'EUR/USD', baseRate: 1.0825 },
+// Currency pair configurations for TraderMade
+export const FX_PAIRS = [
+  { value: 'GBPEUR', label: 'GBP/EUR' },
+  { value: 'GBPUSD', label: 'GBP/USD' },
+  { value: 'EURUSD', label: 'EUR/USD' },
+  { value: 'GBPNOK', label: 'GBP/NOK' },
+  { value: 'GBPSEK', label: 'GBP/SEK' },
+  { value: 'GBPAUD', label: 'GBP/AUD' }
 ];
 
-/**
- * Default selected pair
- */
-export const DEFAULT_PAIR: string = 'GBPUSD';
-
-/**
- * Demo access code for login
- */
-export const DEMO_ACCESS_CODE: string = '123456';
+export const DEFAULT_PAIR = 'GBPUSD';

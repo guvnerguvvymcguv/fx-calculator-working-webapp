@@ -1,148 +1,55 @@
-import React, { useState } from 'react';
-import { X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from './button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
+import { Input } from './input';
+import { X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HistoricalChart } from './HistoricalChart';
-import { type ChartDataPoint, TIMEFRAMES, MOCK_CHART_DATA, getPriceAtTime } from '../../constants/mockChartData';
+import { useHistoricalRates } from '../../hooks/useHistoricalRates';
 
 interface HistoricalRateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPriceSelect: (price: number) => void;
-  chartData: ChartDataPoint[];
-  selectedPair: string;
-  availablePairs: string[];
-  selectedTimeframe: string;
-  onPairChange: (pair: string) => void;
-  onTimeframeChange: (timeframe: string) => void;
+  selectedPair?: string;
 }
 
-export const HistoricalRateModal: React.FC<HistoricalRateModalProps> = ({
-  isOpen,
-  onClose,
-  onPriceSelect,
-  chartData,
-  selectedPair,
-  availablePairs,
-  selectedTimeframe,
-  onPairChange,
-  onTimeframeChange
-}) => {
-  // New state for date/time picker
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [timeInput, setTimeInput] = useState('');
-  const [searchedRate, setSearchedRate] = useState<number | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [customChartData, setCustomChartData] = useState<ChartDataPoint[] | null>(null);
-  const [selectedTimestamp, setSelectedTimestamp] = useState<number | null>(null);
+// Currency pairs configuration
+const CURRENCY_PAIRS = [
+  { value: 'GBPUSD', label: 'GBP/USD' },
+  { value: 'GBPEUR', label: 'GBP/EUR' },
+  { value: 'EURUSD', label: 'EUR/USD' },
+  { value: 'GBPNOK', label: 'GBP/NOK' },
+  { value: 'GBPSEK', label: 'GBP/SEK' },
+  { value: 'GBPAUD', label: 'GBP/AUD' }
+];
 
+const TIMEFRAMES = ['1D', '5D', '1M', '3M'];
+
+export function HistoricalRateModal({ 
+  isOpen, 
+  onClose, 
+  onPriceSelect,
+  selectedPair: initialPair = 'GBPUSD'
+}: HistoricalRateModalProps) {
   if (!isOpen) return null;
 
-  const handlePriceSelect = (price: number) => {
-    onPriceSelect(price);
-    onClose(); // Close modal after selection
-  };
+  const {
+    selectedPair,
+    selectedTimeframe,
+    chartData,
+    isLoading,
+    error,
+    setSelectedPair,
+    setSelectedTimeframe,
+    fetchRateForDateTime
+  } = useHistoricalRates(initialPair);
 
-  // Helper function to get data centered around a specific date
-  const getDataAroundDate = (targetTimestamp: number, days: number, pairName: string): ChartDataPoint[] => {
-    const fullData = MOCK_CHART_DATA[pairName] || [];
-    const halfDays = Math.floor(days / 2);
-    const startTime = targetTimestamp - (halfDays * 24 * 60 * 60 * 1000);
-    const endTime = targetTimestamp + (halfDays * 24 * 60 * 60 * 1000);
-    
-    return fullData.filter(point => 
-      point.timestamp >= startTime && point.timestamp <= endTime
-    );
-  };
-
-  // Reset function to clear custom selections
-  const handleReset = () => {
-    setCustomChartData(null);
-    setSelectedDate(null);
-    setTimeInput('');
-    setSearchedRate(null);
-    setSelectedTimestamp(null);
-  };
-
-  // Handle pair change - update custom data if we have a selected timestamp
-  const handlePairChange = (pair: string) => {
-    onPairChange(pair);
-    
-    // If we have a custom timestamp selected, update the custom data for the new pair
-    if (selectedTimestamp) {
-      const centeredData = getDataAroundDate(selectedTimestamp, 5, pair);
-      setCustomChartData(centeredData);
-      
-      // Update the searched rate for the new pair
-      const fullData = MOCK_CHART_DATA[pair] || [];
-      const closestPoint = getPriceAtTime(fullData, selectedTimestamp);
-      if (closestPoint) {
-        setSearchedRate(closestPoint.price);
-      }
-    }
-  };
-
-  // Handle timeframe change - clear custom data if not 5D
-  const handleTimeframeChange = (timeframe: string) => {
-    onTimeframeChange(timeframe);
-    
-    // If manually changing timeframe (and it's not 5D), clear custom data
-    if (timeframe !== '5D') {
-      setCustomChartData(null);
-    }
-  };
-
-  // Handle date/time search
-  const handleDateTimeSearch = () => {
-    if (!selectedDate || !timeInput) return;
-
-    // Parse time input (supports both 12 and 24 hour formats)
-    const timeRegex = /^(\d{1,2}):?(\d{2})?\s*(am|pm|AM|PM)?$/;
-    const timeMatch = timeInput.match(timeRegex);
-    
-    if (!timeMatch) {
-      alert('Please enter a valid time format (e.g., 13:00, 1:00 PM, or 1pm)');
-      return;
-    }
-
-    let hours = parseInt(timeMatch[1]);
-    const minutes = parseInt(timeMatch[2] || '0');
-    const period = timeMatch[3]?.toLowerCase();
-
-    // Convert to 24-hour format
-    if (period === 'pm' && hours !== 12) {
-      hours += 12;
-    } else if (period === 'am' && hours === 12) {
-      hours = 0;
-    }
-
-    // Create target timestamp
-    const targetDate = new Date(selectedDate);
-    targetDate.setHours(hours, minutes, 0, 0);
-    const targetTimestamp = targetDate.getTime();
-
-    // Get full dataset for the selected pair (not filtered by timeframe)
-    const fullData = MOCK_CHART_DATA[selectedPair] || [];
-    
-    // Find closest price point
-    const closestPoint = getPriceAtTime(fullData, targetTimestamp);
-    
-    if (closestPoint) {
-      setSearchedRate(closestPoint.price);
-      setSelectedTimestamp(targetTimestamp);
-      
-      // Switch to weekly view and center on the searched date
-      onTimeframeChange('5D');
-      
-      // Set custom chart data centered around the searched date
-      const centeredData = getDataAroundDate(targetTimestamp, 5, selectedPair);
-      setCustomChartData(centeredData);
-      
-      // Keep date picker open - remove this line: setShowDatePicker(false);
-    } else {
-      alert('No data available for the selected date/time');
-    }
-  };
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState('09:00');
+  const [searchedRate, setSearchedRate] = useState<number | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Calendar helper functions
   const getDaysInMonth = (date: Date) => {
@@ -153,13 +60,57 @@ export const HistoricalRateModal: React.FC<HistoricalRateModalProps> = ({
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
   };
 
-  const formatDateDisplay = (date: Date) => {
-    return date.toLocaleDateString('en-GB', {
+  const formatMonthYear = (date: Date) => {
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const formatSelectedDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { 
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
+  };
+
+  // Handle date selection
+  const handleDateSelect = (day: number) => {
+    const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+    setSelectedDate(newDate);
+  };
+
+  // Handle month navigation
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newMonth = new Date(currentMonth);
+    if (direction === 'prev') {
+      newMonth.setMonth(newMonth.getMonth() - 1);
+    } else {
+      newMonth.setMonth(newMonth.getMonth() + 1);
+    }
+    setCurrentMonth(newMonth);
+  };
+
+  // Find rate for specific date/time
+  const handleFindRate = async () => {
+    setIsSearching(true);
+    try {
+      const rate = await fetchRateForDateTime(selectedDate, selectedTime);
+      if (rate !== null) {
+        setSearchedRate(rate);
+      }
+    } catch (error) {
+      console.error('Error finding rate:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Use the found rate
+  const handleUseRate = () => {
+    if (searchedRate !== null) {
+      onPriceSelect(searchedRate);
+      onClose();
+    }
   };
 
   // Generate calendar days
@@ -168,12 +119,12 @@ export const HistoricalRateModal: React.FC<HistoricalRateModalProps> = ({
     const firstDay = getFirstDayOfMonth(currentMonth);
     const days = [];
 
-    // Empty cells for days before the first day of the month
+    // Add empty cells for days before month starts
     for (let i = 0; i < firstDay; i++) {
       days.push(null);
     }
 
-    // Days of the month
+    // Add all days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(day);
     }
@@ -181,231 +132,195 @@ export const HistoricalRateModal: React.FC<HistoricalRateModalProps> = ({
     return days;
   };
 
-  const handleDateSelect = (day: number) => {
-    const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    setSelectedDate(newDate);
-  };
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentMonth(prev => {
-      const newMonth = new Date(prev);
-      if (direction === 'prev') {
-        newMonth.setMonth(prev.getMonth() - 1);
-      } else {
-        newMonth.setMonth(prev.getMonth() + 1);
-      }
-      return newMonth;
-    });
-  };
+  const calendarDays = generateCalendarDays();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      
-      {/* Modal Content */}
-      <div className="relative bg-[#10051A] border border-white/20 rounded-xl shadow-2xl max-w-5xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-gray-900 rounded-xl w-full max-w-5xl max-h-[90vh] overflow-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20">
-          <h2 className="text-xl font-bold text-purple-200">
-            Historical Exchange Rates
-          </h2>
-          <Button
+        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-white">Historical Exchange Rates</h2>
+          <button
             onClick={onClose}
-            variant="outline"
-            size="sm"
-            className="border-white/20 text-purple-200 hover:bg-white/10"
+            className="text-gray-400 hover:text-white transition-colors"
           >
-            <X className="h-4 w-4" />
-          </Button>
+            <X className="h-6 w-6" />
+          </button>
         </div>
 
         {/* Controls */}
-        <div className="p-6 border-b border-white/20">
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Currency Pair Selector */}
+        <div className="p-6 space-y-4">
+          <div className="flex flex-wrap gap-3 items-center">
+            {/* Currency Pair Dropdown */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-purple-200">
-                Pair:
-              </label>
-              <div className="flex gap-1">
-                {availablePairs.map((pair) => (
-                  <button
-                    key={pair}
-                    onClick={() => handlePairChange(pair)}
-                    className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-                      selectedPair === pair
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-white/10 text-purple-200 hover:bg-white/20'
-                    }`}
-                  >
-                    {pair.slice(0, 3)}/{pair.slice(3)}
-                  </button>
-                ))}
-              </div>
+              <span className="text-gray-300">Pair:</span>
+              <Select value={selectedPair} onValueChange={setSelectedPair}>
+                <SelectTrigger className="w-32 bg-gray-800 border-gray-700 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-700">
+                  {CURRENCY_PAIRS.map((pair) => (
+                    <SelectItem 
+                      key={pair.value} 
+                      value={pair.value}
+                      className="text-gray-300 hover:bg-gray-700"
+                    >
+                      {pair.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Timeframe Selector */}
+            {/* Timeframe Buttons */}
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-purple-200">
-                Timeframe:
-              </label>
+              <span className="text-gray-300">Timeframe:</span>
               <div className="flex gap-1">
                 {TIMEFRAMES.map((tf) => (
                   <button
-                    key={tf.label}
-                    onClick={() => handleTimeframeChange(tf.label)}
-                    className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-                      selectedTimeframe === tf.label
+                    key={tf}
+                    onClick={() => setSelectedTimeframe(tf)}
+                    className={`px-3 py-1 rounded transition-colors ${
+                      selectedTimeframe === tf
                         ? 'bg-purple-600 text-white'
-                        : 'bg-white/10 text-purple-200 hover:bg-white/20'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    {tf.label}
+                    {tf}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* NEW: Calendar Button */}
-            <div className="flex items-center gap-2 ml-4">
+            {/* Date/Time Search Toggle */}
+            <Button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              variant="outline"
+              className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Date/Time Search
+            </Button>
+
+            {showDatePicker && (
               <Button
-                onClick={() => setShowDatePicker(!showDatePicker)}
-                variant="outline"
-                size="sm"
-                className="border-white/20 text-purple-200 hover:bg-white/10"
+                onClick={() => setShowDatePicker(false)}
+                variant="ghost"
+                className="text-gray-400 hover:text-white"
               >
-                <Calendar className="h-4 w-4 mr-1" />
-                Date/Time Search
+                Reset View
               </Button>
-              
-              {/* Reset Button - only show if custom data is active */}
-              {customChartData && (
-                <Button
-                  onClick={handleReset}
-                  variant="outline"
-                  size="sm"
-                  className="border-red-500/20 text-red-300 hover:bg-red-500/10"
-                >
-                  Reset View
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
-          {/* NEW: Date/Time Picker */}
+          {/* Instructions */}
+          <div className="bg-gray-800/50 rounded-lg p-3">
+            <p className="text-sm text-gray-400 flex items-start gap-2">
+              <span className="text-purple-400">💡</span>
+              <span>
+                {showDatePicker 
+                  ? "Select a specific date and time to find the historical rate"
+                  : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
+                }
+              </span>
+            </p>
+          </div>
+
+          {/* Date/Time Picker */}
           {showDatePicker && (
-            <div className="mt-4 p-4 bg-white/5 border border-white/20 rounded-lg">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-gray-800 rounded-lg p-4 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Calendar */}
                 <div>
-                  <h4 className="text-sm font-medium text-purple-200 mb-3">Select Date</h4>
-                  
-                  {/* Month Navigation */}
-                  <div className="flex items-center justify-between mb-3">
-                    <Button
-                      onClick={() => navigateMonth('prev')}
-                      variant="ghost"
-                      size="sm"
-                      className="text-purple-200 hover:bg-white/10"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-purple-200 font-medium">
-                      {currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <Button
-                      onClick={() => navigateMonth('next')}
-                      variant="ghost"
-                      size="sm"
-                      className="text-purple-200 hover:bg-white/10"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <h3 className="text-gray-300 mb-2">Select Date</h3>
+                  <div className="bg-gray-900 rounded-lg p-3">
+                    {/* Month Navigation */}
+                    <div className="flex items-center justify-between mb-3">
+                      <button
+                        onClick={() => navigateMonth('prev')}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <span className="text-white font-medium">
+                        {formatMonthYear(currentMonth)}
+                      </span>
+                      <button
+                        onClick={() => navigateMonth('next')}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </div>
 
-                  {/* Calendar Grid */}
-                  <div className="grid grid-cols-7 gap-1 text-xs">
-                    {/* Day headers */}
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                      <div key={day} className="p-2 text-center text-purple-300 font-medium">
-                        {day}
-                      </div>
-                    ))}
-                    
-                    {/* Calendar days */}
-                    {generateCalendarDays().map((day, index) => (
-                      <div key={index} className="relative">
-                        {day ? (
-                          <button
-                            onClick={() => handleDateSelect(day)}
-                            className={`w-full p-2 text-center rounded transition-colors ${
-                              selectedDate && 
-                              selectedDate.getDate() === day && 
-                              selectedDate.getMonth() === currentMonth.getMonth() &&
-                              selectedDate.getFullYear() === currentMonth.getFullYear()
-                                ? 'bg-purple-600 text-white'
-                                : 'text-purple-200 hover:bg-white/10'
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        ) : (
-                          <div className="p-2"></div>
-                        )}
-                      </div>
-                    ))}
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-1 text-center">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} className="text-xs text-gray-500 py-1">
+                          {day}
+                        </div>
+                      ))}
+                      {calendarDays.map((day, index) => (
+                        <div key={index} className="aspect-square">
+                          {day && (
+                            <button
+                              onClick={() => handleDateSelect(day)}
+                              className={`w-full h-full rounded hover:bg-gray-700 transition-colors ${
+                                selectedDate.getDate() === day &&
+                                selectedDate.getMonth() === currentMonth.getMonth()
+                                  ? 'bg-purple-600 text-white'
+                                  : 'text-gray-300'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Time Input and Search */}
+                {/* Time & Search */}
                 <div>
-                  <h4 className="text-sm font-medium text-purple-200 mb-3">Time & Search</h4>
-                  
-                  {selectedDate && (
-                    <div className="mb-3 p-2 bg-purple-600/10 rounded border border-purple-600/20">
-                      <div className="text-xs text-purple-300">Selected Date:</div>
-                      <div className="text-sm text-purple-200 font-medium">
-                        {formatDateDisplay(selectedDate)}
-                      </div>
-                    </div>
-                  )}
-
+                  <h3 className="text-gray-300 mb-2">Time & Search</h3>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-xs text-purple-300 mb-1">
-                        Time (e.g., 13:00, 1:00 PM, 1pm)
-                      </label>
-                      <input
+                      <label className="text-sm text-gray-400">Selected Date:</label>
+                      <div className="text-white font-medium">
+                        {formatSelectedDate(selectedDate)}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm text-gray-400">Time (e.g., 13:00, 1:00 PM, 1pm)</label>
+                      <Input
                         type="text"
-                        value={timeInput}
-                        onChange={(e) => setTimeInput(e.target.value)}
-                        placeholder="13:00"
-                        className="w-full p-2 bg-white/10 border border-white/20 rounded text-purple-200 placeholder-purple-400"
+                        value={selectedTime}
+                        onChange={(e) => setSelectedTime(e.target.value)}
+                        className="bg-gray-900 border-gray-700 text-white"
+                        placeholder="09:00"
                       />
                     </div>
 
                     <Button
-                      onClick={handleDateTimeSearch}
-                      disabled={!selectedDate || !timeInput}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleFindRate}
+                      disabled={isSearching}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                     >
-                      <Search className="h-4 w-4 mr-1" />
-                      Find Rate
+                      <Search className="h-4 w-4 mr-2" />
+                      {isSearching ? 'Searching...' : 'Find Rate'}
                     </Button>
 
-                    {/* Display searched rate */}
-                    {searchedRate && (
-                      <div className="mt-3 p-3 bg-green-600/10 border border-green-600/20 rounded">
-                        <div className="text-xs text-green-300 mb-1">Rate Found:</div>
-                        <div className="text-lg font-bold text-green-400">{searchedRate.toFixed(4)}</div>
+                    {searchedRate !== null && (
+                      <div className="bg-gray-900 rounded-lg p-3 space-y-2">
+                        <div className="text-sm text-gray-400">Rate Found:</div>
+                        <div className="text-2xl font-bold text-green-400">
+                          {searchedRate.toFixed(4)}
+                        </div>
                         <Button
-                          onClick={() => handlePriceSelect(searchedRate)}
-                          size="sm"
-                          className="mt-2 w-full bg-green-600 hover:bg-green-700 text-white"
+                          onClick={handleUseRate}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
                         >
                           Use This Rate
                         </Button>
@@ -417,43 +332,29 @@ export const HistoricalRateModal: React.FC<HistoricalRateModalProps> = ({
             </div>
           )}
 
-          {/* Instructions */}
-          <div className="mt-4 p-3 bg-purple-600/10 rounded-lg border border-purple-600/20">
-            <p className="text-sm text-purple-300">
-              💡 <strong>How to use:</strong> Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation.
-            </p>
-          </div>
-        </div>
-
-        {/* Chart Container */}
-        <div className="p-6 flex justify-center">
-          <div className="w-full max-w-4xl">
-            <HistoricalChart
-              data={customChartData || chartData}
-              onPriceSelect={handlePriceSelect}
-              selectedPair={selectedPair}
-              width={800}
-              height={400}
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-white/20 bg-white/5">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-purple-300">
-              Showing {(customChartData || chartData).length} data points for {selectedPair.slice(0, 3)}/{selectedPair.slice(3)} ({selectedTimeframe})
+          {/* Chart */}
+          <div className="bg-gray-800 rounded-lg p-4">
+            <div className="h-64 md:h-96">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-gray-400">Loading chart data...</div>
+                </div>
+              ) : error ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-red-400">{error}</div>
+                </div>
+              ) : (
+                <HistoricalChart
+                      data={chartData as any}
+                      onPriceSelect={(price: number) => {
+                        onPriceSelect(price);
+                        onClose();
+                      } } selectedPair={''}                />
+              )}
             </div>
-            <Button
-              onClick={onClose}
-              variant="outline"
-              className="border-white/20 text-purple-200 hover:bg-white/10"
-            >
-              Cancel
-            </Button>
           </div>
         </div>
       </div>
     </div>
   );
-};
+}

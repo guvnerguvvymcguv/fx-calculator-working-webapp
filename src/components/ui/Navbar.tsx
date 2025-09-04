@@ -1,5 +1,6 @@
 import { Button } from '../../components/ui/button';
 import { TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface NavbarProps {
   isSignedIn: boolean;
@@ -33,6 +34,15 @@ export function Navbar({ isSignedIn, onSignIn, onSignOut }: NavbarProps) {
             >
               Home
             </Button>
+
+            <Link to="/pricing">
+              <Button 
+                variant="ghost"
+                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                Pricing
+              </Button>
+            </Link>
             
             {isSignedIn ? (
               <Button 

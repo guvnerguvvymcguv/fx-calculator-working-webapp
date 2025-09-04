@@ -1,80 +1,113 @@
 import { useState, useEffect } from 'react';
-
-// Define the FXPair interface locally to avoid import issues
-interface FXPair {
-  value: string;
-  label: string;
-  baseRate: number;
-}
-
-// Import the FX_PAIRS array
-import { FX_PAIRS } from '../constants/fxPairs';
+import { getLiveRate, formatPairDisplay } from '../lib/tradermade';
 
 interface UseLiveRatesReturn {
-  liveRate: number;
-  isFlashing: boolean;
-  getCurrentPair: () => FXPair | undefined;
+  currentRate: string;
   formattedRate: string;
+  isLoading: boolean;
+  isFlashing: boolean;
+  lastUpdate: string | null;
+  error: string | null;
+  getCurrentPair: () => { value: string; label: string } | undefined;
 }
 
-/**
- * Custom hook for managing live FX rates
- * Handles rate updates, flashing animations, and pair changes
- */
-export const useLiveRates = (
-  selectedPair: string, 
-  onRateUpdate?: (rate: string) => void
-): UseLiveRatesReturn => {
-  const [liveRate, setLiveRate] = useState<number>(1.3550);
-  const [isFlashing, setIsFlashing] = useState<boolean>(false);
+// Map your FX pairs to TraderMade format
+const FX_PAIRS_MAPPING: Record<string, string> = {
+  'GBPEUR': 'GBPEUR',
+  'GBPUSD': 'GBPUSD',
+  'EURUSD': 'EURUSD',
+  'GBPNOK': 'GBPNOK',
+  'GBPSEK': 'GBPSEK',
+  'GBPAUD': 'GBPAUD'
+};
 
-  // Update live rate every 5 seconds with slight random fluctuation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentPair = FX_PAIRS.find(pair => pair.value === selectedPair);
-      if (currentPair) {
-        const baseRate = currentPair.baseRate;
-        const fluctuation = (Math.random() - 0.5) * 0.0020; // ±0.1% fluctuation
-        const newRate = baseRate + fluctuation;
-        const formattedRate = Number(newRate.toFixed(4));
+export const useLiveRates = (selectedPair: string): UseLiveRatesReturn => {
+  const [currentRate, setCurrentRate] = useState<string>('Loading...');
+  const [formattedRate, setFormattedRate] = useState<string>('Loading...');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFlashing, setIsFlashing] = useState<boolean>(false);
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch live rate from TraderMade
+  const fetchLiveRate = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const apiPair = FX_PAIRS_MAPPING[selectedPair];
+      if (!apiPair) {
+        throw new Error(`Unsupported currency pair: ${selectedPair}`);
+      }
+
+      const rate = await getLiveRate(apiPair);
+      
+      if (rate) {
+        const midRate = rate.mid.toFixed(4);
         
-        setLiveRate(formattedRate);
-        setIsFlashing(true);
-        
-        // Call callback if provided (to update your rate input)
-        if (onRateUpdate) {
-          onRateUpdate(formattedRate.toFixed(4));
+        // Check if rate changed to trigger flash
+        if (currentRate !== 'Loading...' && currentRate !== midRate) {
+          setIsFlashing(true);
+          setTimeout(() => setIsFlashing(false), 500);
         }
         
-        // Stop flashing after animation
-        setTimeout(() => setIsFlashing(false), 300);
+        setCurrentRate(midRate);
+        setFormattedRate(midRate);
+        setLastUpdate(new Date().toLocaleTimeString());
+      } else {
+        throw new Error('No rate data received');
       }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [selectedPair, onRateUpdate]);
-
-  // Update rates when pair changes
-  useEffect(() => {
-    const currentPair = FX_PAIRS.find(pair => pair.value === selectedPair);
-    if (currentPair) {
-      setLiveRate(currentPair.baseRate);
+    } catch (err) {
+      console.error('Error fetching live rate:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch rate');
       
-      // Update your rate input when pair changes
-      if (onRateUpdate) {
-        onRateUpdate(currentPair.baseRate.toFixed(4));
-      }
+      // Fallback to mock data for development
+      const mockRate = getMockRate(selectedPair);
+      setCurrentRate(mockRate);
+      setFormattedRate(mockRate);
+    } finally {
+      setIsLoading(false);
     }
-  }, [selectedPair, onRateUpdate]);
+  };
 
-  const getCurrentPair = (): FXPair | undefined => {
-    return FX_PAIRS.find(pair => pair.value === selectedPair);
+  // Get mock rate as fallback
+  const getMockRate = (pair: string): string => {
+    const mockRates: Record<string, string> = {
+      'GBPEUR': '1.1854',
+      'GBPUSD': '1.2735',
+      'EURUSD': '1.0742',
+      'GBPNOK': '13.5621',
+      'GBPSEK': '13.8945',
+      'GBPAUD': '1.9234'
+    };
+    return mockRates[pair] || '1.0000';
+  };
+
+  // Fetch rate on mount and when pair changes
+  useEffect(() => {
+    fetchLiveRate();
+    
+    // Refresh every 30 seconds (adjust based on your needs)
+    const interval = setInterval(fetchLiveRate, 30000);
+    
+    return () => clearInterval(interval);
+  }, [selectedPair]);
+
+  const getCurrentPair = () => {
+    const displayFormat = formatPairDisplay(FX_PAIRS_MAPPING[selectedPair] || selectedPair);
+    return {
+      value: selectedPair,
+      label: displayFormat
+    };
   };
 
   return {
-    liveRate,
+    currentRate,
+    formattedRate,
+    isLoading,
     isFlashing,
-    getCurrentPair,
-    formattedRate: liveRate.toFixed(4)
+    lastUpdate,
+    error,
+    getCurrentPair
   };
 };
