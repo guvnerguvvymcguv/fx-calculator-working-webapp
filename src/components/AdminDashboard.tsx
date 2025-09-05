@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { supabase } from '../lib/supabase';
-import { Users, TrendingUp, Mail, Activity } from 'lucide-react';
+import { Users, TrendingUp, Mail, Activity, ArrowLeft, Calculator, LogOut } from 'lucide-react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -38,6 +38,11 @@ export default function AdminDashboard() {
     if (!profile || !['admin', 'super_admin'].includes(profile.role_type)) {
       navigate('/calculator');
     }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
   };
 
   const fetchDashboardData = async () => {
@@ -108,6 +113,36 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#10051A] p-8">
+      {/* Top Navigation Bar */}
+      <div className="max-w-7xl mx-auto mb-8">
+        <div className="flex justify-between items-center">
+          <button
+            onClick={() => navigate('/')}
+            className="p-3 bg-gray-900/90 hover:bg-gray-800/90 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-400" />
+          </button>
+          
+          <div className="flex gap-4">
+            <Button
+              onClick={() => navigate('/calculator')}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <Calculator className="h-4 w-4 mr-2" />
+              Use Calculator
+            </Button>
+            <Button
+              onClick={handleSignOut}
+              variant="outline"
+              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
