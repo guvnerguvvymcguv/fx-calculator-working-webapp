@@ -142,18 +142,8 @@ export default function CompanySignup() {
       
       if (profileError) throw profileError;
       
-      // Sign in the user
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: adminEmail,
-        password: adminPassword
-      });
-      
-      if (!signInError) {
-  // Navigate to success page
-  navigate('/signup-success');
-} else {
-  throw new Error('Failed to sign in after signup');
-}
+      // Don't try to sign in - user needs to verify email first
+navigate('/signup-success');
       
     } catch (error: any) {
       console.error('Detailed signup error:', error);
