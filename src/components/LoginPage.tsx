@@ -5,13 +5,14 @@ import { Card, CardContent } from './ui/card';
 import { ArrowLeft } from 'lucide-react';
 import { signIn } from '../lib/auth';
 import { AuthContext } from '../App';
-import { supabase } from '../lib/supabase'; // Added import
+import { supabase } from '../lib/supabase';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loginType, setLoginType] = useState<'user' | 'admin'>('user');
   
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
@@ -21,37 +22,43 @@ const LoginPage = () => {
     setIsLoading(true);
     setError('');
 
-    // Basic validation
     if (!email || !password) {
       setError('Please enter both email and password');
       setIsLoading(false);
       return;
     }
 
-    // Attempt to sign in
     const { data, error: signInError } = await signIn(email, password);
 
     if (signInError) {
       setError(signInError.message);
       setIsLoading(false);
     } else if (data.user) {
-      // Success! Update auth context
       authContext?.login();
       
-      // Check the user session is properly set
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('Logged in user:', user);
-      
-      // Small delay to ensure auth state is propagated
-      setTimeout(() => {
+      // Check user role if admin login selected
+      if (loginType === 'admin') {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('role_type')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (profile && ['admin', 'super_admin'].includes(profile.role_type)) {
+          navigate('/admin');
+        } else {
+          setError('You do not have admin access');
+          setIsLoading(false);
+          return;
+        }
+      } else {
         navigate('/calculator');
-      }, 100);
+      }
     }
   };
 
   return (
     <div className="min-h-screen relative" style={{ backgroundColor: '#10051A' }}>
-      {/* Back Button */}
       <button
         onClick={() => navigate('/')}
         className="absolute top-8 left-8 p-3 bg-gray-900/90 hover:bg-gray-800/90 rounded-lg transition-colors"
@@ -66,6 +73,34 @@ const LoginPage = () => {
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Spread Checker</h1>
               <p className="text-gray-400">Sign in to access your account</p>
+            </div>
+            
+            {/* Login Type Toggle */}
+            <div className="flex justify-center mb-6">
+              <div className="bg-gray-800 p-1 rounded-lg flex">
+                <button
+                  type="button"
+                  onClick={() => setLoginType('user')}
+                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                    loginType === 'user'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  User
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginType('admin')}
+                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                    loginType === 'admin'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  Admin
+                </button>
+              </div>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -120,14 +155,14 @@ const LoginPage = () => {
                 disabled={isLoading}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition duration-200 disabled:opacity-50"
               >
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isLoading ? 'Signing in...' : `Sign In as ${loginType === 'admin' ? 'Admin' : 'User'}`}
               </Button>
             </form>
             
             <div className="mt-6 text-center">
               <p className="text-gray-400">
                 Don't have an account?{' '}
-                <a href="#" className="text-purple-400 hover:text-purple-300 font-medium">
+                <a href="/signup" className="text-purple-400 hover:text-purple-300 font-medium">
                   Contact Sales
                 </a>
               </p>
