@@ -11,6 +11,7 @@ import ProtectedRoute from './components/ProtectedRoute.tsx';
 import CompanySignup from './components/CompanySignup';
 import SignupSuccess from './components/SignupSuccess';
 import AdminDashboard from './components/AdminDashboard';
+import UserActivity from './components/UserActivity';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -81,6 +82,8 @@ function AppContent() {
         <Route path="/signup-success" element={<SignupSuccess />} />
 
         <Route path="/admin" element={<AdminDashboard />} />
+
+        <Route path="/admin/user/:userId" element={<UserActivity />} />
         
         {/* Redirect any unknown routes to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />
