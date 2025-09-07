@@ -15,7 +15,7 @@ import UserActivity from './components/UserActivity';
 import InviteMembers from './components/InviteMembers';
 import SeatManagement from './components/SeatManagement';
 import PrivacyPolicy from './components/PrivacyPolicy';
-import TermsOfService from './components/TermsofService';
+import TermsOfService from './components/TermsOfService';
 
 // Create a simple auth context for global state
 interface AuthContextType {
