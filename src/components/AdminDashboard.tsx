@@ -3,13 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { supabase } from '../lib/supabase';
-import { Users, TrendingUp, Mail, Activity, ArrowLeft, Calculator, LogOut } from 'lucide-react';
+import { Users, TrendingUp, Mail, Activity, ArrowLeft, Calculator, LogOut, AlertTriangle, Download } from 'lucide-react';
+import DateFilter from './DateFilter';
+import SalesforceExport from './SalesforceExport';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showExport, setShowExport] = useState(false);
   const [companyData, setCompanyData] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [dateFilter, setDateFilter] = useState<{ start: Date | null; end: Date | null }>({
+    start: null,
+    end: null
+  });
   const [metrics, setMetrics] = useState<any>({
     totalCalculations: 0,
     weeklyChange: 0,
@@ -21,6 +30,12 @@ export default function AdminDashboard() {
     checkAdminAccess();
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      fetchDashboardData();
+    }
+  }, [dateFilter]);
 
   const checkAdminAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -35,6 +50,8 @@ export default function AdminDashboard() {
       .eq('id', user.id)
       .single();
 
+    setUserProfile(profile);
+
     if (!profile || !['admin', 'super_admin'].includes(profile.role_type)) {
       navigate('/calculator');
     }
@@ -45,59 +62,135 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
+  const handleApplyDateFilter = (start: Date, end: Date) => {
+    setDateFilter({ start, end });
+  };
+
+  const handleClearDateFilter = () => {
+    setDateFilter({ start: null, end: null });
+  };
+
   const fetchDashboardData = async () => {
+    setError(null);
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        throw new Error('Failed to authenticate user');
+      }
       
       // Get company info
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('company_id')
+        .select('company_id, role_type')
         .eq('id', user!.id)
         .single();
 
-      const { data: company } = await supabase
+      if (profileError) {
+        throw new Error('Failed to load user profile');
+      }
+
+      setUserProfile(profile);
+
+      const { data: company, error: companyError } = await supabase
         .from('companies')
         .select('*')
         .eq('id', profile!.company_id)
         .single();
 
+      if (companyError) {
+        throw new Error('Failed to load company data');
+      }
+
       setCompanyData(company);
 
       // Get team members
-      const { data: members } = await supabase
+      const { data: members, error: membersError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('company_id', profile!.company_id);
 
+      if (membersError) {
+        console.error('Warning: Could not load team members', membersError);
+      }
+
       setTeamMembers(members || []);
 
-      // Get activity metrics
-      const { data: activities } = await supabase
+      // Use date filter if set, otherwise use current/previous week
+      let currentPeriodStart = dateFilter.start ? new Date(dateFilter.start) : new Date();
+      
+      if (!dateFilter.start) {
+        // Default to current week if no filter
+        currentPeriodStart.setDate(currentPeriodStart.getDate() - currentPeriodStart.getDay());
+        currentPeriodStart.setHours(0, 0, 0, 0);
+      }
+
+      let currentPeriodQuery = supabase
         .from('activity_logs')
         .select('*')
-        .eq('company_id', profile!.company_id)
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        .eq('company_id', profile!.company_id);
 
-      calculateMetrics(activities || []);
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      if (dateFilter.start && dateFilter.end) {
+        currentPeriodQuery = currentPeriodQuery
+          .gte('created_at', dateFilter.start.toISOString())
+          .lte('created_at', dateFilter.end.toISOString());
+      } else {
+        currentPeriodQuery = currentPeriodQuery
+          .gte('created_at', currentPeriodStart.toISOString());
+      }
+
+      const { data: currentPeriodActivities, error: activitiesError } = await currentPeriodQuery;
+
+      if (activitiesError) {
+        console.error('Warning: Could not load activities', activitiesError);
+      }
+
+      // Get comparison period (same duration, but earlier)
+      let previousPeriodActivities: any[] = [];
+      if (!dateFilter.start) {
+        // Default weekly comparison
+        const previousWeekStart = new Date(currentPeriodStart);
+        previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+
+        const { data: prevActivities } = await supabase
+          .from('activity_logs')
+          .select('*')
+          .eq('company_id', profile!.company_id)
+          .gte('created_at', previousWeekStart.toISOString())
+          .lt('created_at', currentPeriodStart.toISOString());
+        
+        previousPeriodActivities = prevActivities || [];
+      }
+
+      calculateMetrics(currentPeriodActivities || [], previousPeriodActivities);
+      
+    } catch (error: any) {
+      console.error('Dashboard error:', error);
+      setError(error.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateMetrics = (activities: any[]) => {
-    const totalCalcs = activities.filter(a => a.action_type === 'calculation').length;
-    const avgValue = activities.reduce((sum, a) => sum + (a.amount || 0), 0) / (activities.length || 1);
-    const uniqueUsers = new Set(activities.map(a => a.user_id)).size;
+  const calculateMetrics = (currentPeriod: any[], previousPeriod: any[]) => {
+    const currentPeriodCalcs = currentPeriod.filter(a => a.action_type === 'calculation').length;
+    const previousPeriodCalcs = previousPeriod.filter(a => a.action_type === 'calculation').length;
     
-    // Calculate weekly change (mock for now)
-    const weeklyChange = 12; // You'd calculate this from historical data
+    const avgValue = currentPeriod.reduce((sum, a) => sum + (a.amount || 0), 0) / (currentPeriod.length || 1);
+    const uniqueUsers = new Set(currentPeriod.map(a => a.user_id)).size;
+    
+    // Calculate actual period-over-period change
+    let periodChange = 0;
+    if (previousPeriodCalcs > 0) {
+      periodChange = Math.round(((currentPeriodCalcs - previousPeriodCalcs) / previousPeriodCalcs) * 100);
+    } else if (currentPeriodCalcs > 0) {
+      periodChange = 100;
+    }
 
     setMetrics({
-      totalCalculations: totalCalcs,
-      weeklyChange,
+      totalCalculations: currentPeriodCalcs,
+      weeklyChange: periodChange,
       averageTradeValue: avgValue,
       activeUsers: uniqueUsers
     });
@@ -107,6 +200,39 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen bg-[#10051A] flex items-center justify-center">
         <div className="text-purple-300">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#10051A] flex items-center justify-center p-4">
+        <Card className="max-w-md bg-gray-900/90 border-gray-800">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <CardTitle className="text-white">Dashboard Error</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-300 mb-4">{error}</p>
+            <div className="flex gap-4">
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                Retry
+              </Button>
+              <Button 
+                onClick={() => navigate('/')} 
+                variant="outline"
+                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
+                Go Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -131,6 +257,16 @@ export default function AdminDashboard() {
               <Calculator className="h-4 w-4 mr-2" />
               Use Calculator
             </Button>
+            {userProfile?.role_type === 'super_admin' && (
+              <Button
+                onClick={() => navigate('/admin/seats')}
+                variant="outline"
+                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Manage Seats
+              </Button>
+            )}
             <Button
               onClick={handleSignOut}
               variant="outline"
@@ -149,6 +285,27 @@ export default function AdminDashboard() {
           <h1 className="text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
           <p className="text-gray-400">Manage your team and track performance</p>
         </div>
+
+        {/* Date Filter */}
+        <DateFilter 
+          onApplyFilter={handleApplyDateFilter}
+          onClearFilter={handleClearDateFilter}
+        />
+
+        {/* Export Section */}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-white">Metrics Overview</h2>
+          <Button
+            onClick={() => setShowExport(!showExport)}
+            variant="outline"
+            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export Data
+          </Button>
+        </div>
+
+        {showExport && <SalesforceExport />}
 
         {/* Metrics Cards */}
         <div className="grid md:grid-cols-4 gap-6 mb-8">
@@ -173,7 +330,9 @@ export default function AdminDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-400" />
-                <CardTitle className="text-sm text-gray-400">Weekly Calculations</CardTitle>
+                <CardTitle className="text-sm text-gray-400">
+                  {dateFilter.start ? 'Period' : 'Weekly'} Calculations
+                </CardTitle>
               </div>
             </CardHeader>
             <CardContent>
@@ -181,7 +340,8 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-1 mt-1">
                 <TrendingUp className="h-3 w-3 text-green-400" />
                 <p className="text-xs text-green-400">
-                  {metrics.weeklyChange > 0 ? '+' : ''}{metrics.weeklyChange}% from last week
+                  {metrics.weeklyChange > 0 ? '+' : ''}{metrics.weeklyChange}% 
+                  {dateFilter.start ? ' vs previous' : ' from last week'}
                 </p>
               </div>
             </CardContent>
@@ -211,7 +371,9 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{metrics.activeUsers}</div>
-              <p className="text-xs text-gray-500 mt-1">This week</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {dateFilter.start ? 'In period' : 'This week'}
+              </p>
             </CardContent>
           </Card>
         </div>

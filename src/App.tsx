@@ -12,6 +12,8 @@ import CompanySignup from './components/CompanySignup';
 import SignupSuccess from './components/SignupSuccess';
 import AdminDashboard from './components/AdminDashboard';
 import UserActivity from './components/UserActivity';
+import InviteMembers from './components/InviteMembers';
+import SeatManagement from './components/SeatManagement';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -84,6 +86,10 @@ function AppContent() {
         <Route path="/admin" element={<AdminDashboard />} />
 
         <Route path="/admin/user/:userId" element={<UserActivity />} />
+
+        <Route path="/admin/invite" element={<InviteMembers />} />
+
+        <Route path="/admin/seats" element={<SeatManagement />} />
         
         {/* Redirect any unknown routes to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />
