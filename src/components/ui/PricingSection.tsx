@@ -73,7 +73,7 @@ export default function PricingSection() {
               <CardTitle className="text-2xl font-bold text-purple-200">Per User</CardTitle>
               <div className="mt-4">
                 <span className="text-3xl font-bold text-white">£27</span>
-                <span className="text-purple-200/70">/for 15-29 accounts</span>
+                <span className="text-purple-200/70"> for 15-29 accounts</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -116,7 +116,7 @@ export default function PricingSection() {
               <CardTitle className="text-2xl font-bold text-purple-200">Per User</CardTitle>
               <div className="mt-4">
                 <span className="text-3xl font-bold text-white">£24</span>
-                <span className="text-purple-200/70">/for 30+ accounts</span>
+                <span className="text-purple-200/70"> for 30+ accounts</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">

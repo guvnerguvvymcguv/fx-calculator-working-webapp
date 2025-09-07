@@ -1,5 +1,6 @@
 import { Button } from '../../components/ui/button';
 import { TrendingUp } from 'lucide-react';
+import { Link } from 'react-router-dom';  // Add this import
 
 interface FooterProps {
   onLogin: () => void;
@@ -18,18 +19,18 @@ export function Footer({ onLogin }: FooterProps) {
           </div>
           
           <div className="flex items-center gap-6">
-            <a 
-              href="/terms" 
+            <Link 
+              to="/terms"  // Changed from href to 'to'
               className="text-purple-200 hover:text-white transition-colors"
             >
               Terms of Service
-            </a>
-            <a 
-              href="/privacy" 
+            </Link>
+            <Link 
+              to="/privacy"  // Changed from href to 'to'
               className="text-purple-200 hover:text-white transition-colors"
             >
               Privacy Policy
-            </a>
+            </Link>
             <Button 
               variant="ghost" 
               onClick={onLogin}
