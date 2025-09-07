@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { Users, TrendingUp, Mail, Activity, ArrowLeft, Calculator, LogOut, AlertTriangle, Download } from 'lucide-react';
 import DateFilter from './DateFilter';
 import SalesforceExport from './SalesforceExport';
+import ExportScheduler from './ExportScheduler';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -294,16 +295,23 @@ export default function AdminDashboard() {
 
         {/* Export Section */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Metrics Overview</h2>
-          <Button
-            onClick={() => setShowExport(!showExport)}
-            variant="outline"
-            className="border-gray-600 text-gray-300 hover:bg-gray-800"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Export Data
+         <h2 className="text-xl font-semibold text-white">Metrics Overview</h2>
+         <Button
+          onClick={() => setShowExport(!showExport)}
+          variant="outline"
+          className="border-gray-600 text-gray-300 hover:bg-gray-800"
+         >
+           <Download className="h-4 w-4 mr-2" />
+           Export Data
           </Button>
-        </div>
+         </div>
+
+         {showExport && (
+          <div className="space-y-6">
+            <SalesforceExport />
+            <ExportScheduler />
+          </div>
+        )}
 
         {showExport && <SalesforceExport />}
 

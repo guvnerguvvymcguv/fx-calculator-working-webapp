@@ -56,22 +56,28 @@ export default function SalesforceExport() {
         .lte('created_at', `${endDate}T23:59:59`)
         .order('created_at', { ascending: false });
 
-      const formatted = (activities || []).map(activity => ({
-        date: new Date(activity.created_at).toLocaleDateString(),
-        clientName: activity.client_name || 'N/A',
-        currencyPair: activity.currency_pair || 'N/A',
-        yourRate: activity.your_rate || 0,
-        competitorRate: activity.competitor_rate || 0,
-        amount: activity.amount || 0,
-        pipsSaved: activity.pips_difference || 0,
-        savingsAmount: activity.savings_amount || 0,
-        userName: activity.user_profiles?.full_name || 'N/A',
-        userEmail: activity.user_profiles?.email || 'N/A'
-      }));
+      if (!activities || activities.length === 0) {
+        alert('No calculations found for this date range. Try adjusting the dates or make some calculations first.');
+        setExportData([]);
+      } else {
+        const formatted = activities.map(activity => ({
+          date: new Date(activity.created_at).toLocaleDateString(),
+          clientName: activity.client_name || 'N/A',
+          currencyPair: activity.currency_pair || 'N/A',
+          yourRate: activity.your_rate || 0,
+          competitorRate: activity.competitor_rate || 0,
+          amount: activity.amount || 0,
+          pipsSaved: activity.pips_difference || 0,
+          savingsAmount: activity.savings_amount || 0,
+          userName: activity.user_profiles?.full_name || 'N/A',
+          userEmail: activity.user_profiles?.email || 'N/A'
+        }));
 
-      setExportData(formatted);
+        setExportData(formatted);
+      }
     } catch (error) {
       console.error('Error fetching export data:', error);
+      alert('Error loading data. Please try again.');
     } finally {
       setLoading(false);
     }
