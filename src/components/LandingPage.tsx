@@ -34,19 +34,11 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
 
   // Handle all the callback functions
   const handleSignUp = (): void => {
-    navigate('/login');
+    navigate('/pricing');
   };
 
   const handleLogin = (): void => {
     navigate('/login');
-  };
-
-  const handleGetStarted = (): void => {
-    navigate('/login');
-  };
-
-  const handleContactSales = (): void => {
-    alert('Contact sales functionality - would redirect to sales form');
   };
 
   // Mock chart data for the historical rates demo
@@ -378,10 +370,7 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
       </section>
 
       {/* Pricing Section */}
-      <PricingSection 
-        onGetStarted={handleGetStarted}
-        onContactSales={handleContactSales}
-      />
+      <PricingSection />
 
       {/* Footer */}
       <Footer onLogin={handleLogin} />
