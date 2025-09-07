@@ -62,6 +62,20 @@ export default function SeatManagement() {
     );
   };
 
+  const calculatePricePerSeat = (seatCount: number) => {
+    const basePrice = 30;
+    if (seatCount >= 30) {
+      return basePrice * 0.8; // 20% off = £24
+    } else if (seatCount >= 15) {
+      return basePrice * 0.9; // 10% off = £27
+    }
+    return basePrice; // £30
+  };
+
+  const calculateTotalPrice = (seatCount: number) => {
+    return seatCount * calculatePricePerSeat(seatCount);
+  };
+
   const handleSeatChange = async (change: number) => {
     if (companyData.subscription_seats + change < teamMembers.length + 1) {
       alert('Cannot reduce seats below current team size');
@@ -71,12 +85,15 @@ export default function SeatManagement() {
     try {
       setLoading(true);
       const newSeatCount = companyData.subscription_seats + change;
+      const newTotalPrice = calculateTotalPrice(newSeatCount);
+      const discount = newSeatCount >= 30 ? 20 : newSeatCount >= 15 ? 10 : 0;
       
       await supabase
         .from('companies')
         .update({ 
           subscription_seats: newSeatCount,
-          monthly_price: newSeatCount * 30 // £30 per seat
+          price_per_month: newTotalPrice,
+          discount_percentage: discount
         })
         .eq('id', companyData.id);
 
@@ -142,8 +159,15 @@ export default function SeatManagement() {
     }
   };
 
-  const calculateMonthlyCost = () => {
-    return companyData?.subscription_seats * 30;
+  const getCurrentPricePerSeat = () => {
+    return calculatePricePerSeat(companyData?.subscription_seats || 0);
+  };
+
+  const getDiscountText = () => {
+    const seats = companyData?.subscription_seats || 0;
+    if (seats >= 30) return '20% Enterprise discount applied';
+    if (seats >= 15) return '10% Team discount applied';
+    return 'Standard pricing';
   };
 
   if (loading) {
@@ -203,16 +227,25 @@ export default function SeatManagement() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Price per Seat</span>
-                  <span className="text-white">£30/month</span>
+                  <span className="text-white">£{getCurrentPricePerSeat()}/month</span>
                 </div>
+                {companyData?.discount_percentage > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Discount</span>
+                    <span className="text-green-400">{companyData.discount_percentage}% off</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Monthly</span>
                   <span className="text-white font-bold text-2xl">
-                    £{calculateMonthlyCost()}
+                    £{calculateTotalPrice(companyData?.subscription_seats || 0).toFixed(2)}
                   </span>
                 </div>
                 <div className="text-xs text-gray-500">
-                  Next billing date: {new Date(companyData?.trial_end_date).toLocaleDateString()}
+                  {getDiscountText()}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Next billing date: {new Date(companyData?.trial_end_date || companyData?.trial_ends_at).toLocaleDateString()}
                 </div>
               </div>
             </CardContent>
@@ -250,7 +283,11 @@ export default function SeatManagement() {
               </Button>
 
               <div className="ml-8 text-gray-400">
-                New monthly cost: £{(companyData?.subscription_seats * 30)}
+                <div>New monthly cost: £{calculateTotalPrice((companyData?.subscription_seats || 0) + (companyData?.subscription_seats <= teamMembers.length + 1 ? 0 : 0)).toFixed(2)}</div>
+                <div className="text-xs">
+                  {(companyData?.subscription_seats || 0) >= 29 && (companyData?.subscription_seats || 0) < 30 && '(Will apply 20% discount at 30 seats)'}
+                  {(companyData?.subscription_seats || 0) >= 14 && (companyData?.subscription_seats || 0) < 15 && '(Will apply 10% discount at 15 seats)'}
+                </div>
               </div>
             </div>
           </CardContent>

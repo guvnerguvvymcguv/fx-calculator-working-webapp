@@ -85,6 +85,16 @@ export default function CompanySignup() {
     const pricing = calculatePrice();
     
     try {
+      // If you want to integrate with Stripe later, add here:
+      // const priceId = 'price_1S4i5S5du1W5ijSGYYRYtE4d';
+      // const { data: checkoutData } = await supabase.functions.invoke('create-checkout', {
+      //   body: {
+      //     priceId,
+      //     quantity: pricing.totalSeats,
+      //     companyName,
+      //   }
+      // });
+      
       // Sign up new user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminEmail,
@@ -111,7 +121,7 @@ export default function CompanySignup() {
         throw new Error('Failed to create user account');
       }
       
-      // Create company record
+      // Create company record with proper pricing
       const { data: company, error: companyError } = await supabase
         .from('companies')
         .insert({
@@ -143,7 +153,7 @@ export default function CompanySignup() {
       if (profileError) throw profileError;
       
       // Don't try to sign in - user needs to verify email first
-navigate('/signup-success');
+      navigate('/signup-success');
       
     } catch (error: any) {
       console.error('Detailed signup error:', error);
@@ -352,6 +362,16 @@ navigate('/signup-success');
                       🎉 First 2 months FREE
                     </div>
                   </div>
+                </div>
+                
+                {/* Pricing info */}
+                <div className="text-xs text-gray-400 text-center">
+                  <p>
+                    {pricing.totalSeats >= 30 ? '20% Enterprise discount applied' : 
+                     pricing.totalSeats >= 15 ? '10% Team discount applied' : 
+                     'Standard pricing: £30 per seat/month'}
+                  </p>
+                  <p className="mt-1">Volume discounts: 15+ seats (10% off), 30+ seats (20% off)</p>
                 </div>
               </>
             )}

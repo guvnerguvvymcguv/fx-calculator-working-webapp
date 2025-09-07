@@ -18,6 +18,18 @@ export function Footer({ onLogin }: FooterProps) {
           </div>
           
           <div className="flex items-center gap-6">
+            <a 
+              href="/terms" 
+              className="text-purple-200 hover:text-white transition-colors"
+            >
+              Terms of Service
+            </a>
+            <a 
+              href="/privacy" 
+              className="text-purple-200 hover:text-white transition-colors"
+            >
+              Privacy Policy
+            </a>
             <Button 
               variant="ghost" 
               onClick={onLogin}
@@ -30,7 +42,7 @@ export function Footer({ onLogin }: FooterProps) {
         
         <div className="mt-8 pt-8 border-t border-white/10 text-center">
           <p className="text-purple-200/60">
-            © 2025 FX Pitch Calculator. All rights reserved.
+            © 2025 Spread Checker. All rights reserved.
           </p>
         </div>
       </div>
