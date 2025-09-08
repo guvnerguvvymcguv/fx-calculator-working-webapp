@@ -13,6 +13,7 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [loginType, setLoginType] = useState<'user' | 'admin'>('user');
+  const [successMessage, setSuccessMessage] = useState('');
   
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
@@ -55,6 +56,28 @@ const LoginPage = () => {
         navigate('/calculator');
       }
     }
+  };
+
+  const handlePasswordReset = async () => {
+    if (!email) {
+      setError('Please enter your email address first');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError('');
+    setSuccessMessage('');
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://spreadchecker.co.uk/reset-password',
+    });
+    
+    if (error) {
+      setError(error.message);
+    } else {
+      setSuccessMessage('Password reset email sent! Check your inbox.');
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -139,15 +162,30 @@ const LoginPage = () => {
                   {error}
                 </div>
               )}
+
+              {successMessage && (
+                <div className="bg-green-900/20 border border-green-500/50 text-green-400 px-4 py-2 rounded-lg text-sm">
+                  {successMessage}
+                </div>
+              )}
               
               <div className="flex items-center justify-between">
-                <label className="flex items-center">
-                  <input type="checkbox" className="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500" />
-                  <span className="ml-2 text-sm text-gray-300">Remember me</span>
-                </label>
-                <a href="#" className="text-sm text-purple-400 hover:text-purple-300">
+                <div className="flex items-center">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500" 
+                    checked
+                    disabled
+                  />
+                  <span className="ml-2 text-sm text-gray-400">You'll stay signed in for 7 days</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  className="text-sm text-purple-400 hover:text-purple-300"
+                >
                   Forgot password?
-                </a>
+                </button>
               </div>
               
               <Button 
