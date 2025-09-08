@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
@@ -31,6 +31,19 @@ export const AuthContext = React.createContext<AuthContextType | null>(null);
 function AppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Handle Supabase auth redirects
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      // Check if it's a password reset
+      if (hash.includes('type=recovery')) {
+        // Navigate to reset-password page with the hash intact
+        // Use navigate instead of window.location.replace to stay in React Router
+        navigate('/reset-password' + hash);
+      }
+    }
+  }, [navigate]);
 
   const login = () => {
     setIsAuthenticated(true);
@@ -98,6 +111,7 @@ function AppContent() {
         
         <Route path="/privacy" element={<PrivacyPolicy />} />
 
+        {/* Reset Password - accessible without authentication */}
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Redirect any unknown routes to landing page */}
