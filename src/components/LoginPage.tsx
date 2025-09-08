@@ -40,24 +40,36 @@ const LoginPage = () => {
       // Check user role if admin login selected
       if (loginType === 'admin') {
         console.log('Admin login attempted for user:', data.user.id);
+        console.log('User metadata:', data.user.user_metadata);
         
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('role_type')
-          .eq('id', data.user.id)
-          .single();
+        // Check role from user metadata first (avoids RLS issues)
+        const metadataRole = data.user.user_metadata?.role || data.user.user_metadata?.role_type;
         
-        console.log('Profile query result:', profile);
-        console.log('Profile query error:', profileError);
-        console.log('Role type:', profile?.role_type);
-        console.log('Is admin?', profile && ['admin', 'super_admin'].includes(profile.role_type));
-        
-        if (profile && ['admin', 'super_admin'].includes(profile.role_type)) {
+        if (metadataRole && ['admin', 'super_admin'].includes(metadataRole)) {
+          console.log('Admin access granted via metadata');
           navigate('/admin');
         } else {
-          setError('You do not have admin access');
-          setIsLoading(false);
-          return;
+          // Fallback: Try direct database query with .rpc() to bypass RLS
+          try {
+            const { data: roleData, error: roleError } = await supabase.rpc('get_user_role', {
+              user_id: data.user.id
+            });
+            
+            console.log('RPC role check:', roleData, roleError);
+            
+            if (roleData && ['admin', 'super_admin'].includes(roleData)) {
+              navigate('/admin');
+            } else {
+              setError('You do not have admin access');
+              setIsLoading(false);
+              return;
+            }
+          } catch (err) {
+            console.error('Role check failed:', err);
+            setError('Unable to verify admin access');
+            setIsLoading(false);
+            return;
+          }
         }
       } else {
         navigate('/calculator');
