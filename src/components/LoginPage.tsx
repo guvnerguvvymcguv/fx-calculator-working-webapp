@@ -39,11 +39,18 @@ const LoginPage = () => {
       
       // Check user role if admin login selected
       if (loginType === 'admin') {
-        const { data: profile } = await supabase
+        console.log('Admin login attempted for user:', data.user.id);
+        
+        const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('role_type')
           .eq('id', data.user.id)
           .single();
+        
+        console.log('Profile query result:', profile);
+        console.log('Profile query error:', profileError);
+        console.log('Role type:', profile?.role_type);
+        console.log('Is admin?', profile && ['admin', 'super_admin'].includes(profile.role_type));
         
         if (profile && ['admin', 'super_admin'].includes(profile.role_type)) {
           navigate('/admin');
@@ -69,7 +76,7 @@ const LoginPage = () => {
     setSuccessMessage('');
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://spreadchecker.co.uk/reset-password',  // Changed back to /reset-password
+      redirectTo: 'https://spreadchecker.co.uk/reset-password',
     });
     
     if (error) {

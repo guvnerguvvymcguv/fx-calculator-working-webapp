@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { supabase } from './lib/supabase';
 
 // Import your components
 import LandingPage from './components/LandingPage.tsx';
@@ -33,16 +34,27 @@ function AppContent() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check for existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
     // Handle Supabase auth redirects
     const hash = window.location.hash;
     if (hash && hash.includes('access_token')) {
       // Check if it's a password reset
       if (hash.includes('type=recovery')) {
         // Navigate to reset-password page with the hash intact
-        // Use navigate instead of window.location.replace to stay in React Router
         navigate('/reset-password' + hash);
       }
     }
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const login = () => {
@@ -59,9 +71,9 @@ function AppContent() {
     navigate('/login');
   };
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     logout();
-    // Optionally navigate to home after sign out
     navigate('/');
   };
 
