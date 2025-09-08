@@ -17,6 +17,7 @@ import SeatManagement from './components/SeatManagement';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import ResetPassword from './components/ResetPassword';
+import AuthHandler from './components/AuthHandler';  // ADD THIS LINE
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -110,6 +111,9 @@ function AppContent() {
         <Route path="/terms" element={<TermsOfService />} />
         
         <Route path="/privacy" element={<PrivacyPolicy />} />
+
+        {/* Auth Handler for Supabase redirects - ADD THIS LINE */}
+        <Route path="/auth" element={<AuthHandler />} />
 
         {/* Reset Password - accessible without authentication */}
         <Route path="/reset-password" element={<ResetPassword />} />
