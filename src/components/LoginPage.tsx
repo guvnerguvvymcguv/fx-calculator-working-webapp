@@ -69,7 +69,7 @@ const LoginPage = () => {
     setSuccessMessage('');
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://spreadchecker.co.uk/reset-password',
+      redirectTo: 'https://spreadchecker.co.uk/auth',  // Changed to /auth
     });
     
     if (error) {
