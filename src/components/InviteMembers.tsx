@@ -116,9 +116,24 @@ export default function InviteMembers() {
           status: 'pending'
         });
 
-        // In production, this would trigger an email through your email service
-        // For now, we'll just log the invite link
-        console.log(`Invite link for ${email}: ${window.location.origin}/join?token=${token}`);
+        // Call Edge Function to send email via Resend
+        const { error } = await supabase.functions.invoke('send-invitation', {
+          body: {
+            email: email,
+            token: token,
+            companyName: companyData.name || 'Spread Checker',
+            inviterEmail: user?.email || 'your team',
+            role: roleType === 'admin' ? 'Admin' : 'Junior Broker',
+            inviteUrl: `https://spreadchecker.co.uk/join?token=${token}`
+          }
+        });
+
+        if (error) {
+          console.error(`Failed to send email to ${email}:`, error);
+          // Continue with other emails even if one fails
+        } else {
+          console.log(`Invitation email sent to ${email}`);
+        }
       }
 
       alert(`Successfully sent ${validEmails.length} invitation(s)`);
