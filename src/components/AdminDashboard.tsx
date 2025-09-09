@@ -115,7 +115,7 @@ export default function AdminDashboard() {
 
       // Calculate average trade value
       const totalTradeValue = currentCalculations?.reduce((sum, calc) => {
-        const amount = parseFloat(calc.amount_to_buy) || 0;
+        const amount = parseFloat(calc.amount) || 0;
         return sum + amount;
       }, 0) || 0;
 
