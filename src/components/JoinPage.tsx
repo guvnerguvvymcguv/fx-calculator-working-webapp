@@ -109,17 +109,15 @@ export default function JoinPage() {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: authData.user.id,
+        // Call Edge Function to create profile (bypasses RLS)
+        const { error: profileError } = await supabase.functions.invoke('create-user-profile', {
+          body: {
+            userId: authData.user.id,
             email: invitation.email,
-            company_id: invitation.company_id,
-            role_type: invitation.role_type,
-            full_name: '', // User can update this later
-            created_at: new Date().toISOString()
-          });
+            companyId: invitation.company_id,
+            roleType: invitation.role_type
+          }
+        });
 
         if (profileError) throw profileError;
 
