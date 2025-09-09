@@ -1,4 +1,3 @@
-// supabase/functions/create-user-profile/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -16,12 +15,14 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     
+    console.log('Creating Supabase client...')
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
     const { userId, email, companyId, roleType } = await req.json()
+    console.log('Request data:', { userId, email, companyId, roleType })
     
     // Create profile using service role (bypasses RLS)
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('user_profiles')
       .insert({
         id: userId,
@@ -31,14 +32,22 @@ serve(async (req) => {
         full_name: '',
         created_at: new Date().toISOString()
       })
+      .select()
+      .single()
     
-    if (error) throw error
+    if (error) {
+      console.error('Database error:', error)
+      throw error
+    }
     
-    return new Response(JSON.stringify({ success: true }), {
+    console.log('Profile created successfully:', data)
+    
+    return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
+    console.error('Function error:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
