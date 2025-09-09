@@ -90,15 +90,13 @@ export default function SalesforceSettings() {
       return;
     }
     
-    // Build redirect URI without encoding yet
     const redirectUri = `${window.location.origin}/salesforce-callback`;
     const state = Math.random().toString(36).substring(7);
     
     sessionStorage.setItem('sf_oauth_state', state);
     
-    // Use your Developer Edition domain instead of generic login.salesforce.com
-    // This ensures the External Client App is recognized
-    const authUrl = `https://orgfarm-6f0f300681-dev-ed.develop.my.salesforce.com/services/oauth2/authorize?` +
+    // Using generic login.salesforce.com for Connected App
+    const authUrl = `https://login.salesforce.com/services/oauth2/authorize?` +
       `response_type=code&` +
       `client_id=${clientId}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
