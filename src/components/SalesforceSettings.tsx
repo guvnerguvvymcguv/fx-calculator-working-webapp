@@ -84,18 +84,28 @@ export default function SalesforceSettings() {
 
   const initiateSalesforceOAuth = () => {
     const clientId = import.meta.env.VITE_SALESFORCE_CLIENT_ID;
-    const redirectUri = encodeURIComponent(`${window.location.origin}/salesforce-callback`);
+    
+    if (!clientId) {
+      alert('Salesforce Client ID is not configured. Please check environment variables.');
+      return;
+    }
+    
+    // Build redirect URI without encoding yet
+    const redirectUri = `${window.location.origin}/salesforce-callback`;
     const state = Math.random().toString(36).substring(7);
     
     sessionStorage.setItem('sf_oauth_state', state);
     
-    const authUrl = `https://login.salesforce.com/services/oauth2/authorize?` +
+    // Use your Developer Edition domain instead of generic login.salesforce.com
+    // This ensures the External Client App is recognized
+    const authUrl = `https://orgfarm-6f0f300681-dev-ed.develop.my.salesforce.com/services/oauth2/authorize?` +
       `response_type=code&` +
       `client_id=${clientId}&` +
-      `redirect_uri=${redirectUri}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `state=${state}&` +
-      `scope=api refresh_token offline_access`;
+      `scope=${encodeURIComponent('api refresh_token offline_access')}`;
     
+    console.log('OAuth URL:', authUrl); // Debug logging
     window.location.href = authUrl;
   };
 
