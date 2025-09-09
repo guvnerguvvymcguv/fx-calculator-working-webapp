@@ -176,6 +176,30 @@ export default function AdminDashboard() {
     navigate('/login');
   };
 
+  const handleExportClick = async () => {
+    // Check if Salesforce is connected first
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('company_id')
+      .eq('id', user!.id)
+      .single();
+
+    const { data: sfConnection } = await supabase
+      .from('salesforce_connections')
+      .select('*')
+      .eq('company_id', profile!.company_id)
+      .single();
+    
+    if (sfConnection) {
+      // If connected, show export options (you can implement a modal here later)
+      navigate('/admin/salesforce-settings');
+    } else {
+      // If not connected, redirect to Salesforce settings to connect first
+      navigate('/admin/salesforce-settings');
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-GB', {
       style: 'currency',
@@ -265,6 +289,7 @@ export default function AdminDashboard() {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={handleExportClick}
                 className="ml-auto border-gray-600 text-gray-300 hover:bg-gray-800"
               >
                 <Download className="h-4 w-4 mr-2" />

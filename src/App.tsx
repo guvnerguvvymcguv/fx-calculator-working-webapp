@@ -19,6 +19,8 @@ import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import ResetPassword from './components/ResetPassword';
 import JoinPage from './components/JoinPage';
+import SalesforceCallback from './components/SalesforceCallback';
+import SalesforceSettings from './components/SalesforceSettings';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -129,6 +131,14 @@ function AppContent() {
 
         // Add this route with your other routes
         <Route path="/join" element={<JoinPage />} />
+
+        <Route path="/salesforce-callback" element={<SalesforceCallback />} />
+
+        <Route path="/admin/salesforce-settings" element={
+          <ProtectedRoute>
+            <SalesforceSettings />
+          </ProtectedRoute>
+        } />
 
         {/* Redirect any unknown routes to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />
