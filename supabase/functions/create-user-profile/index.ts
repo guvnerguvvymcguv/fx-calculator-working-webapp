@@ -21,6 +21,23 @@ serve(async (req) => {
     const { userId, email, companyId, roleType } = await req.json()
     console.log('Request data:', { userId, email, companyId, roleType })
     
+    // Check if user profile already exists
+    const { data: existingProfile } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    
+    if (existingProfile) {
+      console.log('User profile already exists:', existingProfile)
+      return new Response(JSON.stringify({ 
+        error: 'User already has an account' 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 409,
+      })
+    }
+    
     // Create profile using service role (bypasses RLS)
     const { data, error } = await supabase
       .from('user_profiles')
@@ -37,6 +54,15 @@ serve(async (req) => {
     
     if (error) {
       console.error('Database error:', error)
+      // Check for duplicate key error
+      if (error.code === '23505') {
+        return new Response(JSON.stringify({ 
+          error: 'User already has an account' 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 409,
+        })
+      }
       throw error
     }
     

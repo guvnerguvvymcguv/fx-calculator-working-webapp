@@ -89,7 +89,7 @@ export default function AdminDashboard() {
         .from('user_profiles')
         .select(`
           *,
-          fx_calculations!left(count)
+          activity_logs!left(count)
         `)
         .eq('company_id', profile.company_id)
         .order('created_at', { ascending: false });
@@ -99,7 +99,7 @@ export default function AdminDashboard() {
 
       // Fetch calculations for current period
       const { data: currentCalculations } = await supabase
-        .from('fx_calculations')
+        .from('activity_logs')
         .select('*')
         .eq('company_id', profile.company_id)
         .gte('created_at', start.toISOString())
@@ -107,7 +107,7 @@ export default function AdminDashboard() {
 
       // Fetch calculations for previous period
       const { data: previousCalculations } = await supabase
-        .from('fx_calculations')
+        .from('activity_logs')
         .select('*')
         .eq('company_id', profile.company_id)
         .gte('created_at', previousStart.toISOString())
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
       const processedMembers = await Promise.all((members || []).map(async (member) => {
         // Get member's calculations for the current period
         const { data: memberCalcs } = await supabase
-          .from('fx_calculations')
+          .from('activity_logs')
           .select('*')
           .eq('user_id', member.id)
           .gte('created_at', start.toISOString())
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
 
         // Get last activity
         const { data: lastCalc } = await supabase
-          .from('fx_calculations')
+          .from('activity_logs')
           .select('created_at')
           .eq('user_id', member.id)
           .order('created_at', { ascending: false })
