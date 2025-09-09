@@ -4,7 +4,7 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { ArrowLeft, Building, User, Shield } from 'lucide-react';
+import { ArrowLeft, User, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function JoinPage() {
