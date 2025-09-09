@@ -18,6 +18,7 @@ import SeatManagement from './components/SeatManagement';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfService from './components/TermsOfService';
 import ResetPassword from './components/ResetPassword';
+import JoinPage from './components/JoinPage';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -125,6 +126,9 @@ function AppContent() {
 
         {/* Reset Password - accessible without authentication */}
         <Route path="/reset-password" element={<ResetPassword />} />
+
+        // Add this route with your other routes
+        <Route path="/join" element={<JoinPage />} />
 
         {/* Redirect any unknown routes to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />
