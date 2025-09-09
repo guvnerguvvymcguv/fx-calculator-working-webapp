@@ -93,15 +93,17 @@ export default function JoinPage() {
     setError('');
 
     try {
-      // Create user account
+      // Create user account with email confirmation bypass for invited users
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: invitation.email,
         password: password,
         options: {
+          emailRedirectTo: window.location.origin,
           data: {
             company_id: invitation.company_id,
             role_type: invitation.role_type,
-            invited_by: invitation.invited_by
+            invited_by: invitation.invited_by,
+            skip_email_confirmation: true  // Flag to bypass email confirmation
           }
         }
       });
