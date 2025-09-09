@@ -93,8 +93,8 @@ export default function JoinPage() {
     setError('');
 
     try {
-      // Create user account with email confirmation bypass for invited users
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Create user account
+      const { error: authError } = await supabase.auth.signUp({
         email: invitation.email,
         password: password,
         options: {
@@ -102,19 +102,26 @@ export default function JoinPage() {
           data: {
             company_id: invitation.company_id,
             role_type: invitation.role_type,
-            invited_by: invitation.invited_by,
-            skip_email_confirmation: true  // Flag to bypass email confirmation
+            invited_by: invitation.invited_by
           }
         }
       });
 
       if (authError) throw authError;
 
-      if (authData.user) {
+      // Immediately sign in to confirm the user
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password: password
+      });
+
+      if (signInError) throw signInError;
+
+      if (signInData.user) {
         // Call Edge Function to create profile (bypasses RLS)
         const { error: profileError } = await supabase.functions.invoke('create-user-profile', {
           body: {
-            userId: authData.user.id,
+            userId: signInData.user.id,
             email: invitation.email,
             companyId: invitation.company_id,
             roleType: invitation.role_type
