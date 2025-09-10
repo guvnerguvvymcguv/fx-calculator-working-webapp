@@ -1,3 +1,4 @@
+// supabase/functions/salesforce-export-test/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -43,28 +44,30 @@ serve(async (req) => {
       throw new Error('No Salesforce connection found')
     }
 
-    // Create test data
-    const testData = {
-      records: [{
-        attributes: { type: 'Lead', referenceId: 'ref1' },
-        FirstName: 'Test',
-        LastName: 'Lead',
-        Company: 'SpreadChecker Test',
-        Email: 'test@spreadchecker.co.uk',
-        Description: 'Test lead created from SpreadChecker'
-      }]
+    // Create Chatter post
+    const chatterPost = {
+      body: {
+        messageSegments: [
+          {
+            type: 'Text',
+            text: '📊 SpreadChecker Test Post\n\nThis is a test connection from SpreadChecker. Your weekly calculation summaries will appear here.\n\nTest calculation:\n• Client: Test Company\n• Currency: GBP/USD\n• Our Rate: 1.2540\n• Competitor: 1.2530\n• Potential Savings: £520\n• Broker: Test User'
+          }
+        ]
+      },
+      feedElementType: 'FeedItem',
+      subjectId: sfConnection.user_id // Post to the user's feed
     }
 
-    // Send to Salesforce
+    // Post to Salesforce Chatter
     const salesforceResponse = await fetch(
-      `${sfConnection.instance_url}/services/data/v59.0/composite/sobjects`,
+      `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${sfConnection.access_token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(testData)
+        body: JSON.stringify(chatterPost)
       }
     )
 
