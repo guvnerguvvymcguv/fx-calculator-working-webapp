@@ -13,10 +13,24 @@ serve(async (req) => {
   }
 
   try {
-    const { code, redirectUri } = await req.json()
+    const { code, redirectUri, codeVerifier } = await req.json()
     
     if (!code) {
       throw new Error('Authorization code is required')
+    }
+
+    // Build token exchange parameters
+    const tokenParams: any = {
+      grant_type: 'authorization_code',
+      code: code,
+      client_id: Deno.env.get('SALESFORCE_CLIENT_ID')!,
+      client_secret: Deno.env.get('SALESFORCE_CLIENT_SECRET')!,
+      redirect_uri: redirectUri,
+    }
+
+    // Add code_verifier for PKCE if provided
+    if (codeVerifier) {
+      tokenParams.code_verifier = codeVerifier
     }
 
     // Exchange code for tokens with Salesforce
@@ -25,13 +39,7 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code,
-        client_id: Deno.env.get('SALESFORCE_CLIENT_ID')!,
-        client_secret: Deno.env.get('SALESFORCE_CLIENT_SECRET')!,
-        redirect_uri: redirectUri,
-      }),
+      body: new URLSearchParams(tokenParams),
     })
 
     const tokenData = await tokenResponse.json()

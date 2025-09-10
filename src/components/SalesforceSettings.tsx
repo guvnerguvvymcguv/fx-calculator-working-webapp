@@ -56,11 +56,13 @@ export default function SalesforceSettings() {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const codeVerifier = sessionStorage.getItem('sf_code_verifier');
       
       const response = await supabase.functions.invoke('salesforce-token-exchange', {
         body: { 
           code,
-          redirectUri: `${window.location.origin}/salesforce-callback`
+          redirectUri: `${window.location.origin}/salesforce-callback`,
+          codeVerifier // Pass the code verifier for PKCE
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
@@ -71,6 +73,9 @@ export default function SalesforceSettings() {
         throw response.error;
       }
 
+      // Clean up stored PKCE values
+      sessionStorage.removeItem('sf_code_verifier');
+      
       alert('Successfully connected to Salesforce!');
       checkSalesforceConnection(); // Refresh the connection status
       
@@ -82,7 +87,27 @@ export default function SalesforceSettings() {
     }
   };
 
-  const initiateSalesforceOAuth = () => {
+  // PKCE helper functions
+  const generateCodeVerifier = () => {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return btoa(String.fromCharCode.apply(null, Array.from(array)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+
+  const generateCodeChallenge = async (verifier: string) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const buffer = await crypto.subtle.digest('SHA-256', data);
+    return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(buffer))))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+  };
+
+  const initiateSalesforceOAuth = async () => {
     const clientId = import.meta.env.VITE_SALESFORCE_CLIENT_ID;
     
     if (!clientId) {
@@ -90,20 +115,29 @@ export default function SalesforceSettings() {
       return;
     }
     
+    // Generate PKCE parameters
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
+    
+    // Store code verifier for later use in token exchange
+    sessionStorage.setItem('sf_code_verifier', codeVerifier);
+    
     const redirectUri = `${window.location.origin}/salesforce-callback`;
     const state = Math.random().toString(36).substring(7);
     
     sessionStorage.setItem('sf_oauth_state', state);
     
-    // Using generic login.salesforce.com for Connected App
+    // Include PKCE parameters in the OAuth URL
     const authUrl = `https://login.salesforce.com/services/oauth2/authorize?` +
       `response_type=code&` +
       `client_id=${clientId}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `state=${state}&` +
-      `scope=${encodeURIComponent('api refresh_token offline_access')}`;
+      `scope=${encodeURIComponent('api refresh_token offline_access')}&` +
+      `code_challenge=${codeChallenge}&` +
+      `code_challenge_method=S256`;
     
-    console.log('OAuth URL:', authUrl); // Debug logging
+    console.log('OAuth URL with PKCE:', authUrl); // Debug logging
     window.location.href = authUrl;
   };
 
