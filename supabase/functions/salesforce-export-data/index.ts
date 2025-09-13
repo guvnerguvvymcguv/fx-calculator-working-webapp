@@ -6,6 +6,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Function to refresh Salesforce token
+async function refreshSalesforceToken(supabase: any, sfConnection: any) {
+  const refreshResponse = await fetch('https://login.salesforce.com/services/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: sfConnection.refresh_token,
+      client_id: Deno.env.get('SALESFORCE_CLIENT_ID')!,
+      client_secret: Deno.env.get('SALESFORCE_CLIENT_SECRET')!,
+    }),
+  })
+
+  if (!refreshResponse.ok) {
+    throw new Error('Failed to refresh token')
+  }
+
+  const newTokens = await refreshResponse.json()
+  
+  // Update the stored tokens
+  await supabase
+    .from('salesforce_connections')
+    .update({
+      access_token: newTokens.access_token,
+      last_sync: new Date().toISOString(),
+    })
+    .eq('company_id', sfConnection.company_id)
+
+  return newTokens.access_token
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -63,80 +96,49 @@ serve(async (req) => {
     console.log('Calculations found:', calculations?.length || 0)
     console.log('Sample calculation:', calculations?.[0])
 
+    // Prepare the message text
+    let messageText = ''
+    
     if (!calculations || calculations.length === 0) {
       // Send a message even when no calculations found
-      const messageText = `📊 SpreadChecker Export (${new Date(dateRange.start).toLocaleDateString('en-GB')} - ${new Date(dateRange.end).toLocaleDateString('en-GB')})
+      messageText = `📊 SpreadChecker Export (${new Date(dateRange.start).toLocaleDateString('en-GB')} - ${new Date(dateRange.end).toLocaleDateString('en-GB')})
 
 No calculations found for the selected period.
 
 Please ensure your team has logged calculations during this time frame.`;
+    } else {
+      // Get user names
+      const { data: users } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, email')
+        .in('id', userIds)
 
-      const chatterPost = {
-        body: {
-          messageSegments: [{
-            type: 'Text',
-            text: messageText
-          }]
-        },
-        feedElementType: 'FeedItem',
-        subjectId: sfConnection.user_id
-      }
+      // Calculate summary statistics
+      const totalCalculations = calculations.length
+      const totalTradeValue = calculations.reduce((sum, calc) => sum + (parseFloat(calc.amount) || 0), 0)
+      const avgTradeValue = totalTradeValue / totalCalculations
+      const totalSavings = calculations.reduce((sum, calc) => sum + (parseFloat(calc.savings_per_trade) || 0), 0)
 
-      const salesforceResponse = await fetch(
-        `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${sfConnection.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(chatterPost)
+      // Group calculations by user
+      const userStats = userIds.map(userId => {
+        const userCalcs = calculations.filter(c => c.user_id === userId)
+        const userData = users?.find(u => u.id === userId)
+        const userSavings = userCalcs.reduce((sum, calc) => sum + (parseFloat(calc.savings_per_trade) || 0), 0)
+        
+        return {
+          name: userData?.full_name || userData?.email || 'Unknown',
+          calculations: userCalcs.length,
+          savings: userSavings,
+          avgTrade: userCalcs.length > 0 ? userCalcs.reduce((sum, calc) => sum + (parseFloat(calc.amount) || 0), 0) / userCalcs.length : 0
         }
-      )
+      }).filter(u => u.calculations > 0).sort((a, b) => b.calculations - a.calculations)
 
-      if (!salesforceResponse.ok) {
-        const error = await salesforceResponse.text()
-        throw new Error(`Salesforce API error: ${error}`)
-      }
+      // Format date range for display
+      const startDate = new Date(dateRange.start).toLocaleDateString('en-GB')
+      const endDate = new Date(dateRange.end).toLocaleDateString('en-GB')
 
-      return new Response(
-        JSON.stringify({ success: true, message: 'No calculations to export' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Get user names
-    const { data: users } = await supabase
-      .from('user_profiles')
-      .select('id, full_name, email')
-      .in('id', userIds)
-
-    // Calculate summary statistics
-    const totalCalculations = calculations.length
-    const totalTradeValue = calculations.reduce((sum, calc) => sum + (parseFloat(calc.amount) || 0), 0)
-    const avgTradeValue = totalTradeValue / totalCalculations
-    const totalSavings = calculations.reduce((sum, calc) => sum + (parseFloat(calc.savings_per_trade) || 0), 0)
-
-    // Group calculations by user
-    const userStats = userIds.map(userId => {
-      const userCalcs = calculations.filter(c => c.user_id === userId)
-      const userData = users?.find(u => u.id === userId)
-      const userSavings = userCalcs.reduce((sum, calc) => sum + (parseFloat(calc.savings_per_trade) || 0), 0)
-      
-      return {
-        name: userData?.full_name || userData?.email || 'Unknown',
-        calculations: userCalcs.length,
-        savings: userSavings,
-        avgTrade: userCalcs.length > 0 ? userCalcs.reduce((sum, calc) => sum + (parseFloat(calc.amount) || 0), 0) / userCalcs.length : 0
-      }
-    }).filter(u => u.calculations > 0).sort((a, b) => b.calculations - a.calculations)
-
-    // Format date range for display
-    const startDate = new Date(dateRange.start).toLocaleDateString('en-GB')
-    const endDate = new Date(dateRange.end).toLocaleDateString('en-GB')
-
-    // Create Chatter post with actual data
-    const messageText = `📊 SpreadChecker Export (${startDate} - ${endDate})
+      // Create message with actual data
+      messageText = `📊 SpreadChecker Export (${startDate} - ${endDate})
 
 TEAM PERFORMANCE
 - Total calculations: ${totalCalculations.toLocaleString()}
@@ -162,6 +164,7 @@ ${Object.entries(
   .join('\n')}
 
 View detailed calculations in SpreadChecker dashboard`
+    }
 
     const chatterPost = {
       body: {
@@ -176,8 +179,8 @@ View detailed calculations in SpreadChecker dashboard`
       subjectId: sfConnection.user_id
     }
 
-    // Post to Salesforce Chatter
-    const salesforceResponse = await fetch(
+    // Post to Salesforce Chatter with automatic token refresh
+    let salesforceResponse = await fetch(
       `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
       {
         method: 'POST',
@@ -188,6 +191,25 @@ View detailed calculations in SpreadChecker dashboard`
         body: JSON.stringify(chatterPost)
       }
     )
+
+    // If token expired, refresh and retry
+    if (!salesforceResponse.ok && salesforceResponse.status === 401) {
+      console.log('Token expired, refreshing...')
+      const newAccessToken = await refreshSalesforceToken(supabase, sfConnection)
+      
+      // Retry with new token
+      salesforceResponse = await fetch(
+        `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${newAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chatterPost)
+        }
+      )
+    }
 
     if (!salesforceResponse.ok) {
       const error = await salesforceResponse.text()
