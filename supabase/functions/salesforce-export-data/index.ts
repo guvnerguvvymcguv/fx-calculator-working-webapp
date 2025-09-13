@@ -13,6 +13,8 @@ serve(async (req) => {
 
   try {
     const { userIds, dateRange } = await req.json()
+    console.log('Received userIds:', userIds)
+    console.log('Received dateRange:', dateRange)
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -35,6 +37,8 @@ serve(async (req) => {
       .eq('id', user.id)
       .single()
 
+    console.log('User profile company_id:', profile?.company_id)
+
     const { data: sfConnection } = await supabase
       .from('salesforce_connections')
       .select('*')
@@ -46,7 +50,7 @@ serve(async (req) => {
     }
 
     // Query calculations for selected users and date range
-    const { data: calculations } = await supabase
+    const { data: calculations, error: calcError } = await supabase
       .from('activity_logs')
       .select('*')
       .eq('company_id', profile!.company_id)
@@ -55,8 +59,50 @@ serve(async (req) => {
       .lte('created_at', dateRange.end)
       .order('created_at', { ascending: false })
 
+    console.log('Query error:', calcError)
+    console.log('Calculations found:', calculations?.length || 0)
+    console.log('Sample calculation:', calculations?.[0])
+
     if (!calculations || calculations.length === 0) {
-      throw new Error('No calculations found for the selected period')
+      // Send a message even when no calculations found
+      const messageText = `📊 SpreadChecker Export (${new Date(dateRange.start).toLocaleDateString('en-GB')} - ${new Date(dateRange.end).toLocaleDateString('en-GB')})
+
+No calculations found for the selected period.
+
+Please ensure your team has logged calculations during this time frame.`;
+
+      const chatterPost = {
+        body: {
+          messageSegments: [{
+            type: 'Text',
+            text: messageText
+          }]
+        },
+        feedElementType: 'FeedItem',
+        subjectId: sfConnection.user_id
+      }
+
+      const salesforceResponse = await fetch(
+        `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sfConnection.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chatterPost)
+        }
+      )
+
+      if (!salesforceResponse.ok) {
+        const error = await salesforceResponse.text()
+        throw new Error(`Salesforce API error: ${error}`)
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'No calculations to export' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     // Get user names
@@ -89,7 +135,7 @@ serve(async (req) => {
     const startDate = new Date(dateRange.start).toLocaleDateString('en-GB')
     const endDate = new Date(dateRange.end).toLocaleDateString('en-GB')
 
-    // Create Chatter post
+    // Create Chatter post with actual data
     const messageText = `📊 SpreadChecker Export (${startDate} - ${endDate})
 
 TEAM PERFORMANCE
@@ -105,7 +151,8 @@ ${userStats.slice(0, 5).map((user, index) =>
 CURRENCY BREAKDOWN
 ${Object.entries(
   calculations.reduce((acc, calc) => {
-    acc[calc.currency_pair] = (acc[calc.currency_pair] || 0) + 1
+    const pair = calc.currency_pair || 'Unknown'
+    acc[pair] = (acc[pair] || 0) + 1
     return acc
   }, {} as Record<string, number>)
 )
@@ -154,6 +201,7 @@ View detailed calculations in SpreadChecker dashboard`
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error('Edge function error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
