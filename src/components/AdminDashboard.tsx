@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download } from 'lucide-react';
+import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminDashboard() {
@@ -10,6 +10,12 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('last7days');
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState('today');
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
+  const [exporting, setExporting] = useState(false);
+  const [salesforceConnected, setSalesforceConnected] = useState(false);
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -22,7 +28,34 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchDashboardData();
+    checkSalesforceConnection();
   }, [dateRange]);
+
+  const checkSalesforceConnection = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.company_id) return;
+      
+      const { data: sfConnection } = await supabase
+        .from('salesforce_connections')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .single();
+        
+      setSalesforceConnected(!!sfConnection);
+    } catch (error) {
+      console.error('Error checking Salesforce connection:', error);
+      setSalesforceConnected(false);
+    }
+  };
 
   const getDateRangeFilter = () => {
     const now = new Date();
@@ -54,6 +87,44 @@ export default function AdminDashboard() {
     };
 
     return ranges[dateRange] || ranges['last7days'];
+  };
+
+  const getExportDateRange = () => {
+    const now = new Date();
+    let start, end;
+
+    switch (exportDateRange) {
+      case 'today':
+        start = new Date(now.setHours(0, 0, 0, 0));
+        end = new Date(now.setHours(23, 59, 59, 999));
+        break;
+      case 'thisWeek':
+        // Last 5 working days
+        start = new Date();
+        start.setDate(start.getDate() - 4);
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'thisMonth':
+        // Last 30 days
+        start = new Date();
+        start.setDate(start.getDate() - 29);
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        end.setHours(23, 59, 59, 999);
+        break;
+      case 'custom':
+        start = new Date(customDateRange.start);
+        end = new Date(customDateRange.end);
+        end.setHours(23, 59, 59, 999);
+        break;
+      default:
+        start = new Date(now.setHours(0, 0, 0, 0));
+        end = new Date(now.setHours(23, 59, 59, 999));
+    }
+
+    return { start, end };
   };
 
   const fetchDashboardData = async () => {
@@ -151,7 +222,7 @@ export default function AdminDashboard() {
         };
       }));
 
-      setTeamMembers(processedMembers);
+      setTeamMembers(processedMembers.filter(m => m.role_type === 'junior'));
 
       // Update metrics
       setMetrics({
@@ -192,11 +263,68 @@ export default function AdminDashboard() {
       .single();
     
     if (sfConnection) {
-      // If connected, show export options (you can implement a modal here later)
-      navigate('/admin/salesforce-settings');
+      // Show export modal
+      setShowExportModal(true);
+      setSelectedUsers([]); // Reset selection
+      setExportDateRange('today'); // Reset to today
     } else {
       // If not connected, redirect to Salesforce settings to connect first
       navigate('/admin/salesforce-settings');
+    }
+  };
+
+  const handleUserToggle = (userId: string) => {
+    setSelectedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUsers.length === teamMembers.length) {
+      setSelectedUsers([]);
+    } else {
+      setSelectedUsers(teamMembers.map(m => m.id));
+    }
+  };
+
+  const handleExportToSalesforce = async () => {
+    if (selectedUsers.length === 0) {
+      alert('Please select at least one user to export');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { start, end } = getExportDateRange();
+      
+      const response = await supabase.functions.invoke('salesforce-export-data', {
+        body: { 
+          userIds: selectedUsers,
+          dateRange: {
+            start: start.toISOString(),
+            end: end.toISOString()
+          }
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+      
+      alert('Data successfully exported to Salesforce!');
+      setShowExportModal(false);
+      checkSalesforceConnection(); // Refresh connection status
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -286,18 +414,158 @@ export default function AdminDashboard() {
                   </Button>
                 ))}
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleExportClick}
-                className="ml-auto border-gray-600 text-gray-300 hover:bg-gray-800"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export Data
-              </Button>
+              <div className="flex items-center gap-2 ml-auto">
+                {salesforceConnected ? (
+                  <span className="text-green-400 text-sm">✓ Connected</span>
+                ) : (
+                  <span className="text-yellow-400 text-sm">⚠ Not Connected</span>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExportClick}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Data
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Export Modal */}
+        {showExportModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <Card className="bg-gray-900 border-gray-800 w-full max-w-2xl">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl text-white">Export to Salesforce</CardTitle>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowExportModal(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {/* Date Range Selection */}
+                <div className="mb-6">
+                  <h3 className="text-gray-300 mb-3">Select Time Period:</h3>
+                  <div className="grid grid-cols-4 gap-2 mb-4">
+                    <Button
+                      variant={exportDateRange === 'today' ? 'default' : 'outline'}
+                      onClick={() => setExportDateRange('today')}
+                      className={exportDateRange === 'today' 
+                        ? 'bg-purple-600 hover:bg-purple-700' 
+                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      variant={exportDateRange === 'thisWeek' ? 'default' : 'outline'}
+                      onClick={() => setExportDateRange('thisWeek')}
+                      className={exportDateRange === 'thisWeek' 
+                        ? 'bg-purple-600 hover:bg-purple-700' 
+                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                    >
+                      This Week
+                    </Button>
+                    <Button
+                      variant={exportDateRange === 'thisMonth' ? 'default' : 'outline'}
+                      onClick={() => setExportDateRange('thisMonth')}
+                      className={exportDateRange === 'thisMonth' 
+                        ? 'bg-purple-600 hover:bg-purple-700' 
+                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                    >
+                      This Month
+                    </Button>
+                    <Button
+                      variant={exportDateRange === 'custom' ? 'default' : 'outline'}
+                      onClick={() => setExportDateRange('custom')}
+                      className={exportDateRange === 'custom' 
+                        ? 'bg-purple-600 hover:bg-purple-700' 
+                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                    >
+                      Custom
+                    </Button>
+                  </div>
+                  
+                  {exportDateRange === 'custom' && (
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        value={customDateRange.start}
+                        onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded"
+                      />
+                      <span className="text-gray-400 self-center">to</span>
+                      <input
+                        type="date"
+                        value={customDateRange.end}
+                        onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* User Selection */}
+                <div className="mb-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-gray-300">Select Users:</h3>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSelectAll}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    >
+                      {selectedUsers.length === teamMembers.length ? 'Deselect All' : 'Select All'}
+                    </Button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto border border-gray-700 rounded p-3">
+                    {teamMembers.map((member) => (
+                      <label 
+                        key={member.id} 
+                        className="flex items-center gap-3 p-2 hover:bg-gray-800 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(member.id)}
+                          onChange={() => handleUserToggle(member.id)}
+                          className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-white">{member.full_name || member.email}</span>
+                        <span className="text-gray-400 text-sm ml-auto">
+                          {member.weeklyActivity} calculations this week
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowExportModal(false)}
+                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleExportToSalesforce}
+                    disabled={exporting || selectedUsers.length === 0}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {exporting ? 'Exporting...' : 'Send to Salesforce'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
