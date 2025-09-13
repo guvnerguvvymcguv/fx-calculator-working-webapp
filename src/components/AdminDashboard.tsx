@@ -95,7 +95,10 @@ export default function AdminDashboard() {
   const saveWeeklyExportSchedule = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.error('No user found');
+        return;
+      }
       
       const { data: profile } = await supabase
         .from('user_profiles')
@@ -103,11 +106,14 @@ export default function AdminDashboard() {
         .eq('id', user.id)
         .single();
         
-      if (!profile?.company_id) return;
+      if (!profile?.company_id) {
+        console.error('No company_id found');
+        return;
+      }
 
       if (weeklyExportSchedule) {
         // Update existing schedule
-        await supabase
+        const { error } = await supabase
           .from('export_schedules')
           .update({
             day_of_week: parseInt(scheduleDay),
@@ -115,19 +121,32 @@ export default function AdminDashboard() {
             updated_at: new Date().toISOString()
           })
           .eq('id', weeklyExportSchedule.id);
+        
+        if (error) {
+          console.error('Update error:', error);
+          alert('Failed to update schedule: ' + error.message);
+          return;
+        }
       } else {
         // Create new schedule
-        await supabase
+        const { error } = await supabase
           .from('export_schedules')
           .insert({
             company_id: profile.company_id,
             day_of_week: parseInt(scheduleDay),
             hour: parseInt(scheduleHour),
             is_active: true,
-            recipient: user.email // Will be sent to Salesforce, not email
+            export_type: 'salesforce_chatter'
           });
+        
+        if (error) {
+          console.error('Insert error:', error);
+          alert('Failed to create schedule: ' + error.message);
+          return;
+        }
       }
       
+      console.log('Schedule saved successfully');
       await fetchWeeklyExportSchedule();
       setEditingSchedule(false);
     } catch (error) {
