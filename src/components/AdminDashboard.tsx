@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X } from 'lucide-react';
+import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminDashboard() {
@@ -16,6 +16,10 @@ export default function AdminDashboard() {
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   const [exporting, setExporting] = useState(false);
   const [salesforceConnected, setSalesforceConnected] = useState(false);
+  const [weeklyExportSchedule, setWeeklyExportSchedule] = useState<any>(null);
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [scheduleDay, setScheduleDay] = useState('1'); // Monday
+  const [scheduleHour, setScheduleHour] = useState('9'); // 9 AM
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -29,6 +33,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchDashboardData();
     checkSalesforceConnection();
+    fetchWeeklyExportSchedule();
   }, [dateRange]);
 
   const checkSalesforceConnection = async () => {
@@ -54,6 +59,96 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error checking Salesforce connection:', error);
       setSalesforceConnected(false);
+    }
+  };
+
+  const fetchWeeklyExportSchedule = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.company_id) return;
+      
+      const { data: schedule } = await supabase
+        .from('export_schedules')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('is_active', true)
+        .single();
+        
+      if (schedule) {
+        setWeeklyExportSchedule(schedule);
+        setScheduleDay(schedule.day_of_week.toString());
+        setScheduleHour(schedule.hour.toString());
+      }
+    } catch (error) {
+      console.error('Error fetching export schedule:', error);
+    }
+  };
+
+  const saveWeeklyExportSchedule = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.company_id) return;
+
+      if (weeklyExportSchedule) {
+        // Update existing schedule
+        await supabase
+          .from('export_schedules')
+          .update({
+            day_of_week: parseInt(scheduleDay),
+            hour: parseInt(scheduleHour),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', weeklyExportSchedule.id);
+      } else {
+        // Create new schedule
+        await supabase
+          .from('export_schedules')
+          .insert({
+            company_id: profile.company_id,
+            day_of_week: parseInt(scheduleDay),
+            hour: parseInt(scheduleHour),
+            is_active: true,
+            recipient: user.email // Will be sent to Salesforce, not email
+          });
+      }
+      
+      await fetchWeeklyExportSchedule();
+      setEditingSchedule(false);
+    } catch (error) {
+      console.error('Error saving export schedule:', error);
+      alert('Failed to save export schedule');
+    }
+  };
+
+  const disableWeeklyExport = async () => {
+    if (!weeklyExportSchedule) return;
+    
+    try {
+      await supabase
+        .from('export_schedules')
+        .update({ is_active: false })
+        .eq('id', weeklyExportSchedule.id);
+      
+      setWeeklyExportSchedule(null);
+      setEditingSchedule(false);
+    } catch (error) {
+      console.error('Error disabling export schedule:', error);
     }
   };
 
@@ -356,6 +451,11 @@ export default function AdminDashboard() {
     return lastActive.toLocaleDateString();
   };
 
+  const getDayName = (day: string) => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[parseInt(day)];
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#10051A] flex items-center justify-center">
@@ -429,6 +529,98 @@ export default function AdminDashboard() {
                   <Download className="h-4 w-4 mr-2" />
                   Export Data
                 </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Weekly Export Schedule */}
+        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Clock className="h-5 w-5 text-purple-400" />
+                <span className="text-gray-300">Weekly Export:</span>
+                {!editingSchedule && weeklyExportSchedule ? (
+                  <>
+                    <span className="text-white font-medium">
+                      Active - {getDayName(weeklyExportSchedule.day_of_week.toString())} at {weeklyExportSchedule.hour}:00
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingSchedule(true)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : !editingSchedule ? (
+                  <Button
+                    size="sm"
+                    onClick={() => setEditingSchedule(true)}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Enable Weekly Export
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={scheduleDay}
+                      onChange={(e) => setScheduleDay(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                    >
+                      <option value="1">Monday</option>
+                      <option value="2">Tuesday</option>
+                      <option value="3">Wednesday</option>
+                      <option value="4">Thursday</option>
+                      <option value="5">Friday</option>
+                    </select>
+                    <span className="text-gray-400">at</span>
+                    <select
+                      value={scheduleHour}
+                      onChange={(e) => setScheduleHour(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i.toString().padStart(2, '0')}:00
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      onClick={saveWeeklyExportSchedule}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingSchedule(false);
+                        if (weeklyExportSchedule) {
+                          setScheduleDay(weeklyExportSchedule.day_of_week.toString());
+                          setScheduleHour(weeklyExportSchedule.hour.toString());
+                        }
+                      }}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    >
+                      Cancel
+                    </Button>
+                    {weeklyExportSchedule && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={disableWeeklyExport}
+                        className="border-red-600 text-red-400 hover:bg-red-900/20"
+                      >
+                        Disable
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
