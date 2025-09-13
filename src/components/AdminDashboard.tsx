@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2 } from 'lucide-react';
+import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminDashboard() {
@@ -488,11 +488,29 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
-            <p className="text-gray-400">Manage your team and track performance</p>
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={() => navigate('/')}
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white p-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
+              <p className="text-gray-400">Manage your team and track performance</p>
+            </div>
           </div>
           <div className="flex gap-4">
+            <Button
+              onClick={() => navigate('/admin/account')}
+              variant="outline"
+              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Account Management
+            </Button>
             <Button
               onClick={() => navigate('/calculator')}
               className="bg-purple-600 hover:bg-purple-700"

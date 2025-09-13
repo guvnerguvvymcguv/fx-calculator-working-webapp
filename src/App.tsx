@@ -21,6 +21,7 @@ import ResetPassword from './components/ResetPassword';
 import JoinPage from './components/JoinPage';
 import SalesforceCallback from './components/SalesforceCallback';
 import SalesforceSettings from './components/SalesforceSettings';
+import AccountManagement from './components/AccountManagement';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -125,6 +126,8 @@ function AppContent() {
         <Route path="/terms" element={<TermsOfService />} />
         
         <Route path="/privacy" element={<PrivacyPolicy />} />
+
+        <Route path="/admin/account" element={<AccountManagement />} />
 
         {/* Reset Password - accessible without authentication */}
         <Route path="/reset-password" element={<ResetPassword />} />
