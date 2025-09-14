@@ -49,18 +49,21 @@ export default function AccountManagement() {
 
       const adminCount = members?.filter(m => m.role_type === 'admin').length || 0;
       const juniorCount = members?.filter(m => m.role_type === 'junior').length || 0;
+      const actualUsedSeats = adminCount + juniorCount;
 
       // Calculate trial status
       const now = new Date();
       const trialEndsAt = companyData?.trial_ends_at ? new Date(companyData.trial_ends_at) : null;
       const isInTrial = trialEndsAt && trialEndsAt > now && !companyData?.subscription_active;
-      const daysLeftInTrial = isInTrial ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+      const daysLeftInTrial = isInTrial ? Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
       setCompany({
         ...companyData,
         currentAdminSeats: adminCount,
         currentJuniorSeats: juniorCount,
-        currentTotalSeats: adminCount + juniorCount,
+        currentTotalSeats: companyData?.subscription_seats || 0,
+        actualUsedSeats: actualUsedSeats,
+        remainingSeats: (companyData?.subscription_seats || 0) - actualUsedSeats,
         isInTrial,
         daysLeftInTrial,
         trialEndsAt
@@ -368,6 +371,10 @@ export default function AccountManagement() {
                   <div className="flex justify-between text-gray-400">
                     <span>Current seats:</span>
                     <span>{company.currentTotalSeats} seats</span>
+                  </div>
+                  <div className="flex justify-between text-gray-400">
+                    <span>Remaining seats:</span>
+                    <span>{company.remainingSeats} seats</span>
                   </div>
                   <div className="flex justify-between text-white">
                     <span>New total:</span>
