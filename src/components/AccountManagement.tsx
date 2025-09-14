@@ -264,11 +264,10 @@ export default function AccountManagement() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={handleSaveChanges}
-                  disabled={saving || totalNewSeats === company.currentTotalSeats}
+                  onClick={() => navigate('/checkout')}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  {saving ? 'Updating...' : 'Upgrade Now'}
+                  Upgrade Now
                 </Button>
               </div>
             </CardContent>

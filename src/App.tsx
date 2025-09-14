@@ -22,6 +22,7 @@ import JoinPage from './components/JoinPage';
 import SalesforceCallback from './components/SalesforceCallback';
 import SalesforceSettings from './components/SalesforceSettings';
 import AccountManagement from './components/AccountManagement';
+import Checkout from './components/Checkout';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -136,6 +137,8 @@ function AppContent() {
         <Route path="/join" element={<JoinPage />} />
 
         <Route path="/salesforce-callback" element={<SalesforceCallback />} />
+
+        <Route path="/checkout" element={<Checkout />} />
 
         <Route path="/admin/salesforce-settings" element={
           <ProtectedRoute>
