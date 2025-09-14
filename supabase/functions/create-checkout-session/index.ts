@@ -4,10 +4,6 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@12.18.0?target=deno'
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') as string, {
-  apiVersion: '2023-10-16',
-})
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -19,6 +15,16 @@ serve(async (req) => {
   }
 
   try {
+    // Check if Stripe key exists
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')
+    if (!stripeKey) {
+      throw new Error('STRIPE_SECRET_KEY not configured')
+    }
+
+    const stripe = new Stripe(stripeKey, {
+      apiVersion: '2023-10-16',
+    })
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -40,12 +46,18 @@ serve(async (req) => {
 
     const { companyId, billingPeriod, seatCount, pricePerMonth } = await req.json()
 
+    console.log('Checkout request:', { companyId, billingPeriod, seatCount, pricePerMonth })
+
     // Get company details
-    const { data: company } = await supabaseClient
+    const { data: company, error: companyError } = await supabaseClient
       .from('companies')
       .select('*')
       .eq('id', companyId)
       .single()
+
+    if (companyError) {
+      throw new Error(`Company fetch error: ${companyError.message}`)
+    }
 
     if (!company) {
       throw new Error('Company not found')
@@ -70,10 +82,14 @@ serve(async (req) => {
       customerId = customer.id
 
       // Save Stripe customer ID to database
-      await supabaseClient
+      const { error: updateError } = await supabaseClient
         .from('companies')
         .update({ stripe_customer_id: customerId })
         .eq('id', companyId)
+
+      if (updateError) {
+        console.error('Failed to save customer ID:', updateError)
+      }
     }
 
     // Create checkout session
@@ -86,24 +102,18 @@ serve(async (req) => {
             currency: 'gbp',
             product_data: {
               name: `SpreadChecker ${billingPeriod === 'annual' ? 'Annual' : 'Monthly'} Subscription`,
-              description: `${seatCount} seats (${company.admin_seats} admin, ${company.junior_seats} junior)`,
+              description: `${seatCount} seats (${company.admin_seats || 0} admin, ${company.junior_seats || 0} junior)`,
             },
             unit_amount: billingPeriod === 'annual' ? annualAmount : monthlyAmount,
             recurring: billingPeriod === 'monthly' ? {
               interval: 'month'
             } : undefined
           },
-          quantity: billingPeriod === 'annual' ? 1 : 1,
+          quantity: 1,
         },
       ],
       mode: billingPeriod === 'annual' ? 'payment' : 'subscription',
       allow_promotion_codes: true,
-      automatic_tax: {
-        enabled: true,
-      },
-      tax_id_collection: {
-        enabled: true,
-      },
       success_url: `${req.headers.get('origin')}/admin?checkout=success`,
       cancel_url: `${req.headers.get('origin')}/checkout?canceled=true`,
       metadata: {
@@ -122,8 +132,15 @@ serve(async (req) => {
       }
     )
   } catch (error) {
+    console.error('Checkout error:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
