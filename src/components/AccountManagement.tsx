@@ -58,6 +58,23 @@ export default function AccountManagement() {
       const isInTrial = trialEndsAt && trialEndsAt > now && !companyData?.subscription_active;
       const daysLeftInTrial = isInTrial ? Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
+      // Get allocated seats from company data if available, otherwise calculate from total
+      let allocatedAdminSeats = companyData?.admin_seats || 0;
+      let allocatedJuniorSeats = companyData?.junior_seats || 0;
+      
+      // If no allocation stored, default to current usage or distribute the total seats
+      if (allocatedAdminSeats === 0 && allocatedJuniorSeats === 0) {
+        if (totalSeats > 0) {
+          // If we have seats but no allocation, use current members as baseline
+          allocatedAdminSeats = Math.max(1, adminCount); // At least 1 admin
+          allocatedJuniorSeats = totalSeats - allocatedAdminSeats;
+        } else {
+          // Default for new setup
+          allocatedAdminSeats = 1;
+          allocatedJuniorSeats = 10;
+        }
+      }
+
       setCompany({
         ...companyData,
         currentAdminSeats: adminCount,
@@ -70,12 +87,12 @@ export default function AccountManagement() {
         trialEndsAt
       });
       
-      // Initialize seat changes to current allocation (what we want to show: 1 admin, 10 junior for 11 total)
-      // For your setup: 1 admin, 10 junior = 11 total seats
+      // Initialize seat changes to current allocation
       setSeatChanges({
-        adminSeats: 1,
-        juniorSeats: 10
+        adminSeats: allocatedAdminSeats,
+        juniorSeats: allocatedJuniorSeats
       });
+      
 
       setTeamMembers(members || []);
     } catch (error) {
@@ -116,17 +133,33 @@ export default function AccountManagement() {
       const totalNewSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
       const newPrice = calculatePrice(totalNewSeats);
 
-      // Update company subscription seats in database immediately
-      const { error: companyError } = await supabase
+      console.log('Saving changes:', {
+        adminSeats: seatChanges.adminSeats,
+        juniorSeats: seatChanges.juniorSeats,
+        totalNewSeats,
+        newPrice,
+        companyId: company.id
+      });
+
+      // Update company subscription seats and allocation in database
+      const { data, error: companyError } = await supabase
         .from('companies')
         .update({
           subscription_seats: totalNewSeats,
           subscription_price: newPrice,
+          admin_seats: seatChanges.adminSeats,
+          junior_seats: seatChanges.juniorSeats,
           updated_at: new Date().toISOString()
         })
-        .eq('id', company.id);
+        .eq('id', company.id)
+        .select();
 
-      if (companyError) throw companyError;
+      if (companyError) {
+        console.error('Database update error:', companyError);
+        throw companyError;
+      }
+
+      console.log('Database update successful:', data);
 
       // Only update Stripe if they're on active subscription, not trial
       if (company.subscription_active && company.subscription_type === 'monthly') {
@@ -145,7 +178,7 @@ export default function AccountManagement() {
         
         alert(`Subscription updated successfully! Your next bill will be £${newPrice}/month.`);
       } else if (company.isInTrial) {
-        alert(`Subscription updated successfully! You now have ${totalNewSeats} seats. Billing will start at £${newPrice}/month when your trial ends.`);
+        alert(`Subscription updated successfully! You now have ${totalNewSeats} seats (${seatChanges.adminSeats} admin, ${seatChanges.juniorSeats} junior). Billing will start at £${newPrice}/month when your trial ends.`);
       } else if (company.subscription_type === 'annual') {
         alert('Subscription updated successfully! Changes will apply to your next renewal.');
       } else {
@@ -155,7 +188,7 @@ export default function AccountManagement() {
       await fetchAccountData();
     } catch (error) {
       console.error('Error updating subscription:', error);
-      alert('Failed to update subscription');
+      alert('Failed to update subscription. Please check the console for details.');
     } finally {
       setSaving(false);
     }
