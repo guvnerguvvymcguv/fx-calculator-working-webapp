@@ -92,7 +92,6 @@ export default function AccountManagement() {
         adminSeats: allocatedAdminSeats,
         juniorSeats: allocatedJuniorSeats
       });
-      
 
       setTeamMembers(members || []);
     } catch (error) {
@@ -133,7 +132,7 @@ export default function AccountManagement() {
       const totalNewSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
       const newPrice = calculatePrice(totalNewSeats);
 
-      console.log('Saving changes:', {
+      console.log('Attempting to save:', {
         adminSeats: seatChanges.adminSeats,
         juniorSeats: seatChanges.juniorSeats,
         totalNewSeats,
@@ -155,11 +154,19 @@ export default function AccountManagement() {
         .select();
 
       if (companyError) {
-        console.error('Database update error:', companyError);
+        console.error('Database update FAILED:', companyError);
+        alert(`Database update failed: ${companyError.message}\n\nDetails: ${JSON.stringify(companyError.details)}\n\nHint: ${companyError.hint}`);
         throw companyError;
       }
 
+      if (!data || data.length === 0) {
+        console.error('No rows updated - check if company ID exists:', company.id);
+        alert('No rows were updated. The company ID might not exist.');
+        throw new Error('No rows updated');
+      }
+
       console.log('Database update successful:', data);
+      alert(`Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats\n- Price: £${newPrice}/month`);
 
       // Only update Stripe if they're on active subscription, not trial
       if (company.subscription_active && company.subscription_type === 'monthly') {
@@ -175,20 +182,12 @@ export default function AccountManagement() {
         });
 
         if (response.error) throw response.error;
-        
-        alert(`Subscription updated successfully! Your next bill will be £${newPrice}/month.`);
-      } else if (company.isInTrial) {
-        alert(`Subscription updated successfully! You now have ${totalNewSeats} seats (${seatChanges.adminSeats} admin, ${seatChanges.juniorSeats} junior). Billing will start at £${newPrice}/month when your trial ends.`);
-      } else if (company.subscription_type === 'annual') {
-        alert('Subscription updated successfully! Changes will apply to your next renewal.');
-      } else {
-        alert('Subscription updated successfully!');
       }
       
       await fetchAccountData();
     } catch (error) {
-      console.error('Error updating subscription:', error);
-      alert('Failed to update subscription. Please check the console for details.');
+      console.error('Error in handleSaveChanges:', error);
+      alert(`Failed to update subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
