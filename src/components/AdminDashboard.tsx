@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings } from 'lucide-react';
+import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('last7days');
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -20,6 +21,7 @@ export default function AdminDashboard() {
   const [editingSchedule, setEditingSchedule] = useState(false);
   const [scheduleDay, setScheduleDay] = useState('1'); // Monday
   const [scheduleHour, setScheduleHour] = useState('9'); // 9 AM
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -29,6 +31,17 @@ export default function AdminDashboard() {
     avgTradeValue: 0,
     activeUsers: 0
   });
+
+  useEffect(() => {
+    // Check for checkout success
+    if (searchParams.get('checkout') === 'success') {
+      setShowSuccessMessage(true);
+      // Remove the parameter from URL after showing
+      setSearchParams({});
+      // Hide message after 10 seconds
+      setTimeout(() => setShowSuccessMessage(false), 10000);
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -527,6 +540,18 @@ export default function AdminDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <div className="mb-6 p-4 bg-green-900/50 border border-green-600 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Check className="h-5 w-5 text-green-400" />
+              <p className="text-green-300">
+                Payment successful! Your subscription is now active.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Date Range Filter */}
         <Card className="bg-gray-900/50 border-gray-800 mb-6">

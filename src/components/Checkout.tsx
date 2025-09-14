@@ -14,6 +14,13 @@ export default function Checkout() {
 
   useEffect(() => {
     fetchCompanyData();
+    
+    // Check for canceled payment
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('canceled') === 'true') {
+      alert('Payment was canceled. You can try again when ready.');
+      window.history.replaceState({}, '', '/checkout');
+    }
   }, []);
 
   const fetchCompanyData = async () => {
@@ -122,7 +129,7 @@ export default function Checkout() {
     </div>;
   }
 
-  const { subtotal, vat, total } = calculatePrice();
+  const { total } = calculatePrice();
 
   return (
     <div className="min-h-screen bg-[#10051A] p-8">
@@ -198,7 +205,7 @@ export default function Checkout() {
           <CardContent className="space-y-3">
             <div className="flex justify-between text-gray-400">
               <span>{company?.subscription_seats} seats × {billingPeriod === 'monthly' ? '1 month' : '12 months'}</span>
-              <span>£{subtotal.toFixed(2)}</span>
+              <span>£{total.toFixed(2)}</span>
             </div>
             {billingPeriod === 'annual' && (
               <div className="flex justify-between text-green-400">
@@ -206,18 +213,14 @@ export default function Checkout() {
                 <span>-£{(company?.subscription_price * 12 * 0.1).toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-gray-400">
-              <span>VAT (20%)</span>
-              <span>£{vat.toFixed(2)}</span>
-            </div>
             <div className="border-t border-gray-700 pt-3 flex justify-between text-white text-lg font-semibold">
               <span>Total</span>
               <span>£{total.toFixed(2)}</span>
             </div>
             <p className="text-gray-400 text-sm">
               {billingPeriod === 'monthly' 
-                ? 'Charged monthly to your card' 
-                : 'One-time payment for 12 months'}
+                ? 'Charged monthly to your card (inc. 20% VAT)' 
+                : 'One-time payment for 12 months (inc. 20% VAT)'}
             </p>
           </CardContent>
         </Card>
