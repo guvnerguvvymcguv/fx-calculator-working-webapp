@@ -58,10 +58,6 @@ export default function AccountManagement() {
       const isInTrial = trialEndsAt && trialEndsAt > now && !companyData?.subscription_active;
       const daysLeftInTrial = isInTrial ? Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
-      // Calculate available seats for each type based on total - used
-      const availableAdminSeats = Math.max(1, totalSeats - juniorCount); // Could have up to (total - juniors) admins
-      const availableJuniorSeats = Math.max(0, totalSeats - adminCount); // Could have up to (total - admins) juniors
-
       setCompany({
         ...companyData,
         currentAdminSeats: adminCount,
@@ -69,17 +65,16 @@ export default function AccountManagement() {
         currentTotalSeats: totalSeats,
         actualUsedSeats: actualUsedSeats,
         remainingSeats: totalSeats - actualUsedSeats,
-        availableAdminSeats: availableAdminSeats,
-        availableJuniorSeats: availableJuniorSeats,
         isInTrial,
         daysLeftInTrial,
         trialEndsAt
       });
       
-      // Initialize seat changes to total seats available
+      // Initialize seat changes to current allocation (what we want to show: 1 admin, 10 junior for 11 total)
+      // For your setup: 1 admin, 10 junior = 11 total seats
       setSeatChanges({
-        adminSeats: Math.min(adminCount + 1, availableAdminSeats), // Default to current + 1 or max available
-        juniorSeats: Math.min(juniorCount + company?.remainingSeats || 0, availableJuniorSeats)
+        adminSeats: 1,
+        juniorSeats: 10
       });
 
       setTeamMembers(members || []);
@@ -167,25 +162,25 @@ export default function AccountManagement() {
   };
 
   const removeMember = async (memberId: string) => {
-  if (!confirm('Are you sure you want to remove this member?')) return;
+    if (!confirm('Are you sure you want to remove this member?')) return;
 
-  try {
-    // Remove the member
-    const { error } = await supabase
-      .from('user_profiles')
-      .delete()
-      .eq('id', memberId);
+    try {
+      // Remove the member
+      const { error } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', memberId);
 
-    if (error) throw error;
-    
-    // Don't update subscription seats on member removal - just remove the member
-    alert('Member removed successfully');
-    await fetchAccountData();
-  } catch (error) {
-    console.error('Error removing member:', error);
-    alert('Failed to remove member');
-  }
-};
+      if (error) throw error;
+      
+      // Don't update subscription seats on member removal - just remove the member
+      alert('Member removed successfully');
+      await fetchAccountData();
+    } catch (error) {
+      console.error('Error removing member:', error);
+      alert('Failed to remove member');
+    }
+  };
 
   if (loading) {
     return (
@@ -200,6 +195,7 @@ export default function AccountManagement() {
   const newPrice = calculatePrice(totalNewSeats);
   const priceDifference = newPrice - currentPrice;
   const pricePerSeat = getPricePerSeat(totalNewSeats);
+  const isChangingSeats = totalNewSeats !== company.currentTotalSeats;
 
   return (
     <div className="min-h-screen bg-[#10051A] p-8">
@@ -348,25 +344,27 @@ export default function AccountManagement() {
                     <span>Remaining seats:</span>
                     <span>{company.remainingSeats} seats</span>
                   </div>
-                  <div className="flex justify-between text-white">
-                    <span>New total:</span>
-                    <span className="font-medium">{totalNewSeats} seats</span>
-                  </div>
+                  {isChangingSeats && (
+                    <div className="flex justify-between text-white">
+                      <span>New total:</span>
+                      <span className="font-medium">{totalNewSeats} seats</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-400">
                     <span>Price per seat:</span>
                     <span>£{pricePerSeat}/month</span>
                   </div>
-                  {totalNewSeats !== company.currentTotalSeats && (
+                  {isChangingSeats && (
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
                       <span className="text-white">Monthly price change:</span>
                       <span className={`text-xl font-bold ${priceDifference > 0 ? 'text-yellow-400' : 'text-green-400'}`}>
-                        {priceDifference > 0 ? '+' : ''}£{priceDifference}/month
+                        {priceDifference > 0 ? '+' : ''}£{Math.abs(priceDifference)}/month
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-white mt-2">
-                    <span>{totalNewSeats === company.currentTotalSeats ? 'Current' : 'New'} monthly total:</span>
-                    <span>£{totalNewSeats === company.currentTotalSeats ? currentPrice : newPrice}/month</span>
+                    <span>{isChangingSeats ? 'New' : 'Current'} monthly total:</span>
+                    <span>£{isChangingSeats ? newPrice : currentPrice}/month</span>
                   </div>
                   {company?.isInTrial && (
                     <p className="text-purple-400 text-sm mt-2">
@@ -394,7 +392,7 @@ export default function AccountManagement() {
                   </div>
                 </div>
 
-                {totalNewSeats !== company.currentTotalSeats && (
+                {isChangingSeats && (
                   <Button
                     onClick={handleSaveChanges}
                     disabled={saving}
