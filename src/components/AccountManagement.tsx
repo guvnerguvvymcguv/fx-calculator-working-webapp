@@ -50,6 +50,7 @@ export default function AccountManagement() {
       const adminCount = members?.filter(m => m.role_type === 'admin').length || 0;
       const juniorCount = members?.filter(m => m.role_type === 'junior').length || 0;
       const actualUsedSeats = adminCount + juniorCount;
+      const totalSeats = companyData?.subscription_seats || 0;
 
       // Calculate trial status
       const now = new Date();
@@ -57,21 +58,28 @@ export default function AccountManagement() {
       const isInTrial = trialEndsAt && trialEndsAt > now && !companyData?.subscription_active;
       const daysLeftInTrial = isInTrial ? Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
+      // Calculate available seats for each type based on total - used
+      const availableAdminSeats = Math.max(1, totalSeats - juniorCount); // Could have up to (total - juniors) admins
+      const availableJuniorSeats = Math.max(0, totalSeats - adminCount); // Could have up to (total - admins) juniors
+
       setCompany({
         ...companyData,
         currentAdminSeats: adminCount,
         currentJuniorSeats: juniorCount,
-        currentTotalSeats: companyData?.subscription_seats || 0,
+        currentTotalSeats: totalSeats,
         actualUsedSeats: actualUsedSeats,
-        remainingSeats: (companyData?.subscription_seats || 0) - actualUsedSeats,
+        remainingSeats: totalSeats - actualUsedSeats,
+        availableAdminSeats: availableAdminSeats,
+        availableJuniorSeats: availableJuniorSeats,
         isInTrial,
         daysLeftInTrial,
         trialEndsAt
       });
       
+      // Initialize seat changes to total seats available
       setSeatChanges({
-        adminSeats: adminCount,
-        juniorSeats: juniorCount
+        adminSeats: Math.min(adminCount + 1, availableAdminSeats), // Default to current + 1 or max available
+        juniorSeats: Math.min(juniorCount + company?.remainingSeats || 0, availableJuniorSeats)
       });
 
       setTeamMembers(members || []);
@@ -113,7 +121,7 @@ export default function AccountManagement() {
       const totalNewSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
       const newPrice = calculatePrice(totalNewSeats);
 
-      // Update company subscription seats in database
+      // Update company subscription seats in database immediately
       const { error: companyError } = await supabase
         .from('companies')
         .update({
@@ -142,7 +150,7 @@ export default function AccountManagement() {
         
         alert(`Subscription updated successfully! Your next bill will be £${newPrice}/month.`);
       } else if (company.isInTrial) {
-        alert('Subscription updated! These changes will take effect when your trial ends.');
+        alert(`Subscription updated successfully! You now have ${totalNewSeats} seats. Billing will start at £${newPrice}/month when your trial ends.`);
       } else if (company.subscription_type === 'annual') {
         alert('Subscription updated successfully! Changes will apply to your next renewal.');
       } else {
@@ -159,61 +167,25 @@ export default function AccountManagement() {
   };
 
   const removeMember = async (memberId: string) => {
-    if (!confirm('Are you sure you want to remove this member?')) return;
+  if (!confirm('Are you sure you want to remove this member?')) return;
 
-    try {
-      // Get member details before removal
-      const memberToRemove = teamMembers.find(m => m.id === memberId);
-      
-      // Remove the member
-      const { error } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('id', memberId);
+  try {
+    // Remove the member
+    const { error } = await supabase
+      .from('user_profiles')
+      .delete()
+      .eq('id', memberId);
 
-      if (error) throw error;
-      
-      // Calculate new seat count after removal
-      const newAdminCount = memberToRemove?.role_type === 'admin' 
-        ? seatChanges.adminSeats - 1 
-        : seatChanges.adminSeats;
-      const newJuniorCount = memberToRemove?.role_type === 'junior' 
-        ? seatChanges.juniorSeats - 1 
-        : seatChanges.juniorSeats;
-      const newTotalSeats = newAdminCount + newJuniorCount;
-      const newPrice = calculatePrice(newTotalSeats);
-      
-      // Update company subscription seats
-      await supabase
-        .from('companies')
-        .update({
-          subscription_seats: newTotalSeats,
-          subscription_price: newPrice,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', company.id);
-
-      // Update Stripe only if on active monthly subscription
-      if (company.subscription_active && company.subscription_type === 'monthly') {
-        const { data: { session } } = await supabase.auth.getSession();
-        await supabase.functions.invoke('update-subscription', {
-          body: { 
-            companyId: company.id,
-            newSeatCount: newTotalSeats
-          },
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`
-          }
-        });
-      }
-      
-      alert('Member removed successfully');
-      await fetchAccountData();
-    } catch (error) {
-      console.error('Error removing member:', error);
-      alert('Failed to remove member');
-    }
-  };
+    if (error) throw error;
+    
+    // Don't update subscription seats on member removal - just remove the member
+    alert('Member removed successfully');
+    await fetchAccountData();
+  } catch (error) {
+    console.error('Error removing member:', error);
+    alert('Failed to remove member');
+  }
+};
 
   if (loading) {
     return (
@@ -393,8 +365,8 @@ export default function AccountManagement() {
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-white mt-2">
-                    <span>New monthly total:</span>
-                    <span>£{newPrice}/month</span>
+                    <span>{totalNewSeats === company.currentTotalSeats ? 'Current' : 'New'} monthly total:</span>
+                    <span>£{totalNewSeats === company.currentTotalSeats ? currentPrice : newPrice}/month</span>
                   </div>
                   {company?.isInTrial && (
                     <p className="text-purple-400 text-sm mt-2">
