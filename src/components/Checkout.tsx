@@ -70,6 +70,19 @@ export default function Checkout() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session) {
+        alert('Please log in to continue');
+        navigate('/login');
+        return;
+      }
+      
+      console.log('Starting checkout with:', {
+        companyId: company.id,
+        billingPeriod,
+        seatCount: company.subscription_seats,
+        pricePerMonth: company.subscription_price
+      });
+      
       // Call your Stripe checkout edge function
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
@@ -79,17 +92,25 @@ export default function Checkout() {
           pricePerMonth: company.subscription_price
         },
         headers: {
-          Authorization: `Bearer ${session?.access_token}`
+          Authorization: `Bearer ${session.access_token}`
         }
       });
+
+      console.log('Checkout response:', response);
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to create checkout session');
+      }
 
       if (response.data?.url) {
         // Redirect to Stripe Checkout
         window.location.href = response.data.url;
+      } else {
+        throw new Error('No checkout URL received');
       }
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('Failed to start checkout process');
+      alert(`Checkout failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setProcessing(false);
     }
