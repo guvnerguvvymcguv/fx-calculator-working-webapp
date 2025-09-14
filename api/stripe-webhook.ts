@@ -65,7 +65,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Get metadata from session
         const companyId = session.metadata?.company_id;
         const billingPeriod = session.metadata?.billing_period;
-        // Remove unused seatCount variable since it's causing a warning
 
         if (!companyId) {
           console.error('No company ID in session metadata');
@@ -144,11 +143,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const invoice = event.data.object as Stripe.Invoice;
         console.log('Payment succeeded for invoice:', invoice.id);
         
-        if (invoice.subscription) {
+        if ((invoice as any).subscription) {
           const { data: company } = await supabase
             .from('companies')
             .select('id')
-            .eq('stripe_subscription_id', invoice.subscription as string)
+            .eq('stripe_subscription_id', (invoice as any).subscription)
             .single();
 
           if (company) {
@@ -168,11 +167,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const invoice = event.data.object as Stripe.Invoice;
         console.log('Payment failed for invoice:', invoice.id);
         
-        if (invoice.subscription) {
+        if ((invoice as any).subscription) {
           const { data: company } = await supabase
             .from('companies')
             .select('id')
-            .eq('stripe_subscription_id', invoice.subscription as string)
+            .eq('stripe_subscription_id', (invoice as any).subscription)
             .single();
 
           if (company) {
