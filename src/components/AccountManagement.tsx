@@ -232,10 +232,11 @@ export default function AccountManagement() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => navigate('/subscription')}
+                  onClick={handleSaveChanges}
+                  disabled={saving || totalNewSeats === company.currentTotalSeats}
                   className="bg-purple-600 hover:bg-purple-700"
                 >
-                  Upgrade Now
+                  {saving ? 'Updating...' : 'Upgrade Now'}
                 </Button>
               </div>
             </CardContent>
