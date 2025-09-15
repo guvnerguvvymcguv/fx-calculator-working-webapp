@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ArrowLeft, Users, Plus, Minus, AlertCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Minus, AlertCircle, Clock, Trash2, UserX, UserCheck, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AccountManagement() {
@@ -11,6 +11,7 @@ export default function AccountManagement() {
   const [saving, setSaving] = useState(false);
   const [company, setCompany] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string>('');
   const [seatChanges, setSeatChanges] = useState({
     adminSeats: 0,
     juniorSeats: 0
@@ -24,6 +25,8 @@ export default function AccountManagement() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
+      setCurrentUserId(user.id);
 
       const { data: profile } = await supabase
         .from('user_profiles')
@@ -42,13 +45,17 @@ export default function AccountManagement() {
         .eq('id', profile.company_id)
         .single();
 
+      // Fetch all members including inactive ones
       const { data: members } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('company_id', profile.company_id);
+        .eq('company_id', profile.company_id)
+        .order('is_active', { ascending: false })
+        .order('full_name');
 
-      const adminCount = members?.filter(m => m.role_type === 'admin').length || 0;
-      const juniorCount = members?.filter(m => m.role_type === 'junior').length || 0;
+      // Only count active members for seat calculation
+      const adminCount = members?.filter(m => m.role_type === 'admin' && (m.is_active !== false)).length || 0;
+      const juniorCount = members?.filter(m => m.role_type === 'junior' && (m.is_active !== false)).length || 0;
       const actualUsedSeats = adminCount + juniorCount;
       const totalSeats = companyData?.subscription_seats || 0;
 
@@ -194,7 +201,7 @@ export default function AccountManagement() {
   };
 
   const removeMember = async (memberId: string) => {
-    if (!confirm('Are you sure you want to remove this member?')) return;
+    if (!confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) return;
 
     try {
       // Remove the member
@@ -211,6 +218,71 @@ export default function AccountManagement() {
     } catch (error) {
       console.error('Error removing member:', error);
       alert('Failed to remove member');
+    }
+  };
+
+  const toggleUserStatus = async (memberId: string, isActive: boolean) => {
+    const action = isActive ? 'deactivate' : 'reactivate';
+    if (!confirm(`Are you sure you want to ${action} this member?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ is_active: !isActive })
+        .eq('id', memberId);
+
+      if (error) throw error;
+      
+      alert(`Member ${action}d successfully`);
+      await fetchAccountData();
+    } catch (error) {
+      console.error(`Error ${action}ing member:`, error);
+      alert(`Failed to ${action} member`);
+    }
+  };
+
+  const changeUserRole = async (memberId: string, newRole: 'admin' | 'junior') => {
+    // Check if there would still be at least one admin
+    if (newRole === 'junior') {
+      const adminCount = teamMembers.filter(m => m.role_type === 'admin' && m.id !== memberId && (m.is_active !== false)).length;
+      if (adminCount === 0) {
+        alert('Cannot change role: At least one active admin is required');
+        return;
+      }
+    }
+
+    if (!confirm(`Are you sure you want to change this user to ${newRole}?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ role_type: newRole })
+        .eq('id', memberId);
+
+      if (error) throw error;
+      
+      alert('Role updated successfully');
+      await fetchAccountData();
+    } catch (error) {
+      console.error('Error updating role:', error);
+      alert('Failed to update role');
+    }
+  };
+
+  const sendPasswordReset = async (email: string, memberName: string) => {
+    if (!confirm(`Send password reset email to ${memberName}?`)) return;
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+      
+      alert(`Password reset email sent to ${email}`);
+    } catch (error) {
+      console.error('Error sending password reset:', error);
+      alert('Failed to send password reset email');
     }
   };
 
@@ -446,28 +518,65 @@ export default function AccountManagement() {
           <CardContent>
             <div className="space-y-3">
               {teamMembers.map((member) => (
-                <div key={member.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
+                <div key={member.id} className={`flex items-center justify-between p-3 rounded ${
+                  member.is_active === false ? 'bg-gray-900/30 opacity-60' : 'bg-gray-800/50'
+                }`}>
                   <div>
-                    <p className="text-white">{member.full_name || member.email}</p>
+                    <p className={`${member.is_active === false ? 'text-gray-500' : 'text-white'}`}>
+                      {member.full_name || member.email}
+                      {member.is_active === false && <span className="ml-2 text-xs text-red-400">(Inactive)</span>}
+                    </p>
                     <p className="text-gray-400 text-sm">{member.email}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      member.role_type === 'admin' 
-                        ? 'bg-purple-600 text-white' 
-                        : 'bg-blue-600 text-white'
-                    }`}>
-                      {member.role_type}
-                    </span>
-                    {teamMembers.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    {member.is_active !== false && (
+                      <select
+                        value={member.role_type}
+                        onChange={(e) => changeUserRole(member.id, e.target.value as 'admin' | 'junior')}
+                        className="bg-gray-700 border border-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 cursor-pointer"
+                        disabled={member.id === currentUserId}
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="junior">Junior</option>
+                      </select>
+                    )}
+                    {member.is_active !== false && member.id !== currentUserId && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => removeMember(member.id)}
-                        className="border-red-600 text-red-400 hover:bg-red-900/20"
+                        onClick={() => sendPasswordReset(member.email, member.full_name || member.email)}
+                        className="border-blue-600 text-blue-400 hover:bg-blue-900/20"
+                        title="Send password reset email"
                       >
-                        Remove
+                        <Mail className="h-4 w-4" />
                       </Button>
+                    )}
+                    {member.id !== currentUserId && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => toggleUserStatus(member.id, member.is_active !== false)}
+                          className={member.is_active !== false 
+                            ? "border-orange-600 text-orange-400 hover:bg-orange-900/20"
+                            : "border-green-600 text-green-400 hover:bg-green-900/20"
+                          }
+                          title={member.is_active !== false ? 'Deactivate user' : 'Reactivate user'}
+                        >
+                          {member.is_active !== false ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                        </Button>
+                        {teamMembers.length > 1 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => removeMember(member.id)}
+                            className="border-red-600 text-red-400 hover:bg-red-900/20"
+                            title="Permanently delete user"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
