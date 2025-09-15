@@ -14,6 +14,7 @@ export default function JoinPage() {
   
   const [loading, setLoading] = useState(true);
   const [invitation, setInvitation] = useState<any>(null);
+  const [firstName, setFirstName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -79,6 +80,11 @@ export default function JoinPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!firstName.trim()) {
+      setError('Please enter your first name');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -102,7 +108,8 @@ export default function JoinPage() {
           data: {
             company_id: invitation.company_id,
             role_type: invitation.role_type,
-            invited_by: invitation.invited_by
+            invited_by: invitation.invited_by,
+            full_name: firstName.trim()
           }
         }
       });
@@ -124,7 +131,8 @@ export default function JoinPage() {
             userId: signInData.user.id,
             email: invitation.email,
             companyId: invitation.company_id,
-            roleType: invitation.role_type
+            roleType: invitation.role_type,
+            fullName: firstName.trim()
           }
         });
 
@@ -226,6 +234,20 @@ export default function JoinPage() {
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">This email was invited to join the team</p>
+              </div>
+
+              <div>
+                <Label className="block text-sm font-medium text-gray-300 mb-2">
+                  First Name
+                </Label>
+                <Input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Enter your first name"
+                  required
+                />
               </div>
 
               <div>
