@@ -201,23 +201,45 @@ export default function AccountManagement() {
   };
 
   const removeMember = async (memberId: string) => {
-    if (!confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) return;
+    console.log('removeMember called with ID:', memberId);
+    
+    if (!confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) {
+      console.log('User cancelled deletion');
+      return;
+    }
+
+    console.log('User confirmed deletion, proceeding...');
 
     try {
       // Remove the member
-      const { error } = await supabase
+      console.log('Attempting to delete member from user_profiles...');
+      const { data, error } = await supabase
         .from('user_profiles')
         .delete()
-        .eq('id', memberId);
+        .eq('id', memberId)
+        .select();
 
-      if (error) throw error;
+      console.log('Delete response - Data:', data);
+      console.log('Delete response - Error:', error);
+
+      if (error) {
+        console.error('Delete error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
       
       // Don't update subscription seats on member removal - just remove the member
+      console.log('Member removed successfully, refreshing data...');
       alert('Member removed successfully');
       await fetchAccountData();
     } catch (error) {
-      console.error('Error removing member:', error);
-      alert('Failed to remove member');
+      console.error('Error removing member - Full error object:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to remove member: ${errorMessage}`);
     }
   };
 
