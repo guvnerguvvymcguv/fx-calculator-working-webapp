@@ -465,7 +465,19 @@ export default function AdminDashboard() {
   };
 
   const calculatePercentageChange = () => {
-    if (metrics.previousPeriodCalculations === 0) return '+100%';
+    // If both periods have 0 calculations, no change
+    if (metrics.previousPeriodCalculations === 0 && metrics.periodCalculations === 0) {
+      return '0%';
+    }
+    // If previous was 0 but current has calculations
+    if (metrics.previousPeriodCalculations === 0 && metrics.periodCalculations > 0) {
+      return 'New';
+    }
+    // If previous had calculations but current is 0
+    if (metrics.previousPeriodCalculations > 0 && metrics.periodCalculations === 0) {
+      return '-100%';
+    }
+    // Normal percentage calculation
     const change = ((metrics.periodCalculations - metrics.previousPeriodCalculations) / 
                     metrics.previousPeriodCalculations) * 100;
     return `${change >= 0 ? '+' : ''}${change.toFixed(0)}%`;
@@ -846,8 +858,11 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-white">{metrics.periodCalculations}</div>
               <p className="text-xs text-gray-400 mt-1">
-                <span className={metrics.periodCalculations >= metrics.previousPeriodCalculations ? 
-                  'text-green-400' : 'text-red-400'}>
+                <span className={
+                  metrics.periodCalculations > metrics.previousPeriodCalculations ? 'text-green-400' : 
+                  metrics.periodCalculations < metrics.previousPeriodCalculations ? 'text-red-400' : 
+                  'text-gray-400'
+                }>
                   {calculatePercentageChange()} vs previous
                 </span>
               </p>
