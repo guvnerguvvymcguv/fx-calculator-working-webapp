@@ -56,15 +56,17 @@ serve(async (req) => {
       throw new Error('Authentication required')
     }
 
-    // Parse request body
+    // Parse request body - NOW INCLUDING adminSeats and juniorSeats
     const body = await req.json()
-    const { companyId, billingPeriod, seatCount, pricePerMonth } = body
+    const { companyId, billingPeriod, seatCount, pricePerMonth, adminSeats, juniorSeats } = body
     
     console.log('Checkout request:', { 
       companyId, 
       billingPeriod, 
       seatCount, 
       pricePerMonth,
+      adminSeats,
+      juniorSeats,
       userId: user.id 
     })
 
@@ -152,6 +154,8 @@ serve(async (req) => {
       metadata: {
         company_id: companyId,
         seat_count: seatCount.toString(),
+        admin_seats: (adminSeats || company.admin_seats || 0).toString(),  // Added
+        junior_seats: (juniorSeats || company.junior_seats || 0).toString(), // Added
         billing_period: billingPeriod,
         price_per_month: pricePerMonth.toString(),
         user_id: user.id
@@ -162,7 +166,7 @@ serve(async (req) => {
               currency: 'gbp',
               product_data: {
                 name: 'SpreadChecker Monthly Subscription',
-                description: `${seatCount} total seats (${company.admin_seats || 0} admin, ${company.junior_seats || 0} junior)`,
+                description: `${seatCount} total seats (${adminSeats || company.admin_seats || 0} admin, ${juniorSeats || company.junior_seats || 0} junior)`,
               },
               unit_amount: monthlyAmount,
               recurring: {
@@ -176,7 +180,7 @@ serve(async (req) => {
               currency: 'gbp',
               product_data: {
                 name: 'SpreadChecker Annual Subscription',
-                description: `${seatCount} total seats for 12 months (${company.admin_seats || 0} admin, ${company.junior_seats || 0} junior)`,
+                description: `${seatCount} total seats for 12 months (${adminSeats || company.admin_seats || 0} admin, ${juniorSeats || company.junior_seats || 0} junior)`,
               },
               unit_amount: annualAmount,
             },

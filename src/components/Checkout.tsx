@@ -154,21 +154,8 @@ export default function Checkout() {
         return;
       }
 
-      // Update company with new seat allocation before checkout
-      const { error: updateError } = await supabase
-        .from('companies')
-        .update({
-          subscription_seats: totalSeats,
-          subscription_price: monthlyPrice,
-          admin_seats: seatChanges.adminSeats,
-          junior_seats: seatChanges.juniorSeats,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', company.id);
-
-      if (updateError) {
-        throw new Error('Failed to update seat allocation');
-      }
+      // DO NOT update the database here - just pass the desired seats to Stripe
+      // The webhook will handle the update after successful payment
       
       console.log('Starting checkout with:', {
         companyId: company.id,
@@ -179,13 +166,15 @@ export default function Checkout() {
         juniorSeats: seatChanges.juniorSeats
       });
       
-      // Call your Stripe checkout edge function
+      // Call your Stripe checkout edge function with seat details
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
           companyId: company.id,
           billingPeriod,
           seatCount: totalSeats,
-          pricePerMonth: monthlyPrice
+          pricePerMonth: monthlyPrice,
+          adminSeats: seatChanges.adminSeats,
+          juniorSeats: seatChanges.juniorSeats
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`

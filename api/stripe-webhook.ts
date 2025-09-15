@@ -65,19 +65,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Get metadata from session
         const companyId = session.metadata?.company_id;
         const billingPeriod = session.metadata?.billing_period;
+        const seatCount = session.metadata?.seat_count;
+        const adminSeats = session.metadata?.admin_seats;
+        const juniorSeats = session.metadata?.junior_seats;
+        const pricePerMonth = session.metadata?.price_per_month;
 
         if (!companyId) {
           console.error('No company ID in session metadata');
           break;
         }
 
-        // Update company to active subscription
+        // Update company with subscription AND seat allocation
         const { error: updateError } = await supabase
           .from('companies')
           .update({
             subscription_active: true,
             subscription_status: 'active',
             subscription_type: billingPeriod || 'monthly',
+            subscription_seats: parseInt(seatCount || '0'),
+            admin_seats: parseInt(adminSeats || '0'),
+            junior_seats: parseInt(juniorSeats || '0'),
+            subscription_price: parseFloat(pricePerMonth || '0'),
             stripe_subscription_id: (session.subscription as string) || session.id,
             subscription_started_at: new Date().toISOString(),
             trial_ends_at: new Date().toISOString(), // End trial immediately
@@ -88,7 +96,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (updateError) {
           console.error('Failed to update company:', updateError);
         } else {
-          console.log(`Company ${companyId} subscription activated`);
+          console.log(`Company ${companyId} subscription activated with ${seatCount} seats (${adminSeats} admin, ${juniorSeats} junior)`);
         }
         break;
       }
