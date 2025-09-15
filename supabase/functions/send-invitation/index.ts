@@ -45,7 +45,7 @@ serve(async (req) => {
               .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 24px 0; }
               .info-box { background: #f8f9fc; border-left: 3px solid #667eea; padding: 16px 20px; margin: 24px 0; border-radius: 4px; }
               .footer { padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee; }
-              .link-text { color: #667eea; word-break: break-all; font-size: 13px; }
+              .link-text { color: #f5f5f5; word-break: break-all; font-size: 13px; }
             </style>
           </head>
           <body>
