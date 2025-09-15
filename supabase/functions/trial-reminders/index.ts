@@ -114,49 +114,55 @@ serve(async (req) => {
                 <html>
                 <head>
                   <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                    .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; }
+                    .wrapper { background-color: #f5f5f5; padding: 40px 20px; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
+                    .content { padding: 40px 30px; }
+                    .content p { margin: 16px 0; color: #4a4a4a; }
+                    .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 24px 0; }
+                    .footer { padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee; }
                   </style>
                 </head>
                 <body>
-                  <div class="container">
-                    <div class="header">
-                      <h1>30 Days Left in Your Free Trial</h1>
-                    </div>
-                    <div class="content">
-                      <p>Hi ${admin.full_name || 'there'},</p>
-                      
-                      <p>You're halfway through your SpreadChecker trial! We hope you and your team are finding value in:</p>
-                      
-                      <ul>
-                        <li>Instant spread calculations for better client deals</li>
-                        <li>Team activity tracking and performance insights</li>
-                        <li>Automated Salesforce exports</li>
-                        <li>Comprehensive comparison analytics</li>
-                      </ul>
-                      
-                      <p><strong>Your trial ends on ${new Date(company.trial_ends_at).toLocaleDateString('en-GB', { 
-                        day: 'numeric', 
-                        month: 'long', 
-                        year: 'numeric' 
-                      })}</strong></p>
-                      
-                      <p>Ready to keep your team's productivity gains going? Start your subscription now and ensure uninterrupted access:</p>
-                      
-                      <div style="text-align: center;">
-                        <a href="https://spreadchecker.co.uk/checkout" class="button">Start Your Subscription</a>
+                  <div class="wrapper">
+                    <div class="container">
+                      <div class="header">
+                        <h1>30 Days Left in Your Free Trial</h1>
                       </div>
-                      
-                      <p>Questions? Reply to this email and we'll be happy to help.</p>
-                      
-                      <p>Best regards,<br>The SpreadChecker Team</p>
-                    </div>
-                    <div class="footer">
-                      <p>© 2024 SpreadChecker. All rights reserved.</p>
+                      <div class="content">
+                        <p>Hi ${admin.full_name || 'there'},</p>
+                        
+                        <p>You're halfway through your SpreadChecker trial. We hope you and your team are finding value in:</p>
+                        
+                        <ul style="color: #4a4a4a;">
+                          <li>Instant spread calculations for better client deals</li>
+                          <li>Team activity tracking and performance insights</li>
+                          <li>Automated Salesforce exports</li>
+                          <li>Comprehensive comparison analytics</li>
+                        </ul>
+                        
+                        <p><strong>Your trial ends on ${new Date(company.trial_ends_at).toLocaleDateString('en-GB', { 
+                          day: 'numeric', 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })}</strong></p>
+                        
+                        <p>Ready to keep your team's productivity gains going? Start your subscription now and ensure uninterrupted access:</p>
+                        
+                        <div style="text-align: center;">
+                          <a href="https://spreadchecker.co.uk/checkout" class="button">Start Your Subscription</a>
+                        </div>
+                        
+                        <p>Questions? Reply to this email and we'll be happy to help.</p>
+                        
+                        <p>Best regards,<br>The SpreadChecker Team</p>
+                      </div>
+                      <div class="footer">
+                        <p>SpreadChecker Ltd | London, UK<br>
+                        © 2024 SpreadChecker. All rights reserved.</p>
+                      </div>
                     </div>
                   </div>
                 </body>
@@ -187,57 +193,63 @@ serve(async (req) => {
             await resend.emails.send({
               from: 'SpreadChecker <noreply@spreadchecker.co.uk>',
               to: admin.email,
-              subject: '⏰ Only 7 Days Left in Your SpreadChecker Trial',
+              subject: 'Your SpreadChecker Trial - 7 Days Remaining',
               html: `
                 <!DOCTYPE html>
                 <html>
                 <head>
                   <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                    .button { display: inline-block; padding: 12px 30px; background: #f5576c; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-                    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
-                    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; }
+                    .wrapper { background-color: #f5f5f5; padding: 40px 20px; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
+                    .content { padding: 40px 30px; }
+                    .content p { margin: 16px 0; color: #4a4a4a; }
+                    .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 24px 0; }
+                    .info-box { background: #f8f9fc; border-left: 3px solid #667eea; padding: 16px 20px; margin: 24px 0; border-radius: 4px; }
+                    .footer { padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee; }
                   </style>
                 </head>
                 <body>
-                  <div class="container">
-                    <div class="header">
-                      <h1>⏰ Your Trial Ends in 7 Days</h1>
-                    </div>
-                    <div class="content">
-                      <p>Hi ${admin.full_name || 'there'},</p>
-                      
-                      <div class="warning">
-                        <strong>⚠️ Important:</strong> Your SpreadChecker trial ends on ${new Date(company.trial_ends_at).toLocaleDateString('en-GB', { 
+                  <div class="wrapper">
+                    <div class="container">
+                      <div class="header">
+                        <h1>7 Days Remaining in Your Trial</h1>
+                      </div>
+                      <div class="content">
+                        <p>Hi ${admin.full_name || 'there'},</p>
+                        
+                        <p>Your SpreadChecker trial period will end in 7 days on <strong>${new Date(company.trial_ends_at).toLocaleDateString('en-GB', { 
                           day: 'numeric', 
                           month: 'long', 
                           year: 'numeric' 
-                        })}
+                        })}</strong>.</p>
+                        
+                        <div class="info-box">
+                          <strong>Keep your team's momentum going:</strong>
+                          <ul style="margin: 10px 0; padding-left: 20px; color: #4a4a4a;">
+                            <li>Continue using the live rate calculator</li>
+                            <li>Maintain access to all saved comparisons</li>
+                            <li>Keep your Salesforce exports running</li>
+                            <li>Preserve your team's activity data</li>
+                          </ul>
+                        </div>
+                        
+                        <p>We'd love to continue supporting your team's success. Start your subscription today to ensure uninterrupted service.</p>
+                        
+                        <div style="text-align: center;">
+                          <a href="https://spreadchecker.co.uk/checkout" class="button">Continue to Subscription</a>
+                        </div>
+                        
+                        <p>If you have any questions about plans or pricing, simply reply to this email.</p>
+                        
+                        <p>Best regards,<br>The SpreadChecker Team</p>
                       </div>
-                      
-                      <p>Don't lose access to:</p>
-                      <ul>
-                        <li>Your team's saved calculations and comparison history</li>
-                        <li>Automated weekly Salesforce exports</li>
-                        <li>Team performance tracking</li>
-                        <li>All your configured settings and preferences</li>
-                      </ul>
-                      
-                      <p><strong>Start your subscription today to ensure uninterrupted service for your team.</strong></p>
-                      
-                      <div style="text-align: center;">
-                        <a href="https://spreadchecker.co.uk/checkout" class="button">Upgrade Now - Don't Lose Access</a>
+                      <div class="footer">
+                        <p>SpreadChecker Ltd | London, UK<br>
+                        © 2024 SpreadChecker. All rights reserved.</p>
                       </div>
-                      
-                      <p>Need help choosing the right plan? Reply to this email.</p>
-                      
-                      <p>Best regards,<br>The SpreadChecker Team</p>
-                    </div>
-                    <div class="footer">
-                      <p>© 2024 SpreadChecker. All rights reserved.</p>
                     </div>
                   </div>
                 </body>
@@ -268,63 +280,58 @@ serve(async (req) => {
             await resend.emails.send({
               from: 'SpreadChecker <noreply@spreadchecker.co.uk>',
               to: admin.email,
-              subject: '🚨 FINAL NOTICE: Your SpreadChecker Trial Ends Tomorrow',
+              subject: 'Your SpreadChecker Trial Ends Tomorrow',
               html: `
                 <!DOCTYPE html>
                 <html>
                 <head>
                   <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                    .button { display: inline-block; padding: 15px 40px; background: #eb3349; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; font-size: 18px; font-weight: bold; }
-                    .urgent { background: #f8d7da; border: 2px solid #dc3545; padding: 20px; margin: 20px 0; border-radius: 5px; }
-                    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; }
+                    .wrapper { background-color: #f5f5f5; padding: 40px 20px; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
+                    .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
+                    .content { padding: 40px 30px; }
+                    .content p { margin: 16px 0; color: #4a4a4a; }
+                    .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 24px 0; }
+                    .notice-box { background: #fef8f4; border: 1px solid #f4d4b4; padding: 20px; margin: 24px 0; border-radius: 6px; }
+                    .footer { padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee; }
                   </style>
                 </head>
                 <body>
-                  <div class="container">
-                    <div class="header">
-                      <h1>🚨 FINAL NOTICE</h1>
-                      <h2>Your Trial Ends Tomorrow</h2>
-                    </div>
-                    <div class="content">
-                      <p>Hi ${admin.full_name || 'there'},</p>
-                      
-                      <div class="urgent">
-                        <h3 style="color: #dc3545; margin-top: 0;">⚠️ Your account will be locked tomorrow</h3>
-                        <p style="margin-bottom: 0;"><strong>Trial ends: ${new Date(company.trial_ends_at).toLocaleDateString('en-GB', { 
+                  <div class="wrapper">
+                    <div class="container">
+                      <div class="header">
+                        <h1>Final Day of Your Trial</h1>
+                      </div>
+                      <div class="content">
+                        <p>Hi ${admin.full_name || 'there'},</p>
+                        
+                        <p>This is a friendly reminder that your SpreadChecker trial ends tomorrow, <strong>${new Date(company.trial_ends_at).toLocaleDateString('en-GB', { 
                           day: 'numeric', 
                           month: 'long', 
                           year: 'numeric' 
-                        })}</strong></p>
+                        })}</strong>.</p>
+                        
+                        <div class="notice-box">
+                          <p style="margin-top: 0;"><strong>What happens when your trial ends:</strong></p>
+                          <p style="margin-bottom: 0;">Your team's access to SpreadChecker will be paused until you activate a subscription. All your data, settings, and comparisons will be safely stored and ready when you return.</p>
+                        </div>
+                        
+                        <p>To maintain continuous access for your team, you can start your subscription today:</p>
+                        
+                        <div style="text-align: center;">
+                          <a href="https://spreadchecker.co.uk/checkout" class="button">Activate Subscription</a>
+                        </div>
+                        
+                        <p>Thank you for trying SpreadChecker. If you need assistance or have questions, please don't hesitate to reach out.</p>
+                        
+                        <p>Best regards,<br>The SpreadChecker Team</p>
                       </div>
-                      
-                      <p><strong>What happens when your trial ends:</strong></p>
-                      <ul>
-                        <li>❌ Your team will lose access to the calculator</li>
-                        <li>❌ All saved comparisons will be inaccessible</li>
-                        <li>❌ Automated exports will stop</li>
-                        <li>❌ Team activity tracking will cease</li>
-                      </ul>
-                      
-                      <p><strong>This is your last chance to maintain uninterrupted access for your team.</strong></p>
-                      
-                      <div style="text-align: center;">
-                        <a href="https://spreadchecker.co.uk/checkout" class="button">ACTIVATE SUBSCRIPTION NOW</a>
+                      <div class="footer">
+                        <p>SpreadChecker Ltd | London, UK<br>
+                        © 2024 SpreadChecker. All rights reserved.</p>
                       </div>
-                      
-                      <p style="text-align: center; color: #666;">
-                        <em>Don't let your team lose their productivity tools tomorrow.</em>
-                      </p>
-                      
-                      <p>If you have any questions or need assistance, please reply immediately.</p>
-                      
-                      <p>Best regards,<br>The SpreadChecker Team</p>
-                    </div>
-                    <div class="footer">
-                      <p>© 2024 SpreadChecker. All rights reserved.</p>
                     </div>
                   </div>
                 </body>
