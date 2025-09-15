@@ -5,13 +5,12 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calculator, TrendingUp, DollarSign, History } from 'lucide-react';
+import { Calculator, TrendingUp, DollarSign, History, Home, LayoutDashboard } from 'lucide-react';
 
 // Import our custom hooks and constants
 import { useFXCalculator } from '../hooks/useFXCalculator';
 import { useLiveRates } from '../hooks/useLiveRates';
 import { FX_PAIRS, DEFAULT_PAIR } from '../constants/fxPairs';
-import { Navbar } from './ui/Navbar';
 import { HistoricalRateModal } from './ui/HistoricalRateModal';
 import { signOut, getCurrentUser } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -21,7 +20,7 @@ import { saveCalculation } from '../lib/calculations';
 const getUserProfile = async (userId: string) => {
   const { data } = await supabase
     .from('user_profiles')
-    .select('company_id')
+    .select('company_id, role_type')
     .eq('id', userId)
     .single();
   return data;
@@ -32,6 +31,7 @@ export default function CalculatorPage() {
   const [isHistoricalModalOpen, setIsHistoricalModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
@@ -65,6 +65,11 @@ export default function CalculatorPage() {
     } else {
       // User is authenticated
       setCurrentUser(user);
+      // Get user role
+      const profile = await getUserProfile(user.id);
+      if (profile) {
+        setUserRole(profile.role_type);
+      }
       setIsLoading(false);
     }
   };
@@ -171,12 +176,51 @@ export default function CalculatorPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#10051A' }}>
-      {/* Navigation */}
-      <Navbar 
-        isSignedIn={true}
-        onSignIn={() => {}}
-        onSignOut={handleSignOut}
-      />
+      {/* Enhanced Navigation */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/5 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-6 w-6 text-purple-400" />
+              <span className="text-xl font-bold bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">
+                Spread Checker
+              </span>
+            </div>
+            
+            {/* Navigation Links */}
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/')}
+                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Home
+              </Button>
+
+              {userRole === 'admin' && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate('/admin')}
+                  className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <LayoutDashboard className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+              )}
+              
+              <Button 
+                onClick={handleSignOut}
+                variant="ghost"
+                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
 
       <div className="p-4 pt-32 flex items-center justify-center">
         <div className="w-full max-w-2xl">
