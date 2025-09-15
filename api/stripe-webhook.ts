@@ -97,6 +97,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           console.error('Failed to update company:', updateError);
         } else {
           console.log(`Company ${companyId} subscription activated with ${seatCount} seats (${adminSeats} admin, ${juniorSeats} junior)`);
+          
+          // Send subscription activated email
+          try {
+            const response = await fetch(
+              'https://wvzqxwvlozzbmdrqyify.supabase.co/functions/v1/subscription-activated',
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  companyId,
+                  subscriptionType: billingPeriod,
+                  seatCount: parseInt(seatCount || '0'),
+                  adminSeats: parseInt(adminSeats || '0'),
+                  juniorSeats: parseInt(juniorSeats || '0'),
+                  monthlyPrice: parseFloat(pricePerMonth || '0')
+                })
+              }
+            );
+            
+            if (!response.ok) {
+              console.error('Failed to send subscription activated email:', await response.text());
+            } else {
+              console.log('Subscription activated email sent successfully');
+            }
+          } catch (emailError) {
+            console.error('Error calling subscription-activated function:', emailError);
+            // Don't throw - email failure shouldn't break the webhook
+          }
         }
         break;
       }
