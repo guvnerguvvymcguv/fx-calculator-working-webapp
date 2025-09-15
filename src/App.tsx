@@ -23,6 +23,7 @@ import SalesforceCallback from './components/SalesforceCallback';
 import SalesforceSettings from './components/SalesforceSettings';
 import AccountManagement from './components/AccountManagement';
 import Checkout from './components/Checkout';
+import EmailPreview from './components/EmailPreview';
 
 // Create a simple auth context for global state
 interface AuthContextType {
@@ -145,6 +146,12 @@ function AppContent() {
             <SalesforceSettings />
           </ProtectedRoute>
         } />
+
+        <Route path="/email-preview" element={
+  <ProtectedRoute>
+    <EmailPreview />
+  </ProtectedRoute>
+} />
 
         {/* Redirect any unknown routes to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />
