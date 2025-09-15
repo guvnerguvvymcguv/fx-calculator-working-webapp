@@ -89,9 +89,18 @@ serve(async (req) => {
       throw new Error('Company data not found')
     }
 
-    // Calculate prices (convert pounds to pence)
-    const monthlyAmount = Math.round(pricePerMonth * 100)
-    const annualAmount = Math.round(pricePerMonth * 12 * 0.9 * 100) // 10% discount
+    // Calculate prices INCLUDING VAT (convert pounds to pence)
+    const vatRate = 0.2 // 20% VAT for UK
+    
+    // For monthly subscriptions
+    const monthlySubtotal = Math.round(pricePerMonth * 100)
+    const monthlyVat = Math.round(monthlySubtotal * vatRate)
+    const monthlyAmount = monthlySubtotal + monthlyVat
+    
+    // For annual subscriptions (with 10% discount)
+    const annualSubtotal = Math.round(pricePerMonth * 12 * 0.9 * 100)
+    const annualVat = Math.round(annualSubtotal * vatRate)
+    const annualAmount = annualSubtotal + annualVat
 
     // Create or retrieve Stripe customer
     let customerId = company.stripe_customer_id
