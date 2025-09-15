@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Check } from 'lucide-react';
@@ -6,6 +7,21 @@ import { ArrowLeft } from 'lucide-react';
 
 const PricingPage = () => {
   const navigate = useNavigate();
+  const [isAnnual, setIsAnnual] = useState(false);
+
+  // Monthly prices
+  const monthlyPrices = {
+    small: 30,
+    growing: 27,
+    enterprise: 24
+  };
+
+  // Annual prices (10% additional discount)
+  const annualPrices = {
+    small: monthlyPrices.small * 12 * 0.9,
+    growing: monthlyPrices.growing * 12 * 0.9,
+    enterprise: monthlyPrices.enterprise * 12 * 0.9
+  };
 
   return (
     <div className="min-h-screen bg-[#10051A] p-8 relative">
@@ -28,14 +44,55 @@ const PricingPage = () => {
           </p>
         </div>
 
+        {/* Monthly/Annual Toggle */}
+        <div className="flex justify-center mb-12">
+          <div className="bg-gray-900/50 rounded-lg p-1 flex">
+            <button
+              onClick={() => setIsAnnual(false)}
+              className={`px-6 py-2 rounded-md transition-all ${
+                !isAnnual 
+                  ? 'bg-purple-600 text-white' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setIsAnnual(true)}
+              className={`px-6 py-2 rounded-md transition-all ${
+                isAnnual 
+                  ? 'bg-purple-600 text-white' 
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Annually
+              <span className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded">
+                Save 10%
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           {/* Small Teams */}
           <Card className="bg-gray-900/50 border-gray-800 backdrop-blur">
             <CardHeader>
               <CardTitle className="text-2xl text-white">Small Teams</CardTitle>
               <div className="mt-4">
-                <span className="text-4xl font-bold text-white">£50</span>
-                <span className="text-gray-400">/seat/month</span>
+                {!isAnnual ? (
+                  <>
+                    <span className="text-4xl font-bold text-white">£{monthlyPrices.small}</span>
+                    <span className="text-gray-400">/seat/month</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-4xl font-bold text-white">£{annualPrices.small.toFixed(0)}</span>
+                    <span className="text-gray-400">/seat/year</span>
+                    <div className="text-sm text-gray-400 mt-1">
+                      £{(annualPrices.small / 12).toFixed(0)}/month
+                    </div>
+                  </>
+                )}
               </div>
               <p className="text-purple-400 mt-2">1-14 seats</p>
             </CardHeader>
@@ -67,8 +124,20 @@ const PricingPage = () => {
             <CardHeader>
               <CardTitle className="text-2xl text-white">Growing Teams</CardTitle>
               <div className="mt-4">
-                <span className="text-4xl font-bold text-white">£45</span>
-                <span className="text-gray-400">/seat/month</span>
+                {!isAnnual ? (
+                  <>
+                    <span className="text-4xl font-bold text-white">£{monthlyPrices.growing}</span>
+                    <span className="text-gray-400">/seat/month</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-4xl font-bold text-white">£{annualPrices.growing.toFixed(0)}</span>
+                    <span className="text-gray-400">/seat/year</span>
+                    <div className="text-sm text-gray-400 mt-1">
+                      £{(annualPrices.growing / 12).toFixed(0)}/month
+                    </div>
+                  </>
+                )}
               </div>
               <p className="text-purple-400 mt-2">15-29 seats (10% off)</p>
             </CardHeader>
@@ -97,8 +166,20 @@ const PricingPage = () => {
             <CardHeader>
               <CardTitle className="text-2xl text-white">Enterprise</CardTitle>
               <div className="mt-4">
-                <span className="text-4xl font-bold text-white">£40</span>
-                <span className="text-gray-400">/seat/month</span>
+                {!isAnnual ? (
+                  <>
+                    <span className="text-4xl font-bold text-white">£{monthlyPrices.enterprise}</span>
+                    <span className="text-gray-400">/seat/month</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-4xl font-bold text-white">£{annualPrices.enterprise.toFixed(0)}</span>
+                    <span className="text-gray-400">/seat/year</span>
+                    <div className="text-sm text-gray-400 mt-1">
+                      £{(annualPrices.enterprise / 12).toFixed(0)}/month
+                    </div>
+                  </>
+                )}
               </div>
               <p className="text-purple-400 mt-2">30+ seats (20% off)</p>
             </CardHeader>
