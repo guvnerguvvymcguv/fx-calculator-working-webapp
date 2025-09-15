@@ -213,15 +213,24 @@ export default function AccountManagement() {
     try {
       // First, delete all activity logs for this user
       console.log('Deleting activity logs for user...');
-      const { error: logsError } = await supabase
+      const { data: logsData, error: logsError } = await supabase
         .from('activity_logs')
         .delete()
-        .eq('user_id', memberId);
+        .eq('user_id', memberId)
+        .select();
 
       if (logsError) {
         console.error('Error deleting activity logs:', logsError);
+        console.error('Activity logs error details:', {
+          message: logsError.message,
+          details: logsError.details,
+          hint: logsError.hint,
+          code: logsError.code
+        });
         throw logsError;
       }
+
+      console.log(`Deleted ${logsData?.length || 0} activity log entries`);
 
       // Now delete the user profile
       console.log('Attempting to delete member from user_profiles...');
