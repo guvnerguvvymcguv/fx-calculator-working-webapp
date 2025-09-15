@@ -173,22 +173,39 @@ export default function AccountManagement() {
       }
 
       console.log('Database update successful:', data);
-      alert(`Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats\n- Price: £${newPrice}/month`);
+      
+      // Customize alert message based on subscription type
+      let alertMessage = `Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats`;
+      
+      if (company.isInTrial) {
+        alertMessage += `\n- Price: £${newPrice}/month\n\n* Billing will start after your trial ends`;
+      } else if (company.subscription_type === 'monthly') {
+        alertMessage += `\n- New price: £${newPrice}/month\n\n* Your next monthly payment will reflect this change`;
+      } else if (company.subscription_type === 'annual') {
+        alertMessage += `\n\n* Seats updated for your annual subscription`;
+      }
+      
+      alert(alertMessage);
 
-      // Only update Stripe if they're on active subscription, not trial
+      // Only update Stripe if they're on active monthly subscription
       if (company.subscription_active && company.subscription_type === 'monthly') {
         const { data: { session } } = await supabase.auth.getSession();
         const response = await supabase.functions.invoke('update-subscription', {
           body: { 
             companyId: company.id,
-            newSeatCount: totalNewSeats
+            newSeatCount: totalNewSeats,
+            newPrice: newPrice
           },
           headers: {
             Authorization: `Bearer ${session?.access_token}`
           }
         });
 
-        if (response.error) throw response.error;
+        if (response.error) {
+          console.error('Stripe update error:', response.error);
+          // Don't throw - database is already updated
+          alert('Note: Seats updated in database but Stripe subscription update failed. Please contact support.');
+        }
       }
       
       await fetchAccountData();
@@ -400,7 +417,12 @@ export default function AccountManagement() {
                   </span>
                   {company.subscription_type === 'annual' && (
                     <span className="text-gray-400 ml-2">
-                      (Seat changes will apply at next renewal)
+                      (Seat changes will apply immediately)
+                    </span>
+                  )}
+                  {company.subscription_type === 'monthly' && (
+                    <span className="text-gray-400 ml-2">
+                      (Price changes will apply to your next payment)
                     </span>
                   )}
                 </span>
@@ -500,7 +522,7 @@ export default function AccountManagement() {
                     <span>Price per seat:</span>
                     <span>£{pricePerSeat}/month</span>
                   </div>
-                  {isChangingSeats && (
+                  {isChangingSeats && company.subscription_type !== 'annual' && (
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
                       <span className="text-white">Monthly price change:</span>
                       <span className={`text-xl font-bold ${priceDifference > 0 ? 'text-yellow-400' : 'text-green-400'}`}>
