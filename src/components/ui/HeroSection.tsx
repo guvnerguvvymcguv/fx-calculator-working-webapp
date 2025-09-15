@@ -5,9 +5,28 @@ import { MockCalculator } from './MockCalculator.tsx';
 
 interface HeroSectionProps {
   onSignUp: () => void;
+  isAuthenticated?: boolean;
+  userRole?: 'admin' | 'junior' | null;
+  onNavigate?: () => void;
 }
 
-export function HeroSection({ onSignUp }: HeroSectionProps) {
+export function HeroSection({ onSignUp, isAuthenticated, userRole, onNavigate }: HeroSectionProps) {
+  // Determine button text and action based on auth state
+  const getButtonConfig = () => {
+    if (isAuthenticated && userRole) {
+      return {
+        text: userRole === 'admin' ? 'Go to Dashboard' : 'Go to Calculator',
+        action: onNavigate || onSignUp
+      };
+    }
+    return {
+      text: 'Sign Up Now',
+      action: onSignUp
+    };
+  };
+
+  const { text, action } = getButtonConfig();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center px-4 py-20 pt-32">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-start">
@@ -29,10 +48,10 @@ export function HeroSection({ onSignUp }: HeroSectionProps) {
           
           <div className="flex justify-center">
             <Button 
-              onClick={onSignUp}
+              onClick={action}
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-4 text-lg rounded-lg shadow-lg hover:shadow-purple-400/60 hover:shadow-[0_0_20px_rgba(147,51,234,0.6)] transition-all duration-200"
             >
-              Sign Up Now
+              {text}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>

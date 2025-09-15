@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Play, X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 // Import our custom hooks and components
 import { Navbar } from './ui/Navbar';
@@ -24,6 +25,8 @@ interface LandingPageProps {
 // Update component to accept props
 export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: LandingPageProps) {
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // State for mock historical interface
   const [selectedPair, setSelectedPair] = useState('GBPUSD');
@@ -31,6 +34,53 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
   const [showDatePicker, setShowDatePicker] = useState(true);
   const selectedDate = new Date(2025, 6, 8);
   const currentMonth = new Date(2025, 6);
+
+  // Check user role when authenticated
+  useEffect(() => {
+    const checkUserRole = async () => {
+      if (isAuthenticated) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from('user_profiles')
+              .select('role_type')
+              .eq('id', user.id)
+              .single();
+            
+            if (profile) {
+              setUserRole(profile.role_type);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+        }
+      } else {
+        setUserRole(null);
+      }
+      setLoading(false);
+    };
+
+    checkUserRole();
+  }, [isAuthenticated]);
+
+  // Handle navigation based on role
+  const handleAuthenticatedNavigation = () => {
+    if (userRole === 'admin') {
+      navigate('/admin');
+    } else if (userRole === 'junior') {
+      navigate('/calculator');
+    }
+  };
+
+  // Modified sign in handler that considers authentication state
+  const handleSignInOrNavigate = () => {
+    if (isAuthenticated && userRole) {
+      handleAuthenticatedNavigation();
+    } else {
+      onSignIn();
+    }
+  };
 
   // Handle all the callback functions
   const handleSignUp = (): void => {
@@ -88,15 +138,22 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#10051A', color: '#C7B3FF' }}>
       
-      {/* Navigation - Updated to use props */}
+      {/* Navigation - Updated to use auth state and role */}
       <Navbar 
         isSignedIn={isAuthenticated}
-        onSignIn={onSignIn || handleLogin}
+        onSignIn={handleSignInOrNavigate}
         onSignOut={onSignOut}
+        userRole={userRole}
+        loading={loading}
       />
 
-      {/* Hero Section */}
-      <HeroSection onSignUp={handleSignUp} />
+      {/* Hero Section - Updated to use auth state */}
+      <HeroSection 
+        onSignUp={handleSignUp} 
+        isAuthenticated={isAuthenticated}
+        userRole={userRole}
+        onNavigate={handleAuthenticatedNavigation}
+      />
 
       {/* Problem & Solution Section */}
       <ProblemSolutionSection />

@@ -4,15 +4,17 @@ import { supabase } from '../lib/supabase';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  adminOnly?: boolean;
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
 
   useEffect(() => {
     checkAccess();
-  }, []);
+  }, [adminOnly]);
 
   const checkAccess = async () => {
     try {
@@ -27,10 +29,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         return;
       }
 
-      // Check if user's company has active subscription
+      // Get user profile with role
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
-        .select('company_id')
+        .select('company_id, role_type')
         .eq('id', user.id)
         .single();
       
@@ -44,9 +46,20 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         return;
       }
 
+      // Store the user's role
+      setUserRole(profile.role_type);
+
+      // Check admin-only routes
+      if (adminOnly && profile.role_type !== 'admin') {
+        console.log('ProtectedRoute - Admin access required but user is:', profile.role_type);
+        setHasAccess(false);
+        setLoading(false);
+        return;
+      }
+
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('subscription_status, trial_ends_at')
+        .select('subscription_status, trial_ends_at, subscription_active')
         .eq('id', profile.company_id)
         .single();
 
@@ -58,15 +71,19 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       const trialEndsAt = company?.trial_ends_at ? new Date(company.trial_ends_at) : null;
       
       console.log('ProtectedRoute - Subscription Status:', company?.subscription_status);
+      console.log('ProtectedRoute - Subscription Active:', company?.subscription_active);
       console.log('ProtectedRoute - Trial Ends At:', trialEndsAt);
       console.log('ProtectedRoute - Now:', now);
       
-      if (company?.subscription_status === 'active' || 
-          (company?.subscription_status === 'trialing' && trialEndsAt && trialEndsAt > now)) {
+      // Check if they have access (active subscription or valid trial)
+      const hasValidSubscription = company?.subscription_active === true;
+      const hasValidTrial = trialEndsAt && trialEndsAt > now;
+      
+      if (hasValidSubscription || hasValidTrial) {
         console.log('ProtectedRoute - Access GRANTED');
         setHasAccess(true);
       } else {
-        console.log('ProtectedRoute - Access DENIED');
+        console.log('ProtectedRoute - Access DENIED - No valid subscription or trial');
         setHasAccess(false);
       }
     } catch (error) {
@@ -85,7 +102,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // Different redirects based on the reason for denial
   if (!hasAccess) {
+    // If it's an admin-only route and user is junior, redirect to calculator
+    if (adminOnly && userRole === 'junior') {
+      return <Navigate to="/calculator" replace />;
+    }
+    // Otherwise redirect to pricing (no subscription or not logged in)
     return <Navigate to="/pricing" replace />;
   }
 

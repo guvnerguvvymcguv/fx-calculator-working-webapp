@@ -6,11 +6,22 @@ interface NavbarProps {
   isSignedIn: boolean;
   onSignIn: () => void;
   onSignOut: () => void;
+  userRole?: 'admin' | 'junior' | null;
+  loading?: boolean;
 }
 
-export function Navbar({ isSignedIn, onSignIn, onSignOut }: NavbarProps) {
+export function Navbar({ isSignedIn, onSignIn, onSignOut, userRole, loading }: NavbarProps) {
   const handleHomeClick = () => {
     window.location.href = '/';
+  };
+
+  // Determine button text based on auth state and role
+  const getAuthButtonText = () => {
+    if (loading) return 'Loading...';
+    if (!isSignedIn) return 'Sign In';
+    if (userRole === 'admin') return 'Dashboard';
+    if (userRole === 'junior') return 'Calculator';
+    return 'Sign In';
   };
 
   return (
@@ -44,21 +55,35 @@ export function Navbar({ isSignedIn, onSignIn, onSignOut }: NavbarProps) {
               </Button>
             </Link>
             
-            {isSignedIn ? (
-              <Button 
-                onClick={onSignOut}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-2 rounded-lg hover:shadow-purple-500/25 transition-all duration-200"
-              >
-                Sign Out
-              </Button>
-            ) : (
-              <Button 
-                onClick={onSignIn}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-2 rounded-lg hover:shadow-purple-500/25 transition-all duration-200"
-              >
-                Sign In
-              </Button>
-            )}
+            {/* Auth Button Group */}
+            <div className="flex items-center gap-2">
+              {isSignedIn && userRole ? (
+                <>
+                  <Button 
+                    onClick={onSignIn}
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-2 rounded-lg hover:shadow-purple-500/25 transition-all duration-200"
+                    disabled={loading}
+                  >
+                    {getAuthButtonText()}
+                  </Button>
+                  <Button 
+                    onClick={onSignOut}
+                    variant="ghost"
+                    className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  onClick={onSignIn}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-2 rounded-lg hover:shadow-purple-500/25 transition-all duration-200"
+                  disabled={loading}
+                >
+                  {getAuthButtonText()}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
