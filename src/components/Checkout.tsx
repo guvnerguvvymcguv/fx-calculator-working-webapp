@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ArrowLeft, CreditCard, Check } from 'lucide-react';
+import { ArrowLeft, CreditCard, Check, Plus, Minus, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function Checkout() {
@@ -11,6 +11,14 @@ export default function Checkout() {
   const [processing, setProcessing] = useState(false);
   const [company, setCompany] = useState<any>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [seatChanges, setSeatChanges] = useState({
+    adminSeats: 0,
+    juniorSeats: 0
+  });
+  const [currentMembers, setCurrentMembers] = useState({
+    adminCount: 0,
+    juniorCount: 0
+  });
 
   useEffect(() => {
     fetchCompanyData();
@@ -48,6 +56,35 @@ export default function Checkout() {
         .eq('id', profile.company_id)
         .single();
 
+      // Fetch current team members to get actual counts
+      const { data: members } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('is_active', true);
+
+      const adminCount = members?.filter(m => m.role_type === 'admin').length || 0;
+      const juniorCount = members?.filter(m => m.role_type === 'junior').length || 0;
+
+      setCurrentMembers({
+        adminCount,
+        juniorCount
+      });
+
+      // Get allocated seats from company data or use current members as baseline
+      let allocatedAdminSeats = companyData?.admin_seats || 0;
+      let allocatedJuniorSeats = companyData?.junior_seats || 0;
+      
+      if (allocatedAdminSeats === 0 && allocatedJuniorSeats === 0) {
+        allocatedAdminSeats = Math.max(1, adminCount);
+        allocatedJuniorSeats = Math.max(10, juniorCount);
+      }
+
+      setSeatChanges({
+        adminSeats: allocatedAdminSeats,
+        juniorSeats: allocatedJuniorSeats
+      });
+
       setCompany(companyData);
     } catch (error) {
       console.error('Error fetching company:', error);
@@ -56,10 +93,44 @@ export default function Checkout() {
     }
   };
 
+  const calculatePricePerSeat = (totalSeats: number) => {
+    if (totalSeats <= 14) return 30;
+    if (totalSeats <= 29) return 27;
+    return 24;
+  };
+
+  const calculateMonthlyPrice = (totalSeats: number) => {
+    return totalSeats * calculatePricePerSeat(totalSeats);
+  };
+
+  const handleSeatChange = (type: 'admin' | 'junior', change: number) => {
+    setSeatChanges(prev => {
+      const newValue = type === 'admin' 
+        ? Math.max(1, prev.adminSeats + change) // At least 1 admin
+        : Math.max(0, prev.juniorSeats + change);
+      
+      // Ensure we don't go below current member count
+      if (type === 'admin' && newValue < currentMembers.adminCount) {
+        alert(`You have ${currentMembers.adminCount} active admin(s). You cannot reduce below this number.`);
+        return prev;
+      }
+      if (type === 'junior' && newValue < currentMembers.juniorCount) {
+        alert(`You have ${currentMembers.juniorCount} active junior broker(s). You cannot reduce below this number.`);
+        return prev;
+      }
+      
+      return {
+        ...prev,
+        [type === 'admin' ? 'adminSeats' : 'juniorSeats']: newValue
+      };
+    });
+  };
+
+  const totalSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
+  const monthlyPrice = calculateMonthlyPrice(totalSeats);
+  const pricePerSeat = calculatePricePerSeat(totalSeats);
+
   const calculatePrice = () => {
-    if (!company) return { subtotal: 0, vat: 0, total: 0 };
-    
-    const monthlyPrice = company.subscription_price || 0;
     let subtotal = monthlyPrice;
     
     if (billingPeriod === 'annual') {
@@ -82,12 +153,30 @@ export default function Checkout() {
         navigate('/login');
         return;
       }
+
+      // Update company with new seat allocation before checkout
+      const { error: updateError } = await supabase
+        .from('companies')
+        .update({
+          subscription_seats: totalSeats,
+          subscription_price: monthlyPrice,
+          admin_seats: seatChanges.adminSeats,
+          junior_seats: seatChanges.juniorSeats,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', company.id);
+
+      if (updateError) {
+        throw new Error('Failed to update seat allocation');
+      }
       
       console.log('Starting checkout with:', {
         companyId: company.id,
         billingPeriod,
-        seatCount: company.subscription_seats,
-        pricePerMonth: company.subscription_price
+        seatCount: totalSeats,
+        pricePerMonth: monthlyPrice,
+        adminSeats: seatChanges.adminSeats,
+        juniorSeats: seatChanges.juniorSeats
       });
       
       // Call your Stripe checkout edge function
@@ -95,8 +184,8 @@ export default function Checkout() {
         body: {
           companyId: company.id,
           billingPeriod,
-          seatCount: company.subscription_seats,
-          pricePerMonth: company.subscription_price
+          seatCount: totalSeats,
+          pricePerMonth: monthlyPrice
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -129,7 +218,7 @@ export default function Checkout() {
     </div>;
   }
 
-  const { total } = calculatePrice();
+  const { subtotal, vat, total } = calculatePrice();
 
   return (
     <div className="min-h-screen bg-[#10051A] p-8">
@@ -144,6 +233,122 @@ export default function Checkout() {
         </Button>
 
         <h1 className="text-3xl font-bold text-white mb-8">Complete Your Subscription</h1>
+
+        {/* Seat Management */}
+        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Users className="h-5 w-5 text-purple-400" />
+              Configure Your Seats
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Admin Seats */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white font-medium">Admin Seats</p>
+                <p className="text-gray-400 text-sm">Full dashboard access</p>
+                {currentMembers.adminCount > 0 && (
+                  <p className="text-xs text-purple-400 mt-1">
+                    Currently have {currentMembers.adminCount} active admin(s)
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSeatChange('admin', -1)}
+                  disabled={seatChanges.adminSeats <= 1 || seatChanges.adminSeats <= currentMembers.adminCount}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-white text-xl w-12 text-center">
+                  {seatChanges.adminSeats}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSeatChange('admin', 1)}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Junior Seats */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white font-medium">Junior Broker Seats</p>
+                <p className="text-gray-400 text-sm">Calculator access only</p>
+                {currentMembers.juniorCount > 0 && (
+                  <p className="text-xs text-purple-400 mt-1">
+                    Currently have {currentMembers.juniorCount} active junior broker(s)
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSeatChange('junior', -1)}
+                  disabled={seatChanges.juniorSeats <= 0 || seatChanges.juniorSeats <= currentMembers.juniorCount}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <span className="text-white text-xl w-12 text-center">
+                  {seatChanges.juniorSeats}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleSeatChange('junior', 1)}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Pricing Summary */}
+            <div className="border-t border-gray-700 pt-4 space-y-2">
+              <div className="flex justify-between text-gray-400">
+                <span>Total seats:</span>
+                <span>{totalSeats}</span>
+              </div>
+              <div className="flex justify-between text-gray-400">
+                <span>Price per seat:</span>
+                <span>£{pricePerSeat}/month</span>
+              </div>
+              <div className="flex justify-between text-white font-semibold">
+                <span>Monthly price:</span>
+                <span>£{monthlyPrice}</span>
+              </div>
+              
+              {/* Discount Tiers Info */}
+              <div className="mt-4 p-3 bg-gray-800/50 rounded">
+                <p className="text-purple-400 text-sm mb-2">Pricing Tiers:</p>
+                <div className="space-y-1 text-sm">
+                  <div className={`flex justify-between ${totalSeats <= 14 ? 'text-purple-300' : 'text-gray-500'}`}>
+                    <span>1-14 seats:</span>
+                    <span>£30/seat/month</span>
+                  </div>
+                  <div className={`flex justify-between ${totalSeats >= 15 && totalSeats <= 29 ? 'text-purple-300' : 'text-gray-500'}`}>
+                    <span>15-29 seats:</span>
+                    <span>£27/seat/month (10% off)</span>
+                  </div>
+                  <div className={`flex justify-between ${totalSeats >= 30 ? 'text-purple-300' : 'text-gray-500'}`}>
+                    <span>30+ seats:</span>
+                    <span>£24/seat/month (20% off)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Billing Period Selection */}
         <div className="grid grid-cols-2 gap-4 mb-8">
@@ -161,7 +366,7 @@ export default function Checkout() {
                   <h3 className="text-white font-semibold text-lg">Monthly</h3>
                   <p className="text-gray-400 text-sm mt-1">Pay as you go</p>
                   <p className="text-white text-2xl font-bold mt-3">
-                    £{company?.subscription_price}/month
+                    £{monthlyPrice}/month
                   </p>
                 </div>
                 {billingPeriod === 'monthly' && (
@@ -185,7 +390,7 @@ export default function Checkout() {
                   <h3 className="text-white font-semibold text-lg">Annual</h3>
                   <p className="text-green-400 text-sm mt-1">Save 10%</p>
                   <p className="text-white text-2xl font-bold mt-3">
-                    £{(company?.subscription_price * 12 * 0.9 / 12).toFixed(0)}/month
+                    £{(monthlyPrice * 0.9).toFixed(0)}/month
                   </p>
                   <p className="text-gray-400 text-xs">Billed annually</p>
                 </div>
@@ -204,23 +409,27 @@ export default function Checkout() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between text-gray-400">
-              <span>{company?.subscription_seats} seats × {billingPeriod === 'monthly' ? '1 month' : '12 months'}</span>
-              <span>£{total.toFixed(2)}</span>
+              <span>{totalSeats} seats × {billingPeriod === 'monthly' ? '1 month' : '12 months'}</span>
+              <span>£{subtotal.toFixed(2)}</span>
             </div>
             {billingPeriod === 'annual' && (
               <div className="flex justify-between text-green-400">
                 <span>Annual discount (10%)</span>
-                <span>-£{(company?.subscription_price * 12 * 0.1).toFixed(2)}</span>
+                <span>-£{(monthlyPrice * 12 * 0.1).toFixed(2)}</span>
               </div>
             )}
+            <div className="flex justify-between text-gray-400">
+              <span>VAT (20%)</span>
+              <span>£{vat.toFixed(2)}</span>
+            </div>
             <div className="border-t border-gray-700 pt-3 flex justify-between text-white text-lg font-semibold">
               <span>Total</span>
               <span>£{total.toFixed(2)}</span>
             </div>
             <p className="text-gray-400 text-sm">
               {billingPeriod === 'monthly' 
-                ? 'Charged monthly to your card (inc. 20% VAT)' 
-                : 'One-time payment for 12 months (inc. 20% VAT)'}
+                ? 'Charged monthly to your card' 
+                : 'One-time payment for 12 months'}
             </p>
           </CardContent>
         </Card>
