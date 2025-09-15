@@ -203,7 +203,7 @@ export default function AccountManagement() {
   const removeMember = async (memberId: string) => {
     console.log('removeMember called with ID:', memberId);
     
-    if (!confirm('Are you sure you want to permanently delete this member? This action cannot be undone.')) {
+    if (!confirm('Are you sure you want to permanently delete this member? This will also delete all their activity history. This action cannot be undone.')) {
       console.log('User cancelled deletion');
       return;
     }
@@ -211,7 +211,19 @@ export default function AccountManagement() {
     console.log('User confirmed deletion, proceeding...');
 
     try {
-      // Remove the member
+      // First, delete all activity logs for this user
+      console.log('Deleting activity logs for user...');
+      const { error: logsError } = await supabase
+        .from('activity_logs')
+        .delete()
+        .eq('user_id', memberId);
+
+      if (logsError) {
+        console.error('Error deleting activity logs:', logsError);
+        throw logsError;
+      }
+
+      // Now delete the user profile
       console.log('Attempting to delete member from user_profiles...');
       const { data, error } = await supabase
         .from('user_profiles')
@@ -232,9 +244,8 @@ export default function AccountManagement() {
         throw error;
       }
       
-      // Don't update subscription seats on member removal - just remove the member
       console.log('Member removed successfully, refreshing data...');
-      alert('Member removed successfully');
+      alert('Member and all activity history removed successfully');
       await fetchAccountData();
     } catch (error) {
       console.error('Error removing member - Full error object:', error);
