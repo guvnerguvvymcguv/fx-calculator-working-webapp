@@ -152,7 +152,7 @@ export default function CalculatorPage() {
       if (success) {
         console.log('Calculation saved successfully');
         
-        // Log to activity_logs table
+        // Log to activity_logs table with ALL fields needed for export
         const { error: logError } = await supabase
           .from('activity_logs')
           .insert({
@@ -172,8 +172,18 @@ export default function CalculatorPage() {
             your_rate: yourRateWithPips,
             competitor_rate: competitorRateFloat,
             amount: parseFloat(calculator.tradeAmount),
+            amount_to_buy: parseFloat(calculator.tradeAmount),
+            trades_per_year: parseInt(calculator.tradesPerYear),
+            payment_amount: calculator.selectedPips,
             pips_difference: pipsDifference,
-            savings_amount: savingsPerTrade
+            savings_amount: savingsPerTrade,
+            cost_with_competitor: costWithCompetitor,
+            cost_with_us: costWithUs,
+            savings_per_trade: savingsPerTrade,
+            annual_savings: annualSavings,
+            percentage_savings: percentageSavings,
+            comparison_date: calculator.comparisonDate,
+            price_difference: parseFloat(results.priceDifference)
           });
 
         if (logError) {
