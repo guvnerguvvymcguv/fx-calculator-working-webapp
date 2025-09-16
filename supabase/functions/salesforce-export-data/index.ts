@@ -7,6 +7,89 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+async function refreshSalesforceToken(sfConnection: any, supabase: any) {
+  const refreshResponse = await fetch(
+    'https://login.salesforce.com/services/oauth2/token',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: sfConnection.refresh_token,
+        client_id: Deno.env.get('SALESFORCE_CLIENT_ID')!,
+        client_secret: Deno.env.get('SALESFORCE_CLIENT_SECRET')!,
+      }),
+    }
+  )
+
+  if (!refreshResponse.ok) {
+    throw new Error('Failed to refresh token')
+  }
+
+  const newTokens = await refreshResponse.json()
+  
+  // Update the stored tokens
+  await supabase
+    .from('salesforce_connections')
+    .update({
+      access_token: newTokens.access_token,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', sfConnection.id)
+
+  return newTokens.access_token
+}
+
+async function postToSalesforce(sfConnection: any, chatterPost: any, supabase: any) {
+  let accessToken = sfConnection.access_token
+  
+  // First attempt
+  let salesforceResponse = await fetch(
+    `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(chatterPost)
+    }
+  )
+
+  // If token expired, refresh and retry
+  if (!salesforceResponse.ok) {
+    const errorText = await salesforceResponse.text()
+    if (errorText.includes('INVALID_SESSION_ID') || errorText.includes('Session expired')) {
+      console.log('Token expired, refreshing...')
+      accessToken = await refreshSalesforceToken(sfConnection, supabase)
+      
+      // Retry with new token
+      salesforceResponse = await fetch(
+        `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chatterPost)
+        }
+      )
+      
+      if (!salesforceResponse.ok) {
+        const error = await salesforceResponse.text()
+        throw new Error(`Salesforce API error after refresh: ${error}`)
+      }
+    } else {
+      throw new Error(`Salesforce API error: ${errorText}`)
+    }
+  }
+
+  return salesforceResponse.json()
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -62,7 +145,7 @@ serve(async (req) => {
       return acc
     }, {})
 
-    // Fetch user names - FIX: use different variable name
+    // Fetch user names
     const userIdsToFetch = Object.keys(userCalculations)
     const { data: users } = await supabase
       .from('user_profiles')
@@ -120,25 +203,8 @@ serve(async (req) => {
       subjectId: sfConnection.user_id
     }
 
-    // Post to Salesforce Chatter
-    const salesforceResponse = await fetch(
-      `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${sfConnection.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(chatterPost)
-      }
-    )
-
-    if (!salesforceResponse.ok) {
-      const error = await salesforceResponse.text()
-      throw new Error(`Salesforce API error: ${error}`)
-    }
-
-    const result = await salesforceResponse.json()
+    // Post to Salesforce with automatic retry on token expiration
+    const result = await postToSalesforce(sfConnection, chatterPost, supabase)
 
     return new Response(
       JSON.stringify({ success: true, result }),

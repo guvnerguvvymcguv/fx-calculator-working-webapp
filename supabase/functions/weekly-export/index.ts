@@ -30,11 +30,70 @@ async function refreshSalesforceToken(supabase: any, sfConnection: any) {
     .from('salesforce_connections')
     .update({
       access_token: newTokens.access_token,
-      last_sync: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
-    .eq('company_id', sfConnection.company_id);
+    .eq('id', sfConnection.id);
 
   return newTokens.access_token;
+}
+
+async function postToSalesforce(sfConnection: any, messageText: string, supabase: any) {
+  const chatterPost = {
+    body: {
+      messageSegments: [
+        {
+          type: 'Text',
+          text: messageText
+        }
+      ]
+    },
+    feedElementType: 'FeedItem',
+    subjectId: sfConnection.user_id
+  };
+
+  // Try to post to Salesforce
+  let salesforceResponse = await fetch(
+    `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sfConnection.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(chatterPost)
+    }
+  );
+
+  // If token expired, refresh and retry
+  if (!salesforceResponse.ok) {
+    const errorText = await salesforceResponse.text();
+    if (errorText.includes('INVALID_SESSION_ID') || errorText.includes('Session expired') || salesforceResponse.status === 401) {
+      console.log('Token expired, refreshing...');
+      const newAccessToken = await refreshSalesforceToken(supabase, sfConnection);
+      
+      // Retry with new token
+      salesforceResponse = await fetch(
+        `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${newAccessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chatterPost)
+        }
+      );
+      
+      if (!salesforceResponse.ok) {
+        const error = await salesforceResponse.text();
+        throw new Error(`Salesforce API error after refresh: ${error}`);
+      }
+    } else {
+      throw new Error(`Salesforce API error: ${errorText}`);
+    }
+  }
+
+  return salesforceResponse.json();
 }
 
 serve(async (_req) => {
@@ -72,10 +131,10 @@ serve(async (_req) => {
         const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - 7);
         
-        // Get all calculations from calculations table (not activity_logs)
+        // Get all calculations from calculations table
         const { data: calculations } = await supabase
           .from('calculations')
-          .select('*, user_profiles!inner(full_name, email)')
+          .select('*')
           .eq('company_id', schedule.company_id)
           .gte('created_at', weekStart.toISOString())
           .lte('created_at', now.toISOString())
@@ -85,72 +144,70 @@ serve(async (_req) => {
           console.log(`No calculations found for company ${schedule.company_id} in the last week`);
           
           // Still post a message saying no calculations
-          const messageText = `📊 SpreadChecker Export (${weekStart.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
-
-No calculations recorded this week.
-
-Encourage your team to use SpreadChecker to track all FX calculations and identify savings opportunities.`;
+          const messageText = `📊 SpreadChecker Weekly Export - ${now.toLocaleDateString('en-GB')}\n\n` +
+            `Period: ${weekStart.toLocaleDateString('en-GB')} - ${now.toLocaleDateString('en-GB')}\n\n` +
+            `No calculations recorded this week.\n\n` +
+            `Encourage your team to use SpreadChecker to track all FX calculations and identify savings opportunities.`;
 
           await postToSalesforce(sfConnection, messageText, supabase);
         } else {
-          // Calculate team statistics
-          const totalTradeValue = calculations.reduce((sum, calc) => {
-            const data = calc.calculation_data || {};
-            return sum + (data.trade_amount || 0);
-          }, 0);
-          const avgTradeValue = totalTradeValue / calculations.length;
+          // Format the data for Salesforce
+          let messageText = `📊 SpreadChecker Weekly Export - ${now.toLocaleDateString('en-GB')}\n\n`
+          messageText += `Period: ${weekStart.toLocaleDateString('en-GB')} - ${now.toLocaleDateString('en-GB')}\n`
+          messageText += `Total Calculations: ${calculations.length}\n\n`
 
           // Group calculations by user
-          const userGroups: Record<string, any[]> = {};
-          calculations.forEach(calc => {
-            const userName = calc.user_profiles?.full_name || calc.user_profiles?.email || 'Unknown';
-            if (!userGroups[userName]) {
-              userGroups[userName] = [];
+          const userCalculations = calculations.reduce((acc: any, calc) => {
+            if (!acc[calc.user_id]) {
+              acc[calc.user_id] = []
             }
-            userGroups[userName].push(calc);
-          });
+            acc[calc.user_id].push(calc)
+            return acc
+          }, {})
 
-          // Build the detailed message
-          let messageText = `📊 SpreadChecker Export (${weekStart.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+          // Fetch user names
+          const userIdsToFetch = Object.keys(userCalculations)
+          const { data: users } = await supabase
+            .from('user_profiles')
+            .select('id, full_name, email')
+            .in('id', userIdsToFetch)
 
-Avg Trade Value: £${Math.round(avgTradeValue).toLocaleString()}
-Amt Calculations: ${calculations.length}
+          const userMap = users?.reduce((acc: any, user) => {
+            acc[user.id] = user.full_name || user.email
+            return acc
+          }, {}) || {}
 
-`;
-
-          // Add each user's calculations
-          for (const [userName, userCalcs] of Object.entries(userGroups)) {
-            messageText += `${userName}\n`;
+          // Format each user's calculations with all the detailed fields
+          for (const [userId, userCalcs] of Object.entries(userCalculations)) {
+            const userName = userMap[userId] || 'Unknown User'
+            messageText += `\n👤 ${userName}\n`
+            messageText += `─────────────────\n`
             
-            userCalcs.forEach((calc, index) => {
-              const data = calc.calculation_data || {};
-              const timestamp = new Date(calc.created_at).toLocaleString('en-GB', { 
+            for (const calc of userCalcs as any[]) {
+              const time = new Date(calc.created_at).toLocaleTimeString('en-GB', { 
                 hour: '2-digit', 
-                minute: '2-digit',
+                minute: '2-digit' 
+              })
+              const date = new Date(calc.created_at).toLocaleDateString('en-GB', {
                 day: '2-digit',
                 month: '2-digit'
-              });
+              })
               
-              // Format calculation details
-              messageText += `${index + 1}. [${timestamp}] Calculation\n`;
-              messageText += `CP ${data.currency_pair} | YR ${data.your_rate?.toFixed(4)} | CR ${data.competitor_rate?.toFixed(4)} | CN ${data.client_name || 'N/A'} | CD ${new Date(data.comparison_date || calc.created_at).toLocaleDateString('en-GB')} | ATB £${(data.trade_amount || 0).toLocaleString()} | TPY ${data.trades_per_year || 0} | PA ${data.pips_added || 0}\n`;
-              
-              // Format results with emojis
-              const costWithComp = data.cost_with_competitor?.toFixed(2) || '0';
-              const costWithUs = data.cost_with_us?.toFixed(2) || '0';
-              const savingsPerTrade = data.savings_per_trade?.toFixed(2) || '0';
-              const annualSavings = data.annual_savings?.toFixed(2) || '0';
-              const percentSavings = data.percentage_savings?.toFixed(2) || '0';
-              
-              messageText += `Results\n`;
-              messageText += `PD ${data.price_difference || '0'} | Pips ${data.difference_in_pips || 0} | `;
-              messageText += `❌ CWC £${costWithComp} | ✅ CWU £${costWithUs} | `;
-              messageText += `✅ SVT £${savingsPerTrade} | ✅ AS £${annualSavings} | ✅ PS ${percentSavings}%\n\n`;
-            });
+              // Format using abbreviations with all the new fields
+              messageText += `\n[${time} ${date}]\n`
+              messageText += `CP ${calc.currency_pair} | YR ${calc.your_rate} | CR ${calc.competitor_rate} | `
+              messageText += `CN ${calc.client_name || 'N/A'} | CD ${calc.comparison_date || date} | `
+              messageText += `ATB £${calc.amount_to_buy || 0} | TPY ${calc.trades_per_year || 0} | PA ${calc.payment_amount || 0}\n`
+              messageText += `Results\n`
+              messageText += `PD ${calc.price_difference >= 0 ? '+' : ''}${calc.price_difference || 0} | `
+              messageText += `Pips ${calc.pips_difference || 0} | `
+              messageText += `❌ CWC £${calc.cost_with_competitor?.toFixed(2) || 0} | `
+              messageText += `✅ CWU £${calc.cost_with_us?.toFixed(2) || 0} | `
+              messageText += `✅ SVT £${calc.savings_per_trade?.toFixed(2) || 0} | `
+              messageText += `✅ AS £${calc.annual_savings?.toFixed(2) || 0} | `
+              messageText += `✅ PS ${calc.percentage_savings?.toFixed(2) || 0}%\n`
+            }
           }
-
-          // Add footer
-          messageText += `\nKeep up the great work! View detailed analytics in SpreadChecker dashboard.`;
 
           // Truncate if too long for Salesforce (max 10,000 characters)
           if (messageText.length > 9900) {
@@ -178,57 +235,3 @@ Amt Calculations: ${calculations.length}
 
   return new Response('Weekly exports completed', { status: 200 });
 });
-
-async function postToSalesforce(sfConnection: any, messageText: string, supabase: any) {
-  const chatterPost = {
-    body: {
-      messageSegments: [
-        {
-          type: 'Text',
-          text: messageText
-        }
-      ]
-    },
-    feedElementType: 'FeedItem',
-    subjectId: sfConnection.user_id
-  };
-
-  // Try to post to Salesforce
-  let salesforceResponse = await fetch(
-    `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${sfConnection.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(chatterPost)
-    }
-  );
-
-  // If token expired, refresh and retry
-  if (!salesforceResponse.ok && salesforceResponse.status === 401) {
-    console.log('Token expired, refreshing...');
-    const newAccessToken = await refreshSalesforceToken(supabase, sfConnection);
-    
-    // Retry with new token
-    salesforceResponse = await fetch(
-      `${sfConnection.instance_url}/services/data/v59.0/chatter/feed-elements`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${newAccessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(chatterPost)
-      }
-    );
-  }
-
-  if (!salesforceResponse.ok) {
-    const error = await salesforceResponse.text();
-    throw new Error(`Salesforce API error: ${error}`);
-  }
-
-  return salesforceResponse.json();
-}
