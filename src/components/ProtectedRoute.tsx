@@ -11,6 +11,7 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
+  const [isAccountLocked, setIsAccountLocked] = useState(false);
 
   useEffect(() => {
     checkAccess();
@@ -59,12 +60,21 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
 
       const { data: company, error: companyError } = await supabase
         .from('companies')
-        .select('subscription_status, trial_ends_at, subscription_active')
+        .select('subscription_status, trial_ends_at, subscription_active, account_locked')
         .eq('id', profile.company_id)
         .single();
 
       console.log('ProtectedRoute - Company:', company);
       console.log('ProtectedRoute - Company Error:', companyError);
+
+      // Check if account is locked due to expired trial
+      if (company?.account_locked === true) {
+        console.log('ProtectedRoute - Account is LOCKED due to expired trial');
+        setIsAccountLocked(true);
+        setHasAccess(false);
+        setLoading(false);
+        return;
+      }
 
       // Check if subscription is active or trial is still valid
       const now = new Date();
@@ -104,6 +114,10 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
 
   // Different redirects based on the reason for denial
   if (!hasAccess) {
+    // If account is locked due to expired trial, redirect to checkout
+    if (isAccountLocked) {
+      return <Navigate to="/checkout" replace />;
+    }
     // If it's an admin-only route and user is junior, redirect to calculator
     if (adminOnly && userRole === 'junior') {
       return <Navigate to="/calculator" replace />;

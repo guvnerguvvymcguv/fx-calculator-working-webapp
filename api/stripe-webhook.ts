@@ -89,6 +89,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             stripe_subscription_id: (session.subscription as string) || session.id,
             subscription_started_at: new Date().toISOString(),
             trial_ends_at: new Date().toISOString(), // End trial immediately
+            account_locked: false, // Unlock account if it was locked
+            locked_at: null, // Clear lock timestamp
             updated_at: new Date().toISOString()
           })
           .eq('id', companyId);
@@ -194,6 +196,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .from('companies')
               .update({
                 subscription_status: 'active',
+                account_locked: false, // Ensure account is unlocked on successful payment
+                locked_at: null,
                 updated_at: new Date().toISOString()
               })
               .eq('id', company.id);
