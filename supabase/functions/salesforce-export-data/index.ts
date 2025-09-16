@@ -62,12 +62,12 @@ serve(async (req) => {
       return acc
     }, {})
 
-    // Fetch user names
-    const userIds = Object.keys(userCalculations)
+    // Fetch user names - FIX: use different variable name
+    const userIdsToFetch = Object.keys(userCalculations)
     const { data: users } = await supabase
       .from('user_profiles')
       .select('id, full_name, email')
-      .in('id', userIds)
+      .in('id', userIdsToFetch)
 
     const userMap = users?.reduce((acc: any, user) => {
       acc[user.id] = user.full_name || user.email
