@@ -117,7 +117,7 @@ serve(async (req) => {
 
     // Fetch calculations for the selected users and date range
     const { data: calculations } = await supabase
-      .from('calculations')
+      .from('activity_logs')
       .select('*')
       .in('user_id', userIds)
       .gte('created_at', dateRange.start)

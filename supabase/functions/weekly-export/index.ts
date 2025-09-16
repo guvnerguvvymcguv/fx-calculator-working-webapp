@@ -133,7 +133,7 @@ serve(async (_req) => {
         
         // Get all calculations from calculations table
         const { data: calculations } = await supabase
-          .from('calculations')
+          .from('activity_logs')
           .select('*')
           .eq('company_id', schedule.company_id)
           .gte('created_at', weekStart.toISOString())
