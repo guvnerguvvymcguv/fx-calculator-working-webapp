@@ -96,49 +96,95 @@ async function postToSalesforce(sfConnection: any, messageText: string, supabase
   return salesforceResponse.json();
 }
 
-serve(async (_req) => {
+serve(async (req) => {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
+  // Check if this is a forced run for testing
+  const url = new URL(req.url);
+  const forceRun = url.searchParams.get('force') === 'true';
+
   // Get all active export schedules
-  const { data: schedules } = await supabase
+  const { data: schedules, error: schedulesError } = await supabase
     .from('export_schedules')
     .select('*')
     .eq('is_active', true);
 
+  if (schedulesError) {
+    console.error('Error fetching schedules:', schedulesError);
+    return new Response(JSON.stringify({ error: 'Failed to fetch schedules' }), { status: 500 });
+  }
+
   const now = new Date();
-  const currentDay = now.getDay();
-  const currentHour = now.getHours();
+  // IMPORTANT: Use UTC methods for consistent timezone handling
+  const currentDay = now.getUTCDay();
+  const currentHour = now.getUTCHours();
+
+  console.log('=== Weekly Export Check ===');
+  console.log('Current UTC time:', now.toISOString());
+  console.log('UTC Day:', currentDay, 'UTC Hour:', currentHour);
+  console.log('Force run:', forceRun);
+  console.log('Active schedules found:', schedules?.length || 0);
 
   for (const schedule of schedules || []) {
-    if (schedule.day_of_week === currentDay && schedule.hour === currentHour) {
+    console.log(`\nChecking schedule ID ${schedule.id}:`);
+    console.log(`  Scheduled: Day ${schedule.day_of_week} Hour ${schedule.hour}`);
+    console.log(`  Current:   Day ${currentDay} Hour ${currentHour}`);
+    
+    // Check if should run (either matches schedule OR force run)
+    const shouldRun = forceRun || (schedule.day_of_week === currentDay && schedule.hour === currentHour);
+    
+    if (shouldRun) {
+      console.log('✅ Should run! Processing...');
+      
+      // Check if already ran this hour (unless forced)
+      if (!forceRun && schedule.last_run) {
+        const lastRun = new Date(schedule.last_run);
+        if (lastRun.getUTCFullYear() === now.getUTCFullYear() &&
+            lastRun.getUTCMonth() === now.getUTCMonth() &&
+            lastRun.getUTCDate() === now.getUTCDate() &&
+            lastRun.getUTCHours() === now.getUTCHours()) {
+          console.log('Already ran this hour, skipping...');
+          continue;
+        }
+      }
+      
       try {
         // Get Salesforce connection for this company
-        const { data: sfConnection } = await supabase
+        const { data: sfConnection, error: sfError } = await supabase
           .from('salesforce_connections')
           .select('*')
           .eq('company_id', schedule.company_id)
           .single();
 
-        if (!sfConnection) {
-          console.error(`No Salesforce connection found for company ${schedule.company_id}`);
+        if (sfError || !sfConnection) {
+          console.error(`No Salesforce connection found for company ${schedule.company_id}:`, sfError);
           continue;
         }
+
+        console.log('Found Salesforce connection');
 
         // Generate export for this company - last 7 days
         const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - 7);
         
-        // Get all calculations from calculations table
-        const { data: calculations } = await supabase
+        // Get all calculations from activity_logs table
+        const { data: calculations, error: calcError } = await supabase
           .from('activity_logs')
           .select('*')
           .eq('company_id', schedule.company_id)
           .gte('created_at', weekStart.toISOString())
           .lte('created_at', now.toISOString())
           .order('created_at', { ascending: false });
+
+        if (calcError) {
+          console.error('Error fetching calculations:', calcError);
+          continue;
+        }
+
+        console.log(`Found ${calculations?.length || 0} calculations`);
 
         if (!calculations || calculations.length === 0) {
           console.log(`No calculations found for company ${schedule.company_id} in the last week`);
@@ -150,6 +196,7 @@ serve(async (_req) => {
             `Encourage your team to use SpreadChecker to track all FX calculations and identify savings opportunities.`;
 
           await postToSalesforce(sfConnection, messageText, supabase);
+          console.log('Posted "no calculations" message to Salesforce');
         } else {
           // Format the data for Salesforce
           let messageText = `📊 SpreadChecker Weekly Export - ${now.toLocaleDateString('en-GB')}\n\n`
@@ -215,6 +262,7 @@ serve(async (_req) => {
           }
 
           await postToSalesforce(sfConnection, messageText, supabase);
+          console.log('Successfully posted calculations to Salesforce');
         }
 
         // Update last_run timestamp
@@ -226,12 +274,17 @@ serve(async (_req) => {
           })
           .eq('id', schedule.id);
 
-        console.log(`Successfully exported data for company ${schedule.company_id}`);
+        console.log(`✅ Successfully exported data for company ${schedule.company_id}`);
       } catch (error) {
-        console.error(`Error processing schedule for company ${schedule.company_id}:`, error);
+        console.error(`❌ Error processing schedule for company ${schedule.company_id}:`, error);
       }
+    } else {
+      console.log('❌ Schedule does not match, skipping');
     }
   }
 
-  return new Response('Weekly exports completed', { status: 200 });
+  return new Response(JSON.stringify({ message: 'Weekly exports completed', forceRun }), { 
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  });
 });
