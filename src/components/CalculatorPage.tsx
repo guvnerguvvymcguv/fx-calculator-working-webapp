@@ -82,13 +82,59 @@ export default function CalculatorPage() {
       // Get user profile for company_id
       const profile = await getUserProfile(currentUser.id);
       
-      // Calculate values for activity log
+      // Calculate all values needed for export
       const yourRateWithPips = parseFloat(calculator.yourRate) + (calculator.selectedPips / 10000);
       const competitorRateFloat = parseFloat(calculator.competitorRate);
+      const tradeAmountFloat = parseFloat(calculator.tradeAmount);
       const pipsDifference = Math.round((yourRateWithPips - competitorRateFloat) * 10000);
-      const savingsPerTrade = parseFloat(results.savingsPerTrade.replace(/[^0-9.-]/g, ''));
+      const costWithCompetitor = tradeAmountFloat / competitorRateFloat;
+      const costWithUs = tradeAmountFloat / yourRateWithPips;
+      const savingsPerTrade = Math.abs(costWithUs - costWithCompetitor);
+      const annualSavings = savingsPerTrade * parseInt(calculator.tradesPerYear);
+      const percentageSavings = (savingsPerTrade / costWithCompetitor) * 100;
       
-      // Save calculation to database
+      // Save complete calculation data to calculations table
+      const { error: calcError } = await supabase
+        .from('calculations')
+        .insert({
+          user_id: currentUser.id,
+          company_id: profile?.company_id,
+          calculation_data: {
+            currency_pair: selectedPair,
+            your_rate: parseFloat(calculator.yourRate),
+            competitor_rate: competitorRateFloat,
+            client_name: calculator.competitorName,
+            comparison_date: calculator.comparisonDate,
+            trade_amount: tradeAmountFloat,
+            trades_per_year: parseInt(calculator.tradesPerYear),
+            pips_added: calculator.selectedPips,
+            // Results
+            price_difference: results.priceDifference,
+            difference_in_pips: pipsDifference,
+            cost_with_competitor: costWithCompetitor,
+            cost_with_us: costWithUs,
+            savings_per_trade: savingsPerTrade,
+            annual_savings: annualSavings,
+            percentage_savings: percentageSavings,
+            is_advantage: results.isAdvantage
+          },
+          trade_details: {
+            your_rate: yourRateWithPips.toFixed(4),
+            trade_amount: tradeAmountFloat,
+            currency_pair: selectedPair,
+            competitor_rate: competitorRateFloat.toFixed(4),
+            trades_per_year: parseInt(calculator.tradesPerYear)
+          },
+          client_name: calculator.competitorName,
+          savings_amount: savingsPerTrade,
+          created_at: new Date().toISOString()
+        });
+
+      if (calcError) {
+        console.error('Failed to save calculation:', calcError);
+      }
+      
+      // Save calculation to database (existing saveCalculation function)
       const calculationData = {
         currencyPair: selectedPair,
         yourRate: parseFloat(calculator.yourRate),

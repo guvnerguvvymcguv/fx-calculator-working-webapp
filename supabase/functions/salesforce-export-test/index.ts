@@ -44,13 +44,23 @@ serve(async (req) => {
       throw new Error('No Salesforce connection found')
     }
 
-    // Create Chatter post
+    // Create Chatter post with preview of new format
     const chatterPost = {
       body: {
         messageSegments: [
           {
             type: 'Text',
-            text: '📊 SpreadChecker Test Post\n\nThis is a test connection from SpreadChecker. Your weekly calculation summaries will appear here.\n\nTest calculation:\n• Client: Test Company\n• Currency: GBP/USD\n• Our Rate: 1.2540\n• Competitor: 1.2530\n• Potential Savings: £520\n• Broker: Test User'
+            text: `📊 SpreadChecker Test Connection Successful!
+
+Your weekly exports will include detailed calculations in this format:
+
+Example Calculation [09:45 16/09]:
+CP GBP/USD | YR 1.2540 | CR 1.2530 | CN Test Corp | CD 16/09/2025 | ATB £500,000 | TPY 52 | PA 10
+Results
+PD +0.0010 | Pips 10 | ❌ CWC £398,882.68 | ✅ CWU £398,406.37 | ✅ SVT £476.31 | ✅ AS £24,768.12 | ✅ PS 0.12%
+
+Weekly exports will be posted here automatically.
+Manual exports can be triggered from your SpreadChecker dashboard.`
           }
         ]
       },

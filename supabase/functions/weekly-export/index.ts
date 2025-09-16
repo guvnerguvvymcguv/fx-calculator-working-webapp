@@ -72,12 +72,11 @@ serve(async (_req) => {
         const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - 7);
         
-        // Get all calculations for the company in the last week
+        // Get all calculations from calculations table (not activity_logs)
         const { data: calculations } = await supabase
-          .from('activity_logs')
-          .select('*')
+          .from('calculations')
+          .select('*, user_profiles!inner(full_name, email)')
           .eq('company_id', schedule.company_id)
-          .eq('action_type', 'calculation')
           .gte('created_at', weekStart.toISOString())
           .lte('created_at', now.toISOString())
           .order('created_at', { ascending: false });
@@ -86,7 +85,7 @@ serve(async (_req) => {
           console.log(`No calculations found for company ${schedule.company_id} in the last week`);
           
           // Still post a message saying no calculations
-          const messageText = `📊 SpreadChecker Weekly Export (${weekStart.toLocaleDateString('en-GB')} - ${now.toLocaleDateString('en-GB')})
+          const messageText = `📊 SpreadChecker Export (${weekStart.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
 
 No calculations recorded this week.
 
@@ -94,60 +93,69 @@ Encourage your team to use SpreadChecker to track all FX calculations and identi
 
           await postToSalesforce(sfConnection, messageText, supabase);
         } else {
-          // Get user details for the calculations
-          const userIds = [...new Set(calculations.map(c => c.user_id))];
-          const { data: users } = await supabase
-            .from('user_profiles')
-            .select('id, full_name, email')
-            .in('id', userIds);
-
-          // Calculate summary statistics
-          const totalCalculations = calculations.length;
-          const totalTradeValue = calculations.reduce((sum, calc) => sum + (parseFloat(calc.amount) || 0), 0);
-          const avgTradeValue = totalTradeValue / totalCalculations;
-          const totalSavings = calculations.reduce((sum, calc) => sum + (parseFloat(calc.savings_per_trade) || 0), 0);
+          // Calculate team statistics
+          const totalTradeValue = calculations.reduce((sum, calc) => {
+            const data = calc.calculation_data || {};
+            return sum + (data.trade_amount || 0);
+          }, 0);
+          const avgTradeValue = totalTradeValue / calculations.length;
 
           // Group calculations by user
-          const userStats = userIds.map(userId => {
-            const userCalcs = calculations.filter(c => c.user_id === userId);
-            const userData = users?.find(u => u.id === userId);
-            const userSavings = userCalcs.reduce((sum, calc) => sum + (parseFloat(calc.savings_per_trade) || 0), 0);
+          const userGroups: Record<string, any[]> = {};
+          calculations.forEach(calc => {
+            const userName = calc.user_profiles?.full_name || calc.user_profiles?.email || 'Unknown';
+            if (!userGroups[userName]) {
+              userGroups[userName] = [];
+            }
+            userGroups[userName].push(calc);
+          });
+
+          // Build the detailed message
+          let messageText = `📊 SpreadChecker Export (${weekStart.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+
+Avg Trade Value: £${Math.round(avgTradeValue).toLocaleString()}
+Amt Calculations: ${calculations.length}
+
+`;
+
+          // Add each user's calculations
+          for (const [userName, userCalcs] of Object.entries(userGroups)) {
+            messageText += `${userName}\n`;
             
-            return {
-              name: userData?.full_name || userData?.email || 'Unknown',
-              calculations: userCalcs.length,
-              savings: userSavings,
-              avgTrade: userCalcs.length > 0 ? userCalcs.reduce((sum, calc) => sum + (parseFloat(calc.amount) || 0), 0) / userCalcs.length : 0
-            };
-          }).filter(u => u.calculations > 0).sort((a, b) => b.calculations - a.calculations);
+            userCalcs.forEach((calc, index) => {
+              const data = calc.calculation_data || {};
+              const timestamp = new Date(calc.created_at).toLocaleString('en-GB', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+              });
+              
+              // Format calculation details
+              messageText += `${index + 1}. [${timestamp}] Calculation\n`;
+              messageText += `CP ${data.currency_pair} | YR ${data.your_rate?.toFixed(4)} | CR ${data.competitor_rate?.toFixed(4)} | CN ${data.client_name || 'N/A'} | CD ${new Date(data.comparison_date || calc.created_at).toLocaleDateString('en-GB')} | ATB £${(data.trade_amount || 0).toLocaleString()} | TPY ${data.trades_per_year || 0} | PA ${data.pips_added || 0}\n`;
+              
+              // Format results with emojis
+              const costWithComp = data.cost_with_competitor?.toFixed(2) || '0';
+              const costWithUs = data.cost_with_us?.toFixed(2) || '0';
+              const savingsPerTrade = data.savings_per_trade?.toFixed(2) || '0';
+              const annualSavings = data.annual_savings?.toFixed(2) || '0';
+              const percentSavings = data.percentage_savings?.toFixed(2) || '0';
+              
+              messageText += `Results\n`;
+              messageText += `PD ${data.price_difference || '0'} | Pips ${data.difference_in_pips || 0} | `;
+              messageText += `❌ CWC £${costWithComp} | ✅ CWU £${costWithUs} | `;
+              messageText += `✅ SVT £${savingsPerTrade} | ✅ AS £${annualSavings} | ✅ PS ${percentSavings}%\n\n`;
+            });
+          }
 
-          // Create Chatter post with weekly data
-          const messageText = `📊 SpreadChecker Weekly Export (${weekStart.toLocaleDateString('en-GB')} - ${now.toLocaleDateString('en-GB')})
+          // Add footer
+          messageText += `\nKeep up the great work! View detailed analytics in SpreadChecker dashboard.`;
 
-WEEKLY PERFORMANCE SUMMARY
-- Total calculations: ${totalCalculations.toLocaleString()}
-- Average trade value: £${Math.round(avgTradeValue).toLocaleString()}
-- Total savings identified: £${Math.round(totalSavings).toLocaleString()}
-
-TOP PERFORMERS THIS WEEK
-${userStats.slice(0, 5).map((user, index) => 
-  `${index + 1}. ${user.name}: ${user.calculations} calcs | £${Math.round(user.savings).toLocaleString()} savings | Avg: £${Math.round(user.avgTrade).toLocaleString()}`
-).join('\n')}
-
-CURRENCY BREAKDOWN
-${Object.entries(
-  calculations.reduce((acc, calc) => {
-    const pair = calc.currency_pair || 'Unknown';
-    acc[pair] = (acc[pair] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>)
-)
-  .sort((a, b) => b[1] - a[1])
-  .slice(0, 5)
-  .map(([pair, count]) => `• ${pair}: ${count} calculations (${Math.round(count / totalCalculations * 100)}%)`)
-  .join('\n')}
-
-Keep up the great work! View detailed analytics in SpreadChecker dashboard.`;
+          // Truncate if too long for Salesforce (max 10,000 characters)
+          if (messageText.length > 9900) {
+            messageText = messageText.substring(0, 9900) + '\n\n[Message truncated - view full details in SpreadChecker]';
+          }
 
           await postToSalesforce(sfConnection, messageText, supabase);
         }
