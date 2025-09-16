@@ -330,7 +330,7 @@ serve(async (req) => {
                       </div>
                       <div class="footer">
                         <p>SpreadChecker Ltd | London, UK<br>
-                        © 2024 SpreadChecker. All rights reserved.</p>
+                        © 2025 SpreadChecker. All rights reserved.</p>
                       </div>
                     </div>
                   </div>

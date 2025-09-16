@@ -166,7 +166,7 @@ serve(async (req) => {
                   </div>
                   <div class="footer">
                     <p>SpreadChecker Ltd | London, UK<br>
-                    © 2024 SpreadChecker. All rights reserved.</p>
+                    © 2025 SpreadChecker. All rights reserved.</p>
                     <p style="margin-top: 10px;">
                       ${subscriptionType === 'monthly' 
                         ? 'You can manage your subscription or cancel anytime from your account settings.' 
