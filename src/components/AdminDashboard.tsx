@@ -425,6 +425,15 @@ export default function AdminDashboard() {
     setExporting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Get the company ID
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user!.id)
+        .single();
+      
       const { start, end } = getExportDateRange();
       
       const response = await supabase.functions.invoke('salesforce-export-data', {
@@ -433,7 +442,8 @@ export default function AdminDashboard() {
           dateRange: {
             start: start.toISOString(),
             end: end.toISOString()
-          }
+          },
+          companyId: profile!.company_id // ADD THIS LINE
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
