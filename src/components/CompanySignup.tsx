@@ -34,82 +34,94 @@ export default function CompanySignup() {
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
     
     if (password.length < minLength) {
-      return "Password must be at least 8 characters long";
+      return 'Password must be at least 8 characters long';
     }
-    if (!hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
-      return "Password must contain uppercase, lowercase, numbers, and special characters";
+    if (!hasUpperCase || !hasLowerCase) {
+      return 'Password must contain both uppercase and lowercase letters';
+    }
+    if (!hasNumbers) {
+      return 'Password must contain at least one number';
+    }
+    if (!hasSpecialChar) {
+      return 'Password must contain at least one special character';
     }
     return null;
   };
   
   const calculatePrice = () => {
     const totalSeats = adminSeats + juniorSeats;
-    const basePrice = 30; // £30 per seat
-    let discount = 0;
+    const pricePerSeat = 30;
+    let discount = '0';
     
     if (totalSeats >= 30) {
-      discount = 0.20; // 20% off
+      discount = '20';
     } else if (totalSeats >= 15) {
-      discount = 0.10; // 10% off
+      discount = '10';
     }
     
-    const pricePerSeat = basePrice * (1 - discount);
-    const totalPrice = pricePerSeat * totalSeats;
+    const basePrice = totalSeats * pricePerSeat;
+    const discountAmount = basePrice * (parseInt(discount) / 100);
+    const totalPrice = (basePrice - discountAmount).toFixed(2);
     
-    return {
-      pricePerSeat: pricePerSeat.toFixed(2),
-      totalPrice: totalPrice.toFixed(2),
-      discount: (discount * 100).toFixed(0),
-      totalSeats
-    };
+    return { totalSeats, discount, totalPrice };
   };
   
   const handleNext = () => {
-    if (step === 1 && companyName && companyDomain) {
-      setStep(2);
+    if (step === 1) {
+      if (!companyName || !companyDomain) {
+        alert('Please fill in all company details');
+        return;
+      }
     } else if (step === 2) {
-      // Validate password before moving to step 3
+      if (!adminEmail || !adminPassword || !adminName) {
+        alert('Please fill in all admin details');
+        return;
+      }
       const passwordError = validatePassword(adminPassword);
       if (passwordError) {
         alert(passwordError);
         return;
       }
-      if (adminEmail && adminPassword && adminName) {
-        setStep(3);
-      }
     }
+    setStep(step + 1);
   };
   
-  const handleCheckout = async () => {
+  const handleCreateAccount = async () => {
     setIsLoading(true);
-    const pricing = calculatePrice();
     
     try {
-      // If you want to integrate with Stripe later, add here:
-      // const priceId = 'price_1S4i5S5du1W5ijSGYYRYtE4d';
-      // const { data: checkoutData } = await supabase.functions.invoke('create-checkout', {
-      //   body: {
-      //     priceId,
-      //     quantity: pricing.totalSeats,
-      //     companyName,
-      //   }
-      // });
+      const pricing = calculatePrice();
       
-      // Sign up new user
+      // Phase 1: Create auth user with ALL necessary metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminEmail,
         password: adminPassword,
         options: {
           data: {
+            // Admin/User metadata
             full_name: adminName,
+            role: 'admin',
+            role_type: 'super_admin',
+            
+            // Company metadata
             company_name: companyName,
-            role: 'admin'
+            company_domain: companyDomain,
+            admin_seats: adminSeats,
+            junior_seats: juniorSeats,
+            subscription_seats: pricing.totalSeats,
+            price_per_month: parseFloat(pricing.totalPrice),
+            discount_percentage: parseInt(pricing.discount),
+            subscription_status: 'trialing',
+            trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+            
+            // Flag to indicate setup is needed on first login
+            needs_setup: true
           }
         }
       });
       
       if (authError) {
-        // Check if user already exists error
+        // Handle duplicate email specifically
         if (authError.message.includes('already registered')) {
           alert('This email is already registered. Please use a different email or sign in.');
           return;
@@ -121,51 +133,14 @@ export default function CompanySignup() {
         throw new Error('Failed to create user account');
       }
       
-      // Create company record with proper pricing
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: companyName,
-          domain: companyDomain,
-          admin_seats: adminSeats,
-          junior_seats: juniorSeats,
-          subscription_seats: pricing.totalSeats,
-          price_per_month: parseFloat(pricing.totalPrice),
-          discount_percentage: parseInt(pricing.discount),
-          subscription_status: 'trialing',
-          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
-        })
-        .select()
-        .single();
-      
-      if (companyError) throw companyError;
-      
-      // Create user profile
-      const { error: profileError } = await supabase.from('user_profiles').insert({
-        id: authData.user.id,
-        email: adminEmail,
-        company_id: company.id,
-        role: 'admin',
-        role_type: 'super_admin',
-        full_name: adminName
-      });
-      
-      if (profileError) throw profileError;
-      
-      // Don't try to sign in - user needs to verify email first
+      // Success! Navigate to success page
+      // The actual company and profile creation will happen after email confirmation
+      // when the user logs in for the first time (handled in LoginPage.tsx)
       navigate('/signup-success');
       
     } catch (error: any) {
-      console.error('Detailed signup error:', error);
-      
-      // More specific error messages
-      if (error.message?.includes('duplicate key')) {
-        alert('A company with this name already exists. Please use a different company name.');
-      } else if (error.message?.includes('violates check constraint')) {
-        alert('Please ensure all fields are filled correctly.');
-      } else {
-        alert(`Error: ${error.message || 'Failed to create account. Please try again.'}`);
-      }
+      console.error('Signup error:', error);
+      alert(`Error: ${error.message || 'Failed to create account. Please try again.'}`);
     } finally {
       setIsLoading(false);
     }
@@ -254,11 +229,11 @@ export default function CompanySignup() {
                     type="password"
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="Create a secure password"
+                    placeholder="••••••••"
                     className="mt-2 bg-gray-800 border-gray-700 text-white"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Must be 8+ characters with uppercase, lowercase, numbers, and special characters
+                    Must be at least 8 characters with uppercase, lowercase, numbers, and special characters
                   </p>
                 </div>
               </>
@@ -266,146 +241,127 @@ export default function CompanySignup() {
             
             {/* Step 3: Seat Selection */}
             {step === 3 && (
-              <>
-                <div className="space-y-4">
-                  {/* Admin Seats */}
-                  <div className="p-4 bg-gray-800 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-purple-400" />
-                        <Label className="text-gray-300">Admin Seats</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setAdminSeats(Math.max(1, adminSeats - 1))}
-                          className="text-gray-400 hover:text-white"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="text-xl font-bold text-white w-12 text-center">
-                          {adminSeats}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setAdminSeats(adminSeats + 1)}
-                          className="text-gray-400 hover:text-white"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+              <div className="space-y-8">
+                {/* Admin Seats */}
+                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-5 w-5 text-purple-400" />
+                      <div>
+                        <h3 className="text-white font-medium">Admin Seats</h3>
+                        <p className="text-gray-400 text-sm">Full access to admin dashboard and team management</p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      Full access to admin dashboard and team management
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setAdminSeats(Math.max(1, adminSeats - 1))}
+                        className="p-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+                      >
+                        <Minus className="h-4 w-4 text-gray-300" />
+                      </button>
+                      <span className="text-white font-medium w-10 text-center">{adminSeats}</span>
+                      <button
+                        onClick={() => setAdminSeats(adminSeats + 1)}
+                        className="p-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+                      >
+                        <Plus className="h-4 w-4 text-gray-300" />
+                      </button>
+                    </div>
                   </div>
-                  
-                  {/* Junior Seats */}
-                  <div className="p-4 bg-gray-800 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-5 w-5 text-blue-400" />
-                        <Label className="text-gray-300">Junior Broker Seats</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setJuniorSeats(Math.max(0, juniorSeats - 1))}
-                          className="text-gray-400 hover:text-white"
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="text-xl font-bold text-white w-12 text-center">
-                          {juniorSeats}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setJuniorSeats(juniorSeats + 1)}
-                          className="text-gray-400 hover:text-white"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
+                </div>
+                
+                {/* Junior Broker Seats */}
+                <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Users className="h-5 w-5 text-purple-400" />
+                      <div>
+                        <h3 className="text-white font-medium">Junior Broker Seats</h3>
+                        <p className="text-gray-400 text-sm">Access to calculator and trading tools</p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      Access to calculator and trading tools
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setJuniorSeats(Math.max(0, juniorSeats - 1))}
+                        className="p-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+                      >
+                        <Minus className="h-4 w-4 text-gray-300" />
+                      </button>
+                      <span className="text-white font-medium w-10 text-center">{juniorSeats}</span>
+                      <button
+                        onClick={() => setJuniorSeats(juniorSeats + 1)}
+                        className="p-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+                      >
+                        <Plus className="h-4 w-4 text-gray-300" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
                 {/* Pricing Summary */}
-                <div className="p-4 bg-purple-900/30 border border-purple-500/30 rounded-lg">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Total Seats</span>
-                      <span className="text-white">{pricing.totalSeats}</span>
+                <div className="bg-purple-900/20 rounded-lg p-6 border border-purple-800/50">
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-gray-400">
+                      <span>Total Seats</span>
+                      <span className="text-white font-medium">{pricing.totalSeats}</span>
                     </div>
-                    {pricing.discount !== "0" && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Volume Discount</span>
-                        <span className="text-green-400">-{pricing.discount}%</span>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Price per Seat</span>
+                      <span className="text-white">£30.00/mo</span>
+                    </div>
+                    {pricing.discount !== '0' && (
+                      <div className="flex justify-between text-green-400">
+                        <span>Volume Discount</span>
+                        <span>{pricing.discount}% off</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Price per Seat</span>
-                      <span className="text-white">£{pricing.pricePerSeat}/mo</span>
+                    <div className="border-t border-gray-700 pt-3">
+                      <div className="flex justify-between">
+                        <span className="text-white font-medium">Total Monthly</span>
+                        <span className="text-2xl font-bold text-white">£{pricing.totalPrice}</span>
+                      </div>
                     </div>
-                    <div className="border-t border-gray-700 pt-2 flex justify-between">
-                      <span className="text-white font-semibold">Total Monthly</span>
-                      <span className="text-2xl font-bold text-white">£{pricing.totalPrice}</span>
-                    </div>
-                    <div className="text-center text-green-400 text-sm mt-2">
+                    <div className="text-center text-purple-300 text-sm mt-4">
                       🎉 First 2 months FREE
                     </div>
                   </div>
                 </div>
                 
-                {/* Pricing info */}
-                <div className="text-xs text-gray-400 text-center">
-                  <p>
-                    {pricing.totalSeats >= 30 ? '20% Enterprise discount applied' : 
-                     pricing.totalSeats >= 15 ? '10% Team discount applied' : 
-                     'Standard pricing: £30 per seat/month'}
-                  </p>
-                  <p className="mt-1">Volume discounts: 15+ seats (10% off), 30+ seats (20% off)</p>
+                {/* Pricing Tiers Info */}
+                <div className="text-center text-gray-500 text-xs">
+                  <p>Standard pricing: £30 per seat/month</p>
+                  <p>Volume discounts: 15+ seats (10% off), 30+ seats (20% off)</p>
                 </div>
-              </>
+              </div>
             )}
             
             {/* Navigation Buttons */}
-            <div className="flex justify-between">
-              {step > 1 && (
+            <div className="flex justify-between pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setStep(Math.max(1, step - 1))}
+                disabled={step === 1}
+                className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+              >
+                Back
+              </Button>
+              
+              {step < 3 ? (
                 <Button
-                  variant="outline"
-                  onClick={() => setStep(step - 1)}
-                  className="border-gray-700 text-gray-300 hover:bg-gray-800"
+                  onClick={handleNext}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
                 >
-                  Back
+                  Continue
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleCreateAccount}
+                  disabled={isLoading}
+                  className="bg-purple-600 hover:bg-purple-700 text-white min-w-[150px]"
+                >
+                  {isLoading ? 'Creating Account...' : 'Start Free Trial'}
                 </Button>
               )}
-              
-              <div className="ml-auto">
-                {step < 3 ? (
-                  <Button
-                    onClick={handleNext}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    Next
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleCheckout}
-                    disabled={isLoading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    {isLoading ? 'Creating Account...' : 'Start Free Trial'}
-                  </Button>
-                )}
-              </div>
             </div>
           </CardContent>
         </Card>
