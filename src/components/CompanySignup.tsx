@@ -118,8 +118,19 @@ export default function CompanySignup() {
       }
       
       if (!authData.user) {
-        throw new Error('Failed to create user account');
-      }
+  throw new Error('Failed to create user account');
+}
+
+// ADD THIS NEW CODE - Sign in immediately to establish session
+const { error: signInError } = await supabase.auth.signInWithPassword({
+  email: adminEmail,
+  password: adminPassword
+});
+
+if (signInError) {
+  console.error('Sign-in error after signup:', signInError);
+  throw new Error('Account created but could not sign in. Please try logging in manually.');
+}
       
       // Create company record with proper pricing
       const { data: company, error: companyError } = await supabase
