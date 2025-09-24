@@ -142,13 +142,14 @@ export default function CompanySignup() {
       
       // Create user profile
       const { error: profileError } = await supabase.from('user_profiles').insert({
-        id: authData.user.id,
-        email: adminEmail,
-        company_id: company.id,
-        role: 'admin',
-        role_type: 'super_admin',
-        full_name: adminName
-      });
+  id: authData.user.id,
+  email: adminEmail,
+  company_id: company.id,
+  role: 'admin',
+  role_type: 'super_admin',
+  full_name: adminName,
+  is_active: true  // Add this if it's a required field
+});
       
       if (profileError) throw profileError;
       

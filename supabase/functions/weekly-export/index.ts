@@ -118,22 +118,54 @@ serve(async (req) => {
   }
 
   const now = new Date();
-  // IMPORTANT: Use UTC methods for consistent timezone handling
-  const currentDay = now.getUTCDay();
-  const currentHour = now.getUTCHours();
+  
+  // Calculate UK time (handles BST/GMT automatically)
+  // UK is BST (UTC+1) from last Sunday of March to last Sunday of October
+  function getUKTimeFromUTC(utcDate: Date) {
+    const year = utcDate.getUTCFullYear();
+    const month = utcDate.getUTCMonth();
+    const date = utcDate.getUTCDate();
+    
+    // Get last Sunday of March
+    const marchLastSunday = new Date(Date.UTC(year, 2, 31)); // March 31
+    marchLastSunday.setUTCDate(31 - ((marchLastSunday.getUTCDay() + 7) % 7));
+    
+    // Get last Sunday of October
+    const octoberLastSunday = new Date(Date.UTC(year, 9, 31)); // October 31
+    octoberLastSunday.setUTCDate(31 - ((octoberLastSunday.getUTCDay() + 7) % 7));
+    
+    // Check if we're in BST period
+    const isBST = utcDate >= marchLastSunday && utcDate < octoberLastSunday;
+    
+    // Return UK hour (add 1 hour if BST)
+    return {
+      day: utcDate.getUTCDay(),
+      hour: (utcDate.getUTCHours() + (isBST ? 1 : 0)) % 24,
+      // Handle day rollover when adding hour
+      adjustedDay: utcDate.getUTCHours() === 23 && isBST ? 
+        (utcDate.getUTCDay() + 1) % 7 : utcDate.getUTCDay(),
+      isBST: isBST
+    };
+  }
+  
+  const ukTime = getUKTimeFromUTC(now);
+  const currentDay = ukTime.adjustedDay || ukTime.day;
+  const currentHour = ukTime.hour;
 
   console.log('=== Weekly Export Check ===');
   console.log('Current UTC time:', now.toISOString());
-  console.log('UTC Day:', currentDay, 'UTC Hour:', currentHour);
+  console.log('UK timezone:', ukTime.isBST ? 'BST (UTC+1)' : 'GMT (UTC+0)');
+  console.log('UK Day:', currentDay, 'UK Hour:', currentHour);
   console.log('Force run:', forceRun);
   console.log('Active schedules found:', schedules?.length || 0);
 
   for (const schedule of schedules || []) {
     console.log(`\nChecking schedule ID ${schedule.id}:`);
-    console.log(`  Scheduled: Day ${schedule.day_of_week} Hour ${schedule.hour}`);
-    console.log(`  Current:   Day ${currentDay} Hour ${currentHour}`);
+    console.log(`  Scheduled: Day ${schedule.day_of_week} Hour ${schedule.hour} (UK time)`);
+    console.log(`  Current:   Day ${currentDay} Hour ${currentHour} (UK time)`);
     
     // Check if should run (either matches schedule OR force run)
+    // Schedule times are stored as UK times, now comparing with UK time
     const shouldRun = forceRun || (schedule.day_of_week === currentDay && schedule.hour === currentHour);
     
     if (shouldRun) {
