@@ -92,6 +92,8 @@ export default function CompanySignup() {
     try {
       const pricing = calculatePrice();
       
+      console.log('Attempting signup for:', adminEmail);
+
       // Phase 1: Create auth user with ALL necessary metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminEmail,
@@ -119,6 +121,8 @@ export default function CompanySignup() {
           }
         }
       });
+
+      console.log('Signup response:', authData, authError);
       
       if (authError) {
         // Handle duplicate email specifically
