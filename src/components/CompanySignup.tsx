@@ -94,17 +94,27 @@ export default function CompanySignup() {
       
       console.log('Attempting signup for:', adminEmail);
 
-      // Create auth user with metadata
+      // ONLY create auth user with all metadata - trigger will handle the rest
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminEmail,
         password: adminPassword,
         options: {
           data: {
+            // User metadata
             full_name: adminName,
             role: 'admin',
             role_type: 'super_admin',
+            
+            // Company metadata for trigger to use
             company_name: companyName,
             company_domain: companyDomain,
+            admin_seats: adminSeats,
+            junior_seats: juniorSeats,
+            subscription_seats: pricing.totalSeats,
+            price_per_month: parseFloat(pricing.totalPrice),
+            discount_percentage: parseInt(pricing.discount),
+            subscription_status: 'trialing',
+            trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
           }
         }
       });
@@ -123,7 +133,7 @@ export default function CompanySignup() {
         throw new Error('Failed to create user account');
       }
       
-      // Sign in immediately since email confirmation is disabled
+      // Sign in the user
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: adminEmail,
         password: adminPassword
@@ -134,57 +144,13 @@ export default function CompanySignup() {
         throw new Error('Account created but could not sign in. Please try logging in manually.');
       }
       
-      // Now create company record with authenticated session
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: companyName,
-          domain: companyDomain,
-          admin_seats: adminSeats,
-          junior_seats: juniorSeats,
-          subscription_seats: pricing.totalSeats,
-          price_per_month: parseFloat(pricing.totalPrice),
-          discount_percentage: parseInt(pricing.discount),
-          subscription_status: 'trialing',
-          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
-        })
-        .select()
-        .single();
-      
-      if (companyError) {
-        console.error('Company creation error:', companyError);
-        throw companyError;
-      }
-      
-      // Create user profile
-      const { error: profileError } = await supabase.from('user_profiles').insert({
-        id: authData.user.id,
-        email: adminEmail,
-        company_id: company.id,
-        role: 'admin',
-        role_type: 'super_admin',
-        full_name: adminName
-      });
-      
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw profileError;
-      }
-      
-      // Success! Navigate directly to admin dashboard
+      // Success! Database trigger will create company and profile
+      // Navigate to admin dashboard
       navigate('/admin');
       
     } catch (error: any) {
       console.error('Signup error:', error);
-      
-      // More specific error messages
-      if (error.message?.includes('duplicate key')) {
-        alert('A company with this name already exists. Please use a different company name.');
-      } else if (error.message?.includes('violates row-level security')) {
-        alert('Security error. Please ensure all fields are filled correctly.');
-      } else {
-        alert(`Error: ${error.message || 'Failed to create account. Please try again.'}`);
-      }
+      alert(`Error: ${error.message || 'Failed to create account. Please try again.'}`);
     } finally {
       setIsLoading(false);
     }
