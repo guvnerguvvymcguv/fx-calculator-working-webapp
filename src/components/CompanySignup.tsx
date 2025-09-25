@@ -121,33 +121,22 @@ export default function CompanySignup() {
         throw new Error('Failed to create user account');
       }
       
-      // Sign in the user to establish a session
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: adminEmail,
-        password: adminPassword
-      });
-      
-      if (signInError) throw signInError;
-      
-      // Force the session to be ready
-      await supabase.auth.refreshSession();
-      
       // Create company record with proper pricing
       const { data: company, error: companyError } = await supabase
-  .from('companies')
-  .insert({
-    name: companyName,
-    domain: companyDomain,
-    admin_seats: adminSeats,
-    junior_seats: juniorSeats,
-    subscription_seats: pricing.totalSeats,  // Changed from subscription_seats
-    price_per_month: parseFloat(pricing.totalPrice),  // Changed from price_per_month
-    discount_percentage: parseInt(pricing.discount),  // Changed from discount_percentage
-    subscription_status: 'trialing',
-    trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
-  })
-  .select()
-  .single();
+        .from('companies')
+        .insert({
+          name: companyName,
+          domain: companyDomain,
+          admin_seats: adminSeats,
+          junior_seats: juniorSeats,
+          subscription_seats: pricing.totalSeats,
+          price_per_month: parseFloat(pricing.totalPrice),
+          discount_percentage: parseInt(pricing.discount),
+          subscription_status: 'trialing',
+          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
+        })
+        .select()
+        .single();
       
       if (companyError) throw companyError;
       
@@ -163,8 +152,8 @@ export default function CompanySignup() {
       
       if (profileError) throw profileError;
       
-      // Navigate to admin dashboard (they're now signed in)
-      navigate('/admin');
+      // Don't try to sign in - user needs to verify email first
+      navigate('/signup-success');
       
     } catch (error: any) {
       console.error('Detailed signup error:', error);
