@@ -94,30 +94,17 @@ export default function CompanySignup() {
       
       console.log('Attempting signup for:', adminEmail);
 
-      // Phase 1: Create auth user with ALL necessary metadata
+      // Create auth user with metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminEmail,
         password: adminPassword,
         options: {
           data: {
-            // Admin/User metadata
             full_name: adminName,
             role: 'admin',
             role_type: 'super_admin',
-            
-            // Company metadata
             company_name: companyName,
             company_domain: companyDomain,
-            admin_seats: adminSeats,
-            junior_seats: juniorSeats,
-            subscription_seats: pricing.totalSeats,
-            price_per_month: parseFloat(pricing.totalPrice),
-            discount_percentage: parseInt(pricing.discount),
-            subscription_status: 'trialing',
-            trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-            
-            // Flag to indicate setup is needed on first login
-            needs_setup: true
           }
         }
       });
@@ -125,7 +112,6 @@ export default function CompanySignup() {
       console.log('Signup response:', authData, authError);
       
       if (authError) {
-        // Handle duplicate email specifically
         if (authError.message.includes('already registered')) {
           alert('This email is already registered. Please use a different email or sign in.');
           return;
@@ -137,14 +123,68 @@ export default function CompanySignup() {
         throw new Error('Failed to create user account');
       }
       
-      // Success! Navigate to success page
-      // The actual company and profile creation will happen after email confirmation
-      // when the user logs in for the first time (handled in LoginPage.tsx)
-      navigate('/signup-success');
+      // Sign in immediately since email confirmation is disabled
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: adminPassword
+      });
+      
+      if (signInError) {
+        console.error('Sign in error:', signInError);
+        throw new Error('Account created but could not sign in. Please try logging in manually.');
+      }
+      
+      // Now create company record with authenticated session
+      const { data: company, error: companyError } = await supabase
+        .from('companies')
+        .insert({
+          name: companyName,
+          domain: companyDomain,
+          admin_seats: adminSeats,
+          junior_seats: juniorSeats,
+          subscription_seats: pricing.totalSeats,
+          price_per_month: parseFloat(pricing.totalPrice),
+          discount_percentage: parseInt(pricing.discount),
+          subscription_status: 'trialing',
+          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
+        })
+        .select()
+        .single();
+      
+      if (companyError) {
+        console.error('Company creation error:', companyError);
+        throw companyError;
+      }
+      
+      // Create user profile
+      const { error: profileError } = await supabase.from('user_profiles').insert({
+        id: authData.user.id,
+        email: adminEmail,
+        company_id: company.id,
+        role: 'admin',
+        role_type: 'super_admin',
+        full_name: adminName
+      });
+      
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        throw profileError;
+      }
+      
+      // Success! Navigate directly to admin dashboard
+      navigate('/admin');
       
     } catch (error: any) {
       console.error('Signup error:', error);
-      alert(`Error: ${error.message || 'Failed to create account. Please try again.'}`);
+      
+      // More specific error messages
+      if (error.message?.includes('duplicate key')) {
+        alert('A company with this name already exists. Please use a different company name.');
+      } else if (error.message?.includes('violates row-level security')) {
+        alert('Security error. Please ensure all fields are filled correctly.');
+      } else {
+        alert(`Error: ${error.message || 'Failed to create account. Please try again.'}`);
+      }
     } finally {
       setIsLoading(false);
     }
