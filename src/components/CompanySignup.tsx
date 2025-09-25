@@ -121,6 +121,17 @@ export default function CompanySignup() {
         throw new Error('Failed to create user account');
       }
       
+      // Sign in the user to establish a session
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: adminPassword
+      });
+      
+      if (signInError) throw signInError;
+      
+      // Force the session to be ready
+      await supabase.auth.refreshSession();
+      
       // Create company record with proper pricing
       const { data: company, error: companyError } = await supabase
         .from('companies')
@@ -152,8 +163,8 @@ export default function CompanySignup() {
       
       if (profileError) throw profileError;
       
-      // Don't try to sign in - user needs to verify email first
-      navigate('/signup-success');
+      // Navigate to admin dashboard (they're now signed in)
+      navigate('/admin');
       
     } catch (error: any) {
       console.error('Detailed signup error:', error);
