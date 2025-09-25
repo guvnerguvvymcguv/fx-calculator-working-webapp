@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Mail } from 'lucide-react';
+import { CheckCircle, Calendar, AlertCircle } from 'lucide-react';
 
 export default function SignupSuccess() {
   const navigate = useNavigate();
@@ -10,37 +10,64 @@ export default function SignupSuccess() {
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#10051A' }}>
       <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
         <CardHeader className="text-center">
-          <Mail className="h-16 w-16 text-purple-500 mx-auto mb-4" />
+          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
           <CardTitle className="text-2xl font-bold text-white">
-            Check Your Email
+            Account Successfully Created!
           </CardTitle>
           <CardDescription className="text-gray-400 mt-2">
-            We've sent a verification link to your email address
+            Welcome to SpreadChecker
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
-            <p className="text-purple-300 text-center">
-              Please click the link in your email to activate your account and start your 2-month free trial
+          <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="h-5 w-5 text-green-400" />
+              <p className="text-green-300 font-semibold">2-Month Free Trial Active</p>
+            </div>
+            <p className="text-gray-300 text-sm">
+              Your trial includes full access to all features until {new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+              })}
             </p>
           </div>
           
           <div className="space-y-2 text-gray-300">
-            <p>✓ Company account created</p>
-            <p>✓ Admin profile set up</p>
-            <p>⏳ Awaiting email verification</p>
+            <p className="flex items-center gap-2">
+              <span className="text-green-400">✓</span> Company account created
+            </p>
+            <p className="flex items-center gap-2">
+              <span className="text-green-400">✓</span> Admin profile set up
+            </p>
+            <p className="flex items-center gap-2">
+              <span className="text-green-400">✓</span> Team seats configured
+            </p>
+          </div>
+          
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-amber-400 font-semibold text-sm mb-1">What happens after your trial?</p>
+                <p className="text-gray-400 text-sm">
+                  After 2 months, if you haven't upgraded to a paid plan, your account will be paused. 
+                  Don't worry - all your data will be safely stored and you can reactivate anytime by subscribing.
+                </p>
+              </div>
+            </div>
           </div>
           
           <Button 
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/admin')}
             className="w-full bg-purple-600 hover:bg-purple-700 text-white"
           >
-            Go to Login
+            Go to Dashboard
           </Button>
           
           <p className="text-xs text-gray-500 text-center">
-            Didn't receive an email? Check your spam folder or contact support
+            Need help getting started? Contact us at contact@spreadchecker.co.uk
           </p>
         </CardContent>
       </Card>

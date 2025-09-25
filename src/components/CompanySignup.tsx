@@ -164,7 +164,7 @@ export default function CompanySignup() {
       if (profileError) throw profileError;
       
       // Navigate to admin dashboard (they're now signed in)
-      navigate('/admin');
+      navigate('/signup-success');
       
     } catch (error: any) {
       console.error('Detailed signup error:', error);
