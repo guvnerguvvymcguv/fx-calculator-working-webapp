@@ -66,115 +66,144 @@ serve(async (req) => {
             <!DOCTYPE html>
             <html>
             <head>
-              <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; }
-                .wrapper { background-color: #f5f5f5; padding: 40px 20px; }
-                .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
-                .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
-                .content { padding: 40px 30px; }
-                .content p { margin: 16px 0; color: #4a4a4a; }
-                .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 24px 0; }
-                .feature-box { background: #f8f9fc; padding: 16px 20px; margin: 16px 0; border-radius: 6px; border-left: 3px solid #667eea; }
-                .details-table { width: 100%; background: #f8f9fc; border-radius: 8px; padding: 20px; margin: 24px 0; }
-                .details-table td { padding: 10px 0; color: #4a4a4a; }
-                .details-table .label { font-weight: 600; color: #2d2d2d; width: 40%; }
-                .footer { padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee; }
-                .success-badge { background: #667eea; color: white; padding: 6px 18px; border-radius: 20px; display: inline-block; margin-top: 12px; font-size: 14px; }
-              </style>
+              <meta charset="UTF-8">
             </head>
-            <body>
-              <div class="wrapper">
-                <div class="container">
-                  <div class="header">
-                    <h1>Welcome to SpreadChecker</h1>
-                    <div class="success-badge">Subscription Active</div>
-                  </div>
-                  <div class="content">
-                    <p>Hi ${admin.full_name || 'there'},</p>
-                    
-                    <p><strong>Congratulations!</strong> Your SpreadChecker subscription is now active. Your team can continue using all features without interruption.</p>
-                    
-                    <div class="details-table">
-                      <h3 style="margin-top: 0; color: #667eea;">Your Subscription Details</h3>
-                      <table style="width: 100%;">
-                        <tr>
-                          <td class="label">Plan Type:</td>
-                          <td style="text-transform: capitalize;">${subscriptionType === 'annual' ? 'Annual (12 months)' : 'Monthly'}</td>
-                        </tr>
-                        <tr>
-                          <td class="label">Total Seats:</td>
-                          <td>${seatCount} seats</td>
-                        </tr>
-                        <tr>
-                          <td class="label">Admin Seats:</td>
-                          <td>${adminSeats || 0}</td>
-                        </tr>
-                        <tr>
-                          <td class="label">Junior Broker Seats:</td>
-                          <td>${juniorSeats || 0}</td>
-                        </tr>
-                        ${subscriptionType === 'monthly' ? `
-                        <tr>
-                          <td class="label">Monthly Price:</td>
-                          <td>£${monthlyPrice}/month (inc. VAT)</td>
-                        </tr>
-                        ` : `
-                        <tr>
-                          <td class="label">Annual Price:</td>
-                          <td>£${(monthlyPrice * 12 * 0.9 * 1.2).toFixed(2)} (inc. VAT)</td>
-                        </tr>
-                        <tr>
-                          <td class="label">You Saved:</td>
-                          <td style="color: #667eea; font-weight: bold;">£${(monthlyPrice * 12 * 0.1 * 1.2).toFixed(2)} (10% discount)</td>
-                        </tr>
-                        `}
-                      </table>
-                    </div>
+            <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+                <tr>
+                  <td align="center">
+                    <table width="600" cellpadding="0" cellspacing="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                      <!-- Header -->
+                      <tr>
+                        <td style="background: #667eea; color: white; padding: 40px 30px; text-align: center;">
+                          <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">Welcome to SpreadChecker</h1>
+                          <table cellpadding="0" cellspacing="0" align="center" style="margin-top: 12px;">
+                            <tr>
+                              <td style="background: white; color: #667eea; padding: 6px 18px; border-radius: 20px; font-size: 14px; font-weight: 600;">Subscription Active</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                      <!-- Content -->
+                      <tr>
+                        <td style="padding: 40px 30px;">
+                          <p style="margin: 16px 0; color: #4a4a4a;">Hi ${admin.full_name || 'there'},</p>
+                          
+                          <p style="margin: 16px 0; color: #4a4a4a;"><strong>Congratulations!</strong> Your SpreadChecker subscription is now active. Your team can continue using all features without interruption.</p>
+                          
+                          <!-- Details Table -->
+                          <table width="100%" cellpadding="0" cellspacing="0" style="background: #f8f9fc; border-radius: 8px; padding: 20px; margin: 24px 0;">
+                            <tr>
+                              <td style="padding: 20px;">
+                                <h3 style="margin-top: 0; color: #667eea;">Your Subscription Details</h3>
+                                <table style="width: 100%;">
+                                  <tr>
+                                    <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 40%;">Plan Type:</td>
+                                    <td style="padding: 10px 0; color: #4a4a4a; text-transform: capitalize;">${subscriptionType === 'annual' ? 'Annual (12 months)' : 'Monthly'}</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 40%;">Total Seats:</td>
+                                    <td style="padding: 10px 0; color: #4a4a4a;">${seatCount} seats</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 40%;">Admin Seats:</td>
+                                    <td style="padding: 10px 0; color: #4a4a4a;">${adminSeats || 0}</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 40%;">Junior Broker Seats:</td>
+                                    <td style="padding: 10px 0; color: #4a4a4a;">${juniorSeats || 0}</td>
+                                  </tr>
+                                  ${subscriptionType === 'monthly' ? `
+                                  <tr>
+                                    <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 40%;">Monthly Price:</td>
+                                    <td style="padding: 10px 0; color: #4a4a4a;">£${monthlyPrice}/month (inc. VAT)</td>
+                                  </tr>
+                                  ` : `
+                                  <tr>
+                                    <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 40%;">Annual Price:</td>
+                                    <td style="padding: 10px 0; color: #4a4a4a;">£${(monthlyPrice * 12 * 0.9 * 1.2).toFixed(2)} (inc. VAT)</td>
+                                  </tr>
+                                  <tr>
+                                    <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 40%;">You Saved:</td>
+                                    <td style="padding: 10px 0; color: #667eea; font-weight: bold;">£${(monthlyPrice * 12 * 0.1 * 1.2).toFixed(2)} (10% discount)</td>
+                                  </tr>
+                                  `}
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
 
-                    <h3 style="color: #667eea;">What's Available to Your Team:</h3>
-                    
-                    <div class="feature-box">
-                      <strong>Live Rate Calculator</strong>
-                      <p style="margin: 8px 0 0 0;">Instant spread calculations with real-time currency rates</p>
-                    </div>
-                    
-                    <div class="feature-box">
-                      <strong>Team Management</strong>
-                      <p style="margin: 8px 0 0 0;">Add team members, track activity, and manage permissions</p>
-                    </div>
-                    
-                    <div class="feature-box">
-                      <strong>Performance Analytics</strong>
-                      <p style="margin: 8px 0 0 0;">Track comparisons, client interactions, and team productivity</p>
-                    </div>
-                    
-                    <div class="feature-box">
-                      <strong>Salesforce Integration</strong>
-                      <p style="margin: 8px 0 0 0;">Automated weekly exports to keep your CRM updated</p>
-                    </div>
+                          <h3 style="color: #667eea;">What's Available to Your Team:</h3>
+                          
+                          <!-- Feature Boxes -->
+                          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+                            <tr>
+                              <td style="background: #f8f9fc; padding: 16px 20px; border-radius: 6px; border-left: 3px solid #667eea;">
+                                <strong style="color: #2d2d2d;">Live Rate Calculator</strong>
+                                <p style="margin: 8px 0 0 0; color: #4a4a4a;">Instant spread calculations with real-time currency rates</p>
+                              </td>
+                            </tr>
+                          </table>
+                          
+                          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+                            <tr>
+                              <td style="background: #f8f9fc; padding: 16px 20px; border-radius: 6px; border-left: 3px solid #667eea;">
+                                <strong style="color: #2d2d2d;">Team Management</strong>
+                                <p style="margin: 8px 0 0 0; color: #4a4a4a;">Add team members, track activity, and manage permissions</p>
+                              </td>
+                            </tr>
+                          </table>
+                          
+                          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+                            <tr>
+                              <td style="background: #f8f9fc; padding: 16px 20px; border-radius: 6px; border-left: 3px solid #667eea;">
+                                <strong style="color: #2d2d2d;">Performance Analytics</strong>
+                                <p style="margin: 8px 0 0 0; color: #4a4a4a;">Track comparisons, client interactions, and team productivity</p>
+                              </td>
+                            </tr>
+                          </table>
+                          
+                          <table width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+                            <tr>
+                              <td style="background: #f8f9fc; padding: 16px 20px; border-radius: 6px; border-left: 3px solid #667eea;">
+                                <strong style="color: #2d2d2d;">Salesforce Integration</strong>
+                                <p style="margin: 8px 0 0 0; color: #4a4a4a;">Automated weekly exports to keep your CRM updated</p>
+                              </td>
+                            </tr>
+                          </table>
 
-                    <div style="text-align: center;">
-                      <a href="https://spreadchecker.co.uk/admin" class="button">Go to Dashboard</a>
-                    </div>
-                    
-                    <p>If you have any questions or need assistance, simply reply to this email and our team will be happy to help.</p>
-                    
-                    <p>Thank you for choosing SpreadChecker to power your team's success!</p>
-                    
-                    <p>Best regards,<br>The SpreadChecker Team</p>
-                  </div>
-                  <div class="footer">
-                    <p>SpreadChecker Ltd | London, UK<br>
-                    © 2025 SpreadChecker. All rights reserved.</p>
-                    <p style="margin-top: 10px;">
-                      ${subscriptionType === 'monthly' 
-                        ? 'You can manage your subscription or cancel anytime from your account settings.' 
-                        : 'Your annual subscription will renew automatically in 12 months.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                          <!-- Button -->
+                          <table width="100%" cellpadding="0" cellspacing="0">
+                            <tr>
+                              <td align="center" style="padding: 24px 0;">
+                                <a href="https://spreadchecker.co.uk/admin" style="display: inline-block; padding: 14px 32px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">Go to Dashboard</a>
+                              </td>
+                            </tr>
+                          </table>
+                          
+                          <p style="margin: 16px 0; color: #4a4a4a;">If you have any questions or need assistance, simply reply to this email and our team will be happy to help.</p>
+                          
+                          <p style="margin: 16px 0; color: #4a4a4a;">Thank you for choosing SpreadChecker to power your team's success!</p>
+                          
+                          <p style="margin: 16px 0; color: #4a4a4a;">Best regards,<br>The SpreadChecker Team</p>
+                        </td>
+                      </tr>
+                      <!-- Footer -->
+                      <tr>
+                        <td style="padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee;">
+                          <p style="margin: 0;">SpreadChecker Ltd | London, UK<br>
+                          © 2025 SpreadChecker. All rights reserved.</p>
+                          <p style="margin-top: 10px; color: #888; font-size: 14px;">
+                            ${subscriptionType === 'monthly' 
+                              ? 'You can manage your subscription or cancel anytime from your account settings.' 
+                              : 'Your annual subscription will renew automatically in 12 months.'}
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
             </body>
             </html>
           `
