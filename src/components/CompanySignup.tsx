@@ -85,17 +85,7 @@ export default function CompanySignup() {
     const pricing = calculatePrice();
     
     try {
-      // If you want to integrate with Stripe later, add here:
-      // const priceId = 'price_1S4i5S5du1W5ijSGYYRYtE4d';
-      // const { data: checkoutData } = await supabase.functions.invoke('create-checkout', {
-      //   body: {
-      //     priceId,
-      //     quantity: pricing.totalSeats,
-      //     companyName,
-      //   }
-      // });
-      
-      // Sign up new user
+      // Sign up new user with ALL company metadata - trigger will handle company and profile creation
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminEmail,
         password: adminPassword,
@@ -103,6 +93,14 @@ export default function CompanySignup() {
           data: {
             full_name: adminName,
             company_name: companyName,
+            company_domain: companyDomain,
+            admin_seats: adminSeats,
+            junior_seats: juniorSeats,
+            subscription_seats: pricing.totalSeats,
+            price_per_month: parseFloat(pricing.totalPrice),
+            discount_percentage: parseInt(pricing.discount),
+            subscription_status: 'trialing',
+            trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
             role: 'admin'
           }
         }
@@ -129,41 +127,8 @@ export default function CompanySignup() {
       
       if (signInError) throw signInError;
       
-      // Force the session to be ready
-      await supabase.auth.refreshSession();
-      
-      // Create company record with proper pricing
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: companyName,
-          domain: companyDomain,
-          admin_seats: adminSeats,
-          junior_seats: juniorSeats,
-          subscription_seats: pricing.totalSeats,
-          price_per_month: parseFloat(pricing.totalPrice),
-          discount_percentage: parseInt(pricing.discount),
-          subscription_status: 'trialing',
-          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
-        })
-        .select()
-        .single();
-      
-      if (companyError) throw companyError;
-      
-      // Create user profile
-      const { error: profileError } = await supabase.from('user_profiles').insert({
-        id: authData.user.id,
-        email: adminEmail,
-        company_id: company.id,
-        role: 'admin',
-        role_type: 'admin',
-        full_name: adminName
-      });
-      
-      if (profileError) throw profileError;
-      
       // Navigate to admin dashboard (they're now signed in)
+      // The database trigger has already created the company and profile
       navigate('/signup-success');
       
     } catch (error: any) {
