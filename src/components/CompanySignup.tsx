@@ -142,7 +142,7 @@ export default function CompanySignup() {
     junior_seats: juniorSeats,
     total_seats: pricing.totalSeats,  // Changed from subscription_seats
     monthly_price: parseFloat(pricing.totalPrice),  // Changed from price_per_month
-    discount_percent: parseInt(pricing.discount),  // Changed from discount_percentage
+    discount_percentage: parseInt(pricing.discount),  // Changed from discount_percentage
     subscription_status: 'trialing',
     trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
   })
