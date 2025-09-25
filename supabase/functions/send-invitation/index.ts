@@ -34,55 +34,66 @@ serve(async (req) => {
           <!DOCTYPE html>
           <html>
           <head>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; }
-              .wrapper { background-color: #f5f5f5; padding: 40px 20px; }
-              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 30px; text-align: center; }
-              .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
-              .content { padding: 40px 30px; }
-              .content p { margin: 16px 0; color: #4a4a4a; }
-              .button { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; font-weight: 500; margin: 24px 0; }
-              .info-box { background: #f8f9fc; border-left: 3px solid #667eea; padding: 16px 20px; margin: 24px 0; border-radius: 4px; }
-              .footer { padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee; }
-              .link-text { color: #667eea; word-break: break-all; font-size: 13px; }
-            </style>
+            <meta charset="UTF-8">
           </head>
-          <body>
-            <div class="wrapper">
-              <div class="container">
-                <div class="header">
-                  <h1>You've been invited to SpreadChecker!</h1>
-                </div>
-                <div class="content">
-                  <p>Hi there,</p>
-                  
-                  <p><strong>${inviterEmail}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${role}</strong>.</p>
-                  
-                  <div class="info-box">
-                    <p style="margin: 0;"><strong>What is SpreadChecker?</strong></p>
-                    <p style="margin: 8px 0 0 0;">SpreadChecker helps FX brokers calculate competitive rates and close more deals with real-time spread calculations, team activity tracking, and Salesforce integration.</p>
-                  </div>
-                  
-                  <p>Click the button below to accept your invitation and get started:</p>
-                  
-                  <div style="text-align: center;">
-                    <a href="${inviteUrl}" class="button" style="color: white !important;">Accept Invitation</a>
-                  </div>
-                  
-                  <p style="color: #888; font-size: 14px;">Or copy and paste this link into your browser:</p>
-                  <p class="link-text">${inviteUrl}</p>
-                  
-                  <p style="color: #888; font-size: 14px; margin-top: 24px;">This invitation will expire in 7 days. If you have any questions, please contact ${inviterEmail}.</p>
-                  
-                  <p>Best regards,<br>The SpreadChecker Team</p>
-                </div>
-                <div class="footer">
-                  <p>SpreadChecker Ltd | London, UK<br>
-                  © 2025 SpreadChecker. All rights reserved.</p>
-                </div>
-              </div>
-            </div>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+              <tr>
+                <td align="center">
+                  <table width="600" cellpadding="0" cellspacing="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                      <td style="background: #667eea; color: white; padding: 40px 30px; text-align: center;">
+                        <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">You've been invited to SpreadChecker!</h1>
+                      </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                      <td style="padding: 40px 30px;">
+                        <p style="margin: 16px 0; color: #4a4a4a;">Hi there,</p>
+                        
+                        <p style="margin: 16px 0; color: #4a4a4a;"><strong>${inviterEmail}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${role}</strong>.</p>
+                        
+                        <!-- Info Box -->
+                        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+                          <tr>
+                            <td style="background: #f8f9fc; border-left: 3px solid #667eea; padding: 16px 20px;">
+                              <p style="margin: 0; color: #4a4a4a;"><strong>What is SpreadChecker?</strong></p>
+                              <p style="margin: 8px 0 0 0; color: #4a4a4a;">SpreadChecker helps FX brokers calculate competitive rates and close more deals with real-time spread calculations, team activity tracking, and Salesforce integration.</p>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <p style="margin: 16px 0; color: #4a4a4a;">Click the button below to accept your invitation and get started:</p>
+                        
+                        <!-- Button -->
+                        <table width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td align="center" style="padding: 24px 0;">
+                              <a href="${inviteUrl}" style="display: inline-block; padding: 14px 32px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">Accept Invitation</a>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <p style="color: #888; font-size: 14px; margin: 16px 0;">Or copy and paste this link into your browser:</p>
+                        <p style="color: #667eea; word-break: break-all; font-size: 13px; margin: 16px 0;">${inviteUrl}</p>
+                        
+                        <p style="color: #888; font-size: 14px; margin-top: 24px;">This invitation will expire in 7 days. If you have any questions, please contact ${inviterEmail}.</p>
+                        
+                        <p style="margin: 16px 0; color: #4a4a4a;">Best regards,<br>The SpreadChecker Team</p>
+                      </td>
+                    </tr>
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee;">
+                        <p style="margin: 0;">SpreadChecker Ltd | London, UK<br>
+                        © 2025 SpreadChecker. All rights reserved.</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
           </body>
           </html>
         `,
