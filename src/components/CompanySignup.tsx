@@ -140,8 +140,8 @@ export default function CompanySignup() {
     domain: companyDomain,
     admin_seats: adminSeats,
     junior_seats: juniorSeats,
-    total_seats: pricing.totalSeats,  // Changed from subscription_seats
-    monthly_price: parseFloat(pricing.totalPrice),  // Changed from price_per_month
+    subscription_seats: pricing.totalSeats,  // Changed from subscription_seats
+    price_per_month: parseFloat(pricing.totalPrice),  // Changed from price_per_month
     discount_percentage: parseInt(pricing.discount),  // Changed from discount_percentage
     subscription_status: 'trialing',
     trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
