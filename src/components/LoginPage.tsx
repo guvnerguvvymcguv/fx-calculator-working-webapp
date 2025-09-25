@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -18,95 +18,6 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const authContext = useContext(AuthContext);
 
-  // Check for success messages in URL params on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('reset') === 'success') {
-      setSuccessMessage('Password reset successful. Please sign in with your new password.');
-    }
-  }, []);
-
-  // Function to setup company and profile after first login
-  const setupCompanyAndProfile = async (user: any) => {
-    try {
-      const metadata = user.user_metadata;
-      
-      // Check if setup is needed
-      if (!metadata.needs_setup) {
-        return; // Setup already done
-      }
-      
-      // Check if company already exists
-      const { data: existingProfile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('id', user.id)
-        .single();
-      
-      if (existingProfile?.company_id) {
-        // Already setup
-        return;
-      }
-      
-      // Create company from metadata
-      const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: metadata.company_name,
-          domain: metadata.company_domain,
-          admin_seats: metadata.admin_seats,
-          junior_seats: metadata.junior_seats,
-          subscription_seats: metadata.subscription_seats,
-          price_per_month: metadata.price_per_month,
-          discount_percentage: metadata.discount_percentage,
-          subscription_status: metadata.subscription_status || 'trialing',
-          trial_ends_at: metadata.trial_ends_at
-        })
-        .select()
-        .single();
-      
-      if (companyError) {
-        console.error('Company creation error:', companyError);
-        throw companyError;
-      }
-      
-      // Create user profile
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .insert({
-          id: user.id,
-          email: user.email,
-          company_id: company.id,
-          role: metadata.role || 'admin',
-          role_type: metadata.role_type || 'super_admin',
-          full_name: metadata.full_name
-        });
-      
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw profileError;
-      }
-      
-      // Update user metadata to mark setup as complete
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: {
-          ...metadata,
-          needs_setup: false
-        }
-      });
-      
-      if (updateError) {
-        console.error('Failed to update user metadata:', updateError);
-      }
-      
-      console.log('Company and profile setup completed successfully');
-      
-    } catch (error) {
-      console.error('Setup error:', error);
-      // Don't block login, but log the error
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -124,9 +35,6 @@ const LoginPage = () => {
       setError(signInError.message);
       setIsLoading(false);
     } else if (data.user) {
-      // Setup company and profile if needed (for first login after email confirmation)
-      await setupCompanyAndProfile(data.user);
-      
       authContext?.login();
       
       // Check user role if admin login selected
@@ -166,7 +74,6 @@ const LoginPage = () => {
       } else {
         navigate('/calculator');
       }
-      setIsLoading(false);
     }
   };
 
