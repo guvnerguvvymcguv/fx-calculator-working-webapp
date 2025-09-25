@@ -134,20 +134,20 @@ export default function CompanySignup() {
       
       // Create company record with proper pricing
       const { data: company, error: companyError } = await supabase
-        .from('companies')
-        .insert({
-          name: companyName,
-          domain: companyDomain,
-          admin_seats: adminSeats,
-          junior_seats: juniorSeats,
-          subscription_seats: pricing.totalSeats,
-          price_per_month: parseFloat(pricing.totalPrice),
-          discount_percentage: parseInt(pricing.discount),
-          subscription_status: 'trialing',
-          trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString() // 60 days
-        })
-        .select()
-        .single();
+  .from('companies')
+  .insert({
+    name: companyName,
+    domain: companyDomain,
+    admin_seats: adminSeats,
+    junior_seats: juniorSeats,
+    total_seats: pricing.totalSeats,  // Changed from subscription_seats
+    monthly_price: parseFloat(pricing.totalPrice),  // Changed from price_per_month
+    discount_percent: parseInt(pricing.discount),  // Changed from discount_percentage
+    subscription_status: 'trialing',
+    trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString()
+  })
+  .select()
+  .single();
       
       if (companyError) throw companyError;
       
