@@ -123,33 +123,33 @@ serve(async (req) => {
   // UK is BST (UTC+1) from last Sunday of March to last Sunday of October
   function getUKTimeFromUTC(utcDate: Date) {
     const year = utcDate.getUTCFullYear();
-    const month = utcDate.getUTCMonth();
-    const date = utcDate.getUTCDate();
     
     // Get last Sunday of March
-    const marchLastSunday = new Date(Date.UTC(year, 2, 31)); // March 31
+    const marchLastSunday = new Date(Date.UTC(year, 2, 31));
     marchLastSunday.setUTCDate(31 - ((marchLastSunday.getUTCDay() + 7) % 7));
     
-    // Get last Sunday of October
-    const octoberLastSunday = new Date(Date.UTC(year, 9, 31)); // October 31
+    // Get last Sunday of October  
+    const octoberLastSunday = new Date(Date.UTC(year, 9, 31));
     octoberLastSunday.setUTCDate(31 - ((octoberLastSunday.getUTCDay() + 7) % 7));
     
     // Check if we're in BST period
     const isBST = utcDate >= marchLastSunday && utcDate < octoberLastSunday;
     
-    // Return UK hour (add 1 hour if BST)
+    // Create a new date with UK time
+    const ukDate = new Date(utcDate.getTime());
+    if (isBST) {
+      ukDate.setUTCHours(ukDate.getUTCHours() + 1);
+    }
+    
     return {
-      day: utcDate.getUTCDay(),
-      hour: (utcDate.getUTCHours() + (isBST ? 1 : 0)) % 24,
-      // Handle day rollover when adding hour
-      adjustedDay: utcDate.getUTCHours() === 23 && isBST ? 
-        (utcDate.getUTCDay() + 1) % 7 : utcDate.getUTCDay(),
+      day: ukDate.getUTCDay(),
+      hour: ukDate.getUTCHours(),
       isBST: isBST
     };
   }
   
   const ukTime = getUKTimeFromUTC(now);
-  const currentDay = ukTime.adjustedDay || ukTime.day;
+  const currentDay = ukTime.day;
   const currentHour = ukTime.hour;
 
   console.log('=== Weekly Export Check ===');
@@ -161,8 +161,10 @@ serve(async (req) => {
 
   for (const schedule of schedules || []) {
     console.log(`\nChecking schedule ID ${schedule.id}:`);
-    console.log(`  Scheduled: Day ${schedule.day_of_week} Hour ${schedule.hour} (UK time)`);
-    console.log(`  Current:   Day ${currentDay} Hour ${currentHour} (UK time)`);
+    console.log(`  Company: ${schedule.company_id}`);
+    console.log(`  Scheduled: Day ${schedule.day_of_week} Hour ${schedule.hour} (stored as UK time)`);
+    console.log(`  Current:   Day ${currentDay} Hour ${currentHour} (converted UK time)`);
+    console.log(`  Match: Day match=${schedule.day_of_week === currentDay}, Hour match=${schedule.hour === currentHour}`);
     
     // Check if should run (either matches schedule OR force run)
     // Schedule times are stored as UK times, now comparing with UK time
