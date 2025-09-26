@@ -104,6 +104,20 @@ serve(async (req) => {
     // Get request body
     const { userIds, dateRange, companyId } = await req.json()
 
+    // Check if company account is locked
+    const { data: company } = await supabase
+      .from('companies')
+      .select('account_locked')
+      .eq('id', companyId)
+      .single()
+
+    if (company?.account_locked) {
+      return new Response(
+        JSON.stringify({ error: 'Trial expired. Please upgrade to continue.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Get the Salesforce connection using companyId directly
     const { data: sfConnection } = await supabase
       .from('salesforce_connections')

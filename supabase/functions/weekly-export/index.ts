@@ -173,6 +173,18 @@ serve(async (req) => {
     if (shouldRun) {
       console.log('✅ Should run! Processing...');
       
+      // Check if company account is locked
+      const { data: company } = await supabase
+        .from('companies')
+        .select('account_locked')
+        .eq('id', schedule.company_id)
+        .single();
+
+      if (company?.account_locked) {
+        console.log(`❌ Company ${schedule.company_id} account is locked (trial expired). Skipping export.`);
+        continue;
+      }
+      
       // Check if already ran this hour (unless forced)
       if (!forceRun && schedule.last_run) {
         const lastRun = new Date(schedule.last_run);

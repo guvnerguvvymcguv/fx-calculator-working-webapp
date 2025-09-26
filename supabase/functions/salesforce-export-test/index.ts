@@ -117,6 +117,20 @@ serve(async (req) => {
       .eq('id', user.id)
       .single()
 
+    // Check if company account is locked
+    const { data: company } = await supabase
+      .from('companies')
+      .select('account_locked')
+      .eq('id', profile!.company_id)
+      .single()
+
+    if (company?.account_locked) {
+      return new Response(
+        JSON.stringify({ error: 'Trial expired. Please upgrade to continue.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const { data: sfConnection } = await supabase
       .from('salesforce_connections')
       .select('*')
