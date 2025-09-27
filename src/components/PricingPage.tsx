@@ -206,7 +206,7 @@ const PricingPage = () => {
 
         <div className="text-center">
           <Button 
-            onClick={() => navigate('/signup')}
+            onClick={() => navigate(`/signup?plan=${isAnnual ? 'annual' : 'monthly'}`)}
             className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition duration-200 shadow-lg"
           >
             Start Free Trial

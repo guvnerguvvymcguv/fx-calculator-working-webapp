@@ -18,7 +18,7 @@ serve(async (req) => {
     console.log('Creating Supabase client...')
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     
-    const { userId, email, companyId, roleType, fullName } = await req.json()
+    const { userId, email, companyId, roleType, fullName, invitedBy, invitedAt } = await req.json()
     console.log('Request data:', { userId, email, companyId, roleType, fullName })
     
     // Check if user profile already exists
@@ -47,6 +47,8 @@ serve(async (req) => {
         company_id: companyId,
         role_type: roleType,
         full_name: fullName || null,
+        invited_by: invitedBy || null,
+        invited_at: invitedAt || null,
         created_at: new Date().toISOString()
       })
       .select()

@@ -11,6 +11,8 @@ export default function CompanySignup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const searchParams = new URLSearchParams(window.location.search);
+  const billingPeriod = searchParams.get('plan') || 'monthly';
   
   // Company details
   const [companyName, setCompanyName] = useState('');
@@ -100,6 +102,7 @@ export default function CompanySignup() {
             price_per_month: parseFloat(pricing.totalPrice),
             discount_percentage: parseInt(pricing.discount),
             subscription_status: 'trialing',
+            subscription_type: billingPeriod,
             trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
             role: 'admin'
           }

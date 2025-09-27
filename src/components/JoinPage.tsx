@@ -132,7 +132,9 @@ export default function JoinPage() {
             email: invitation.email,
             companyId: invitation.company_id,
             roleType: invitation.role_type,
-            fullName: firstName.trim()
+            fullName: firstName.trim(),
+            invitedBy: invitation.invited_by,
+            invitedAt: new Date().toISOString()
           }
         });
 

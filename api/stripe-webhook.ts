@@ -69,6 +69,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const adminSeats = session.metadata?.admin_seats;
         const juniorSeats = session.metadata?.junior_seats;
         const pricePerMonth = session.metadata?.price_per_month;
+        const seatCountNum = parseInt(seatCount || '0');
+        const discountPercentage = seatCountNum >= 30 ? 20 : seatCountNum >= 15 ? 10 : 0;
 
         if (!companyId) {
           console.error('No company ID in session metadata');
@@ -86,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             admin_seats: parseInt(adminSeats || '0'),
             junior_seats: parseInt(juniorSeats || '0'),
             subscription_price: parseFloat(pricePerMonth || '0'),
+            discount_percentage: discountPercentage,
             stripe_subscription_id: (session.subscription as string) || session.id,
             subscription_started_at: new Date().toISOString(),
             trial_ends_at: new Date().toISOString(), // End trial immediately
