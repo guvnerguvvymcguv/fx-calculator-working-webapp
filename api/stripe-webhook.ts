@@ -168,12 +168,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (company) {
+          const now = new Date().toISOString();
+          
           await supabase
             .from('companies')
             .update({
-              subscription_active: false,
-              subscription_status: 'cancelled',
-              updated_at: new Date().toISOString()
+              subscription_active: false,        // Turn off access
+              subscription_status: 'cancelled',  // Final status
+              account_locked: true,              // Lock the account
+              locked_at: now,                    // When it was locked
+              cancel_at_period_end: false,      // Reset this flag
+              updated_at: now
             })
             .eq('id', company.id);
         }

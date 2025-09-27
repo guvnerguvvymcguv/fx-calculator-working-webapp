@@ -104,16 +104,16 @@ serve(async (req) => {
     // Get request body
     const { userIds, dateRange, companyId } = await req.json()
 
-    // Check if company account is locked
+    // Check if company account is locked OR subscription is inactive
     const { data: company } = await supabase
       .from('companies')
-      .select('account_locked')
+      .select('account_locked, subscription_active')  // Added subscription_active
       .eq('id', companyId)
       .single()
 
-    if (company?.account_locked) {
+    if (company?.account_locked || !company?.subscription_active) {  // Check both conditions
       return new Response(
-        JSON.stringify({ error: 'Trial expired. Please upgrade to continue.' }),
+        JSON.stringify({ error: 'Account locked or subscription inactive. Please upgrade to continue.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
