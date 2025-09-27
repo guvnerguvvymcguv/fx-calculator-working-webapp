@@ -9,7 +9,7 @@ interface CancelSubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   companyId: string;
-  subscriptionType: 'monthly' | 'annual';
+  subscriptionType: 'monthly' | 'annual' | 'trial';
   onSuccess: () => void;
 }
 
@@ -47,7 +47,10 @@ export default function CancelSubscriptionModal({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await supabase.functions.invoke('cancel-subscription', {
+      // Different function for trial vs subscription cancellation
+      const functionName = subscriptionType === 'trial' ? 'cancel-trial' : 'cancel-subscription';
+      
+      const response = await supabase.functions.invoke(functionName, {
         body: { 
           companyId,
           reason,
@@ -59,11 +62,13 @@ export default function CancelSubscriptionModal({
       });
 
       if (response.error) {
-        throw new Error(response.error.message || 'Failed to cancel subscription');
+        throw new Error(response.error.message || `Failed to cancel ${subscriptionType === 'trial' ? 'trial' : 'subscription'}`);
       }
 
       // Show success message based on subscription type
-      if (subscriptionType === 'annual') {
+      if (subscriptionType === 'trial') {
+        alert('Your trial has been cancelled and your account has been locked.');
+      } else if (subscriptionType === 'annual') {
         alert('Your subscription has been cancelled. You will continue to have access until the end of your billing period.');
       } else {
         alert('Your subscription has been cancelled. You will continue to have access until the end of the current month.');
@@ -73,7 +78,7 @@ export default function CancelSubscriptionModal({
       onClose();
     } catch (error) {
       console.error('Cancellation error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to cancel subscription');
+      alert(error instanceof Error ? error.message : `Failed to cancel ${subscriptionType === 'trial' ? 'trial' : 'subscription'}`);
     } finally {
       setCancelling(false);
     }
@@ -86,6 +91,9 @@ export default function CancelSubscriptionModal({
     onClose();
   };
 
+  const modalTitle = subscriptionType === 'trial' ? 'Cancel Trial' : 'Cancel Subscription';
+  const confirmTitle = subscriptionType === 'trial' ? 'Confirm Trial Cancellation' : 'Confirm Cancellation';
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-md bg-gray-900 border-gray-700">
@@ -97,7 +105,7 @@ export default function CancelSubscriptionModal({
             <X className="h-5 w-5" />
           </button>
           <CardTitle className="text-xl text-white">
-            {step === 'reason' ? 'Cancel Subscription' : 'Confirm Cancellation'}
+            {step === 'reason' ? modalTitle : confirmTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -141,20 +149,28 @@ export default function CancelSubscriptionModal({
                   <strong>What happens when you cancel:</strong>
                 </p>
                 <ul className="mt-2 text-gray-300 text-sm space-y-1">
-                  {subscriptionType === 'annual' ? (
+                  {subscriptionType === 'trial' ? (
+                    <>
+                      <li>• Your account will be locked immediately</li>
+                      <li>• You'll lose access to all features</li>
+                      <li>• Your data will be preserved for 30 days</li>
+                      <li>• You can subscribe anytime to regain access</li>
+                    </>
+                  ) : subscriptionType === 'annual' ? (
                     <>
                       <li>• You'll keep access until your year ends</li>
                       <li>• No refunds for unused time</li>
                       <li>• Your data will be preserved</li>
+                      <li>• You can reactivate anytime</li>
                     </>
                   ) : (
                     <>
                       <li>• You'll keep access until the end of this month</li>
                       <li>• No more monthly charges</li>
                       <li>• Your data will be preserved</li>
+                      <li>• You can reactivate anytime</li>
                     </>
                   )}
-                  <li>• You can reactivate anytime</li>
                 </ul>
               </div>
 
@@ -164,7 +180,7 @@ export default function CancelSubscriptionModal({
                   variant="outline"
                   className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
                 >
-                  Keep Subscription
+                  {subscriptionType === 'trial' ? 'Keep Trial' : 'Keep Subscription'}
                 </Button>
                 <Button
                   onClick={() => setStep('confirm')}
@@ -182,7 +198,9 @@ export default function CancelSubscriptionModal({
                   Are you absolutely sure?
                 </p>
                 <p className="text-gray-300 text-sm mt-2">
-                  This action cannot be undone. You will need to subscribe again to regain access after your current period ends.
+                  {subscriptionType === 'trial' 
+                    ? 'Your account will be locked immediately and you will lose access to all features.'
+                    : 'This action cannot be undone. You will need to subscribe again to regain access after your current period ends.'}
                 </p>
               </div>
 
@@ -213,7 +231,7 @@ export default function CancelSubscriptionModal({
                   disabled={cancelling}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                 >
-                  {cancelling ? 'Cancelling...' : 'Cancel Subscription'}
+                  {cancelling ? 'Cancelling...' : (subscriptionType === 'trial' ? 'Cancel Trial' : 'Cancel Subscription')}
                 </Button>
               </div>
             </div>

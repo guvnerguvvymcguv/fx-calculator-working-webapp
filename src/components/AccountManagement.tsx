@@ -651,19 +651,27 @@ export default function AccountManagement() {
           </CardContent>
         </Card>
 
-        {/* Cancel Subscription Section - Only show for active subscriptions */}
-        {company?.subscription_active && !company?.isInTrial && (
+        {/* Cancel Subscription Section - Show for both trial and active subscriptions */}
+        {(company?.isInTrial || company?.subscription_active) && (
           <Card className="bg-red-900/10 border-red-900/30 mt-8">
             <CardHeader>
-              <CardTitle className="text-lg text-red-300">Cancel Subscription</CardTitle>
+              <CardTitle className="text-lg text-red-300">
+                {company?.isInTrial ? 'Cancel Trial' : 'Cancel Subscription'}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <p className="text-gray-400 text-sm">
-                  Once you cancel your subscription, your team will lose access when your current billing period ends.
-                  {company.subscription_type === 'annual' 
-                    ? ' Since you have an annual subscription, you will continue to have access until the end of your year.'
-                    : ' You will continue to have access until the end of the current month.'}
+                  {company?.isInTrial ? (
+                    'If you cancel your trial, your account will be locked immediately and you will lose access to all features.'
+                  ) : (
+                    <>
+                      Once you cancel your subscription, your team will lose access when your current billing period ends.
+                      {company.subscription_type === 'annual' 
+                        ? ' Since you have an annual subscription, you will continue to have access until the end of your year.'
+                        : ' You will continue to have access until the end of the current month.'}
+                    </>
+                  )}
                 </p>
                 
                 <Button
@@ -671,7 +679,7 @@ export default function AccountManagement() {
                   variant="outline"
                   className="border-red-600 text-red-400 hover:bg-red-900/20"
                 >
-                  Cancel Subscription
+                  {company?.isInTrial ? 'Cancel Trial' : 'Cancel Subscription'}
                 </Button>
               </div>
             </CardContent>
@@ -683,10 +691,15 @@ export default function AccountManagement() {
           isOpen={showCancelModal}
           onClose={() => setShowCancelModal(false)}
           companyId={company?.id}
-          subscriptionType={company?.subscription_type}
+          subscriptionType={company?.isInTrial ? 'trial' : company?.subscription_type}
           onSuccess={() => {
-            alert('Subscription cancelled. Redirecting to dashboard...');
-            navigate('/admin');
+            if (company?.isInTrial) {
+              alert('Trial cancelled. Your account has been locked.');
+              navigate('/login');
+            } else {
+              alert('Subscription cancelled. Redirecting to dashboard...');
+              navigate('/admin');
+            }
           }}
         />
       </div>
