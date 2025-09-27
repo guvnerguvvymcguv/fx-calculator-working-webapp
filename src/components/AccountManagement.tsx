@@ -4,12 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { ArrowLeft, Users, Plus, Minus, AlertCircle, Clock, Trash2, UserX, UserCheck, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import CancelSubscriptionModal from './CancelSubscriptionModal';
 
 export default function AccountManagement() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [company, setCompany] = useState<any>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [seatChanges, setSeatChanges] = useState({
@@ -648,6 +650,45 @@ export default function AccountManagement() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Cancel Subscription Section - Only show for active subscriptions */}
+        {company?.subscription_active && !company?.isInTrial && (
+          <Card className="bg-red-900/10 border-red-900/30 mt-8">
+            <CardHeader>
+              <CardTitle className="text-lg text-red-300">Danger Zone</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-gray-400 text-sm">
+                  Once you cancel your subscription, your team will lose access when your current billing period ends.
+                  {company.subscription_type === 'annual' 
+                    ? ' Since you have an annual subscription, you will continue to have access until the end of your year.'
+                    : ' You will continue to have access until the end of the current month.'}
+                </p>
+                
+                <Button
+                  onClick={() => setShowCancelModal(true)}
+                  variant="outline"
+                  className="border-red-600 text-red-400 hover:bg-red-900/20"
+                >
+                  Cancel Subscription
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Cancel Subscription Modal */}
+        <CancelSubscriptionModal
+          isOpen={showCancelModal}
+          onClose={() => setShowCancelModal(false)}
+          companyId={company?.id}
+          subscriptionType={company?.subscription_type}
+          onSuccess={() => {
+            alert('Subscription cancelled. Redirecting to dashboard...');
+            navigate('/admin');
+          }}
+        />
       </div>
     </div>
   );
