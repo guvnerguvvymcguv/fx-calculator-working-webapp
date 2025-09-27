@@ -114,9 +114,32 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
 
   // Different redirects based on the reason for denial
   if (!hasAccess) {
-    // If account is locked due to expired trial, redirect to checkout
+    // If account is locked due to expired trial, show lock screen
     if (isAccountLocked) {
-      return <Navigate to="/checkout" replace />;
+      return (
+        <div className="min-h-screen bg-[#10051A] flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-gray-900/90 border border-gray-800 rounded-lg p-8 text-center">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-2">Account Locked</h1>
+              <p className="text-gray-400 mb-6">
+                Your subscription has ended. Please start a new subscription to regain access.
+              </p>
+            </div>
+            
+            <button 
+              onClick={() => window.location.href = '/checkout'}
+              className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors"
+            >
+              Start New Subscription
+            </button>
+          </div>
+        </div>
+      );
     }
     // If it's an admin-only route and user is junior, redirect to calculator
     if (adminOnly && userRole === 'junior') {

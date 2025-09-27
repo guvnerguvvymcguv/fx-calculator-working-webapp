@@ -117,19 +117,39 @@ function AppContent() {
 
         <Route path="/signup-success" element={<SignupSuccess />} />
 
-        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin" element={
+          <ProtectedRoute adminOnly={true}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
 
-        <Route path="/admin/user/:userId" element={<UserActivity />} />
+        <Route path="/admin/user/:userId" element={
+          <ProtectedRoute adminOnly={true}>
+            <UserActivity />
+          </ProtectedRoute>
+        } />
 
-        <Route path="/admin/invite" element={<InviteMembers />} />
+        <Route path="/admin/invite" element={
+          <ProtectedRoute adminOnly={true}>
+            <InviteMembers />
+          </ProtectedRoute>
+        } />
 
-        <Route path="/admin/seats" element={<SeatManagement />} />
+        <Route path="/admin/seats" element={
+          <ProtectedRoute adminOnly={true}>
+            <SeatManagement />
+          </ProtectedRoute>
+        } />
 
         <Route path="/terms" element={<TermsOfService />} />
         
         <Route path="/privacy" element={<PrivacyPolicy />} />
 
-        <Route path="/admin/account" element={<AccountManagement />} />
+        <Route path="/admin/account" element={
+          <ProtectedRoute adminOnly={true}>
+            <AccountManagement />
+          </ProtectedRoute>
+        } />
 
         {/* Reset Password - accessible without authentication */}
         <Route path="/reset-password" element={<ResetPassword />} />
