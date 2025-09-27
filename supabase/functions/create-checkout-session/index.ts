@@ -91,6 +91,15 @@ serve(async (req) => {
       throw new Error('Company data not found')
     }
 
+// Check if this is a resubscription (company already had a trial)
+const isResubscription = company.trial_ends_at !== null;
+
+if (isResubscription) {
+  console.log('Resubscription detected - no trial period will be applied');
+  // Ensure they go straight to payment, no free period
+  // The checkout session already handles this correctly by charging immediately
+}
+
     // Calculate prices INCLUDING VAT (convert pounds to pence)
     const vatRate = 0.2 // 20% VAT for UK
     
