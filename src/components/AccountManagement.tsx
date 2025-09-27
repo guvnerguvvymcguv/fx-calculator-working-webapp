@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ArrowLeft, Users, Plus, Minus, AlertCircle, Clock, Trash2, UserX, UserCheck, Mail } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Minus, AlertCircle, Clock, Trash2, UserX, UserCheck, Mail, RefreshCw } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import CancelSubscriptionModal from './CancelSubscriptionModal';
 
@@ -14,6 +14,7 @@ export default function AccountManagement() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [reactivating, setReactivating] = useState(false);
   const [seatChanges, setSeatChanges] = useState({
     adminSeats: 0,
     juniorSeats: 0
@@ -43,7 +44,7 @@ export default function AccountManagement() {
 
       const { data: companyData } = await supabase
         .from('companies')
-        .select('*')
+        .select('*, cancel_at_period_end, scheduled_cancellation_date, cancelled_at')
         .eq('id', profile.company_id)
         .single();
 
@@ -133,6 +134,32 @@ export default function AccountManagement() {
         [type === 'admin' ? 'adminSeats' : 'juniorSeats']: newValue
       };
     });
+  };
+
+  const handleReactivateSubscription = async () => {
+    setReactivating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('reactivate-subscription', {
+        body: { companyId: company.id },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to reactivate subscription');
+      }
+
+      alert('Subscription reactivated successfully!');
+      await fetchAccountData();
+    } catch (error) {
+      console.error('Reactivation error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to reactivate subscription');
+    } finally {
+      setReactivating(false);
+    }
   };
 
   const handleSaveChanges = async () => {
@@ -347,6 +374,15 @@ export default function AccountManagement() {
     }
   };
 
+  // Calculate days remaining for cancellation
+  const getDaysRemaining = () => {
+    if (!company?.scheduled_cancellation_date) return 0;
+    const now = new Date();
+    const cancelDate = new Date(company.scheduled_cancellation_date);
+    const diffInMs = cancelDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffInMs / (1000 * 60 * 60 * 24)));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#10051A] flex items-center justify-center">
@@ -381,6 +417,34 @@ export default function AccountManagement() {
           </div>
         </div>
 
+        {/* Pending Cancellation Banner */}
+        {company?.cancel_at_period_end && (
+          <Card className="bg-amber-900/20 border-amber-600/30 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-amber-400" />
+                  <span className="text-amber-300 font-medium">
+                    Subscription scheduled to cancel on {new Date(company.scheduled_cancellation_date).toLocaleDateString('en-GB')}
+                  </span>
+                  <span className="text-gray-300">
+                    ({getDaysRemaining()} days remaining)
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleReactivateSubscription}
+                  disabled={reactivating}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {reactivating ? 'Reactivating...' : 'Reactivate Subscription'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Trial Status Notice */}
         {company?.isInTrial && (
           <Card className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-purple-700 mb-6">
@@ -408,7 +472,7 @@ export default function AccountManagement() {
         )}
 
         {/* Subscription Type Notice */}
-        {!company?.isInTrial && company?.subscription_type && (
+        {!company?.isInTrial && company?.subscription_type && !company?.cancel_at_period_end && (
           <Card className="bg-gray-900/50 border-gray-800 mb-6">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
@@ -651,8 +715,8 @@ export default function AccountManagement() {
           </CardContent>
         </Card>
 
-        {/* Cancel Subscription Section - Show for both trial and active subscriptions */}
-        {(company?.isInTrial || company?.subscription_active) && (
+        {/* Cancel Subscription Section - Only show if not already cancelling */}
+        {(company?.isInTrial || (company?.subscription_active && !company?.cancel_at_period_end)) && (
           <Card className="bg-red-900/10 border-red-900/30 mt-8">
             <CardHeader>
               <CardTitle className="text-lg text-red-300">

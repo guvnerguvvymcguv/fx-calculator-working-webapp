@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check } from 'lucide-react';
+import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminDashboard() {
@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [scheduleDay, setScheduleDay] = useState('1'); // Monday
   const [scheduleHour, setScheduleHour] = useState('9'); // 9 AM
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [companyData, setCompanyData] = useState<any>(null);  // Added to store company data
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -275,12 +276,14 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Fetch company data
+      // Fetch company data with cancellation fields
       const { data: company } = await supabase
         .from('companies')
-        .select('*')
+        .select('*, cancel_at_period_end, scheduled_cancellation_date, cancelled_at')  // Added fields
         .eq('id', profile.company_id)
         .single();
+
+      setCompanyData(company);  // Store company data
 
       // Fetch team members with their calculation counts
       const { data: members } = await supabase
@@ -510,6 +513,15 @@ export default function AdminDashboard() {
     return days[parseInt(day)];
   };
 
+  // Calculate days remaining for cancellation
+  const getDaysRemaining = () => {
+    if (!companyData?.scheduled_cancellation_date) return 0;
+    const now = new Date();
+    const cancelDate = new Date(companyData.scheduled_cancellation_date);
+    const diffInMs = cancelDate.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffInMs / (1000 * 60 * 60 * 24)));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#10051A] flex items-center justify-center">
@@ -573,6 +585,32 @@ export default function AdminDashboard() {
               </p>
             </div>
           </div>
+        )}
+
+        {/* Cancellation Warning Banner */}
+        {companyData?.cancel_at_period_end && (
+          <Card className="bg-amber-900/20 border-amber-600/30 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-amber-400" />
+                  <span className="text-amber-300 font-medium">
+                    Subscription ending on {new Date(companyData.scheduled_cancellation_date).toLocaleDateString('en-GB')}
+                  </span>
+                  <span className="text-gray-300">
+                    ({getDaysRemaining()} days remaining)
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/admin/account')}
+                  className="bg-amber-600 hover:bg-amber-700"
+                >
+                  Manage Subscription
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Date Range Filter */}
