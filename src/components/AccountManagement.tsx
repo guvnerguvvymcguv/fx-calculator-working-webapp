@@ -655,7 +655,7 @@ export default function AccountManagement() {
         {company?.subscription_active && !company?.isInTrial && (
           <Card className="bg-red-900/10 border-red-900/30 mt-8">
             <CardHeader>
-              <CardTitle className="text-lg text-red-300">Danger Zone</CardTitle>
+              <CardTitle className="text-lg text-red-300">Cancel Subscription</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
