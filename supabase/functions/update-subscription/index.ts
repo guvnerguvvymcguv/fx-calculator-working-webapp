@@ -9,6 +9,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Define pricing tiers with Stripe price IDs (these are VAT-inclusive prices)
+const PRICING_TIERS = {
+  STANDARD: { 
+    priceId: 'price_1SCGF55du1W5ijSGxcs7zQQX', 
+    maxSeats: 14,
+    pricePerSeat: 30 // Pre-VAT price
+  },
+  TEAM: { 
+    priceId: 'price_1SCGHX5du1W5ijSGSx4iqFXi', 
+    maxSeats: 29,
+    pricePerSeat: 27 // Pre-VAT price
+  },
+  ENTERPRISE: { 
+    priceId: 'price_1SCGIk5du1W5ijSG3jIFMf9L', 
+    maxSeats: null,
+    pricePerSeat: 24 // Pre-VAT price
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -113,30 +132,47 @@ serve(async (req) => {
       throw new Error('Subscription is not active')
     }
 
-    // Cancel the current subscription item and create a new one with updated pricing
-    // This is necessary because we're using custom pricing tiers
     console.log('Updating subscription with new pricing...')
 
-    // Calculate new monthly price INCLUDING VAT (in pence)
-    const vatRate = 0.2 // 20% VAT for UK
-    const monthlySubtotal = Math.round(newPrice * 100)
-    const monthlyVat = Math.round(monthlySubtotal * vatRate)
-    const monthlyAmount = monthlySubtotal + monthlyVat
+    // Determine which pricing tier to use based on seat count
+    let selectedTier;
+    if (newSeatCount <= 14) {
+      selectedTier = PRICING_TIERS.STANDARD;
+    } else if (newSeatCount <= 29) {
+      selectedTier = PRICING_TIERS.TEAM;
+    } else {
+      selectedTier = PRICING_TIERS.ENTERPRISE;
+    }
 
-    // Update the subscription with new price
+    console.log('Selected tier:', selectedTier);
+    console.log('Quantity:', newSeatCount);
+
+    // Since we're using quantity-based pricing, we need to create a new price with VAT included
+    // Calculate the price per seat INCLUDING VAT
+    const vatRate = 0.2; // 20% VAT for UK
+    const pricePerSeatPreVat = selectedTier.pricePerSeat * 100; // Convert to pence
+    const vatAmount = Math.round(pricePerSeatPreVat * vatRate);
+    const pricePerSeatWithVat = pricePerSeatPreVat + vatAmount;
+
+    console.log('Price per seat (pre-VAT):', selectedTier.pricePerSeat);
+    console.log('Price per seat with VAT (pence):', pricePerSeatWithVat);
+
+    // Create a new price with VAT included for this subscription update
+    const stripePriceWithVat = await stripe.prices.create({
+      currency: 'gbp',
+      unit_amount: pricePerSeatWithVat,
+      recurring: { interval: 'month' },
+      product: subscription.items.data[0].price.product as string,
+    });
+
+    // Update the subscription with the new price and quantity
     const updatedSubscription = await stripe.subscriptions.update(
       company.stripe_subscription_id,
       {
         items: [{
           id: subscription.items.data[0].id,
-          price_data: {
-            currency: 'gbp',
-            product: subscription.items.data[0].price.product as string,
-            unit_amount: monthlyAmount,
-            recurring: {
-              interval: 'month' as const
-            }
-          }
+          price: stripePriceWithVat.id,
+          quantity: newSeatCount
         }],
         proration_behavior: 'always_invoice', // Create prorated charges/credits
         metadata: {
