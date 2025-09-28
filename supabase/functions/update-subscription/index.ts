@@ -12,19 +12,22 @@ const corsHeaders = {
 // Define pricing tiers with Stripe price IDs (these are VAT-inclusive prices)
 const PRICING_TIERS = {
   STANDARD: { 
+    productId: 'prod_T8XJnL61gY927i',
     priceId: 'price_1SCGF55du1W5ijSGxcs7zQQX', 
     maxSeats: 14,
-    pricePerSeat: 30 // Pre-VAT price
+    pricePerSeat: 30
   },
   TEAM: { 
+    productId: 'prod_T8XMTp9qKMSyVh',
     priceId: 'price_1SCGHX5du1W5ijSGSx4iqFXi', 
     maxSeats: 29,
-    pricePerSeat: 27 // Pre-VAT price
+    pricePerSeat: 27
   },
   ENTERPRISE: { 
+    productId: 'prod_T8XNn9mRSDskk7',
     priceId: 'price_1SCGIk5du1W5ijSG3jIFMf9L', 
     maxSeats: null,
-    pricePerSeat: 24 // Pre-VAT price
+    pricePerSeat: 24
   }
 }
 
@@ -162,7 +165,7 @@ serve(async (req) => {
       currency: 'gbp',
       unit_amount: pricePerSeatWithVat,
       recurring: { interval: 'month' },
-      product: subscription.items.data[0].price.product as string,
+      product: selectedTier.productId,
     });
 
     // Update the subscription with the new price and quantity

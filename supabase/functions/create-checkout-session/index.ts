@@ -9,19 +9,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Define pricing tiers with Stripe price IDs
+// Define pricing tiers with Stripe price IDs and product IDs
 const PRICING_TIERS = {
   STANDARD: { 
+    productId: 'prod_T8XJnL61gY927i',
     priceId: 'price_1SCGF55du1W5ijSGxcs7zQQX', 
     maxSeats: 14,
     pricePerSeat: 30 // Pre-VAT price
   },
   TEAM: { 
+    productId: 'prod_T8XMTp9qKMSyVh',
     priceId: 'price_1SCGHX5du1W5ijSGSx4iqFXi', 
     maxSeats: 29,
     pricePerSeat: 27 // Pre-VAT price
   },
   ENTERPRISE: { 
+    productId: 'prod_T8XNn9mRSDskk7',
     priceId: 'price_1SCGIk5du1W5ijSG3jIFMf9L', 
     maxSeats: null,
     pricePerSeat: 24 // Pre-VAT price
@@ -169,11 +172,8 @@ serve(async (req) => {
     // Create Stripe checkout session
     console.log('Creating checkout session...')
 
-    // For monthly, we need to handle VAT differently since we're using quantity-based pricing
-    // Calculate VAT for display purposes
+    // Calculate VAT
     const vatRate = 0.2; // 20% VAT
-    const pricePerSeatWithVat = selectedTier.pricePerSeat * (1 + vatRate);
-    const totalMonthlyWithVat = pricePerSeatWithVat * seatCount;
     
     // For annual billing
     const annualDiscount = 0.9; // 10% discount
@@ -184,18 +184,16 @@ serve(async (req) => {
     let sessionConfig: Stripe.Checkout.SessionCreateParams;
 
     if (billingPeriod === 'monthly') {
-      // For monthly subscriptions, use quantity-based pricing with VAT-inclusive price
+      // For monthly subscriptions, create a price with VAT for the existing product
       const vatAmount = Math.round(selectedTier.pricePerSeat * 100 * vatRate);
       const priceWithVatPence = Math.round(selectedTier.pricePerSeat * 100) + vatAmount;
 
-      // Create a new price with VAT included for this checkout
+      // Create a new price attached to the EXISTING product (not creating a new product)
       const priceWithVat = await stripe.prices.create({
         currency: 'gbp',
         unit_amount: priceWithVatPence,
         recurring: { interval: 'month' },
-        product_data: {
-          name: `SpreadChecker Seat - ${seatCount <= 14 ? 'Standard' : seatCount <= 29 ? 'Team' : 'Enterprise'}`
-        }
+        product: selectedTier.productId // Use existing product ID instead of product_data
       });
 
       sessionConfig = {
