@@ -56,11 +56,17 @@ export default function CompanySignup() {
     }
     
     const pricePerSeat = basePrice * (1 - discount);
-    const totalPrice = pricePerSeat * totalSeats;
+    const monthlyPrice = pricePerSeat * totalSeats;
+    
+    // Calculate annual price with 10% discount
+    const annualPrice = monthlyPrice * 12 * 0.9;
+    const annualMonthlyEquivalent = annualPrice / 12;
     
     return {
       pricePerSeat: pricePerSeat.toFixed(2),
-      totalPrice: totalPrice.toFixed(2),
+      monthlyPrice: monthlyPrice.toFixed(2),
+      annualPrice: annualPrice.toFixed(2),
+      annualMonthlyEquivalent: annualMonthlyEquivalent.toFixed(2),
       discount: (discount * 100).toFixed(0),
       totalSeats
     };
@@ -99,7 +105,7 @@ export default function CompanySignup() {
             admin_seats: adminSeats,
             junior_seats: juniorSeats,
             subscription_seats: pricing.totalSeats,
-            price_per_month: parseFloat(pricing.totalPrice),
+            price_per_month: parseFloat(pricing.monthlyPrice),
             discount_percentage: parseInt(pricing.discount),
             subscription_status: 'trialing',
             subscription_type: billingPeriod,
@@ -151,6 +157,7 @@ export default function CompanySignup() {
   };
   
   const pricing = calculatePrice();
+  const isAnnual = billingPeriod === 'annual';
   
   return (
     <div className="min-h-screen relative" style={{ backgroundColor: '#10051A' }}>
@@ -333,13 +340,35 @@ export default function CompanySignup() {
                       <span className="text-gray-400">Price per Seat</span>
                       <span className="text-white">£{pricing.pricePerSeat}/mo</span>
                     </div>
+                    {isAnnual && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Annual Discount</span>
+                        <span className="text-green-400">-10%</span>
+                      </div>
+                    )}
                     <div className="border-t border-gray-700 pt-2 flex justify-between">
-                      <span className="text-white font-semibold">Total Monthly</span>
-                      <span className="text-2xl font-bold text-white">£{pricing.totalPrice}</span>
+                      <span className="text-white font-semibold">
+                        {isAnnual ? 'Total Annual' : 'Total Monthly'}
+                      </span>
+                      <div className="text-right">
+                        <span className="text-2xl font-bold text-white">
+                          {isAnnual ? `£${pricing.annualPrice}` : `£${pricing.monthlyPrice}`}
+                        </span>
+                        {isAnnual && (
+                          <div className="text-xs text-gray-400">
+                            £{pricing.annualMonthlyEquivalent}/month
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="text-center text-green-400 text-sm mt-2">
                       🎉 First 2 months FREE
                     </div>
+                    {isAnnual && (
+                      <div className="text-center text-gray-400 text-xs">
+                        Billed annually after trial ends
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -351,6 +380,9 @@ export default function CompanySignup() {
                      'Standard pricing: £30 per seat/month'}
                   </p>
                   <p className="mt-1">Volume discounts: 15+ seats (10% off), 30+ seats (20% off)</p>
+                  {isAnnual && (
+                    <p className="mt-1">Annual billing: Additional 10% discount</p>
+                  )}
                 </div>
               </>
             )}
