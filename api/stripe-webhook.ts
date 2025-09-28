@@ -77,6 +77,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         }
 
+        // If subscription exists, fetch it to get actual details including quantity
+        let actualSeatCount = seatCountNum;
+        let actualPricePerMonth = parseFloat(pricePerMonth || '0');
+        
+        if (session.subscription) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+            if (subscription.items && subscription.items.data.length > 0) {
+              // Get the actual quantity from the subscription
+              actualSeatCount = subscription.items.data[0].quantity || seatCountNum;
+              
+              // Calculate the actual monthly price based on quantity and price per unit
+              const pricePerUnit = subscription.items.data[0].price.unit_amount || 0;
+              // Remove VAT to get base price (price includes 20% VAT)
+              const pricePerUnitExVat = pricePerUnit / 1.2;
+              actualPricePerMonth = (pricePerUnitExVat * actualSeatCount) / 100; // Convert from pence to pounds
+              
+              console.log('Subscription details from Stripe:', {
+                quantity: actualSeatCount,
+                pricePerUnit: pricePerUnit,
+                calculatedMonthlyPrice: actualPricePerMonth
+              });
+            }
+          } catch (subError) {
+            console.error('Error fetching subscription details:', subError);
+            // Fall back to session metadata values
+          }
+        }
+
         // Update company with subscription AND seat allocation
         const { error: updateError } = await supabase
           .from('companies')
@@ -84,10 +113,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             subscription_active: true,
             subscription_status: 'active',
             subscription_type: billingPeriod || 'monthly',
-            subscription_seats: parseInt(seatCount || '0'),
+            subscription_seats: actualSeatCount,
             admin_seats: parseInt(adminSeats || '0'),
             junior_seats: parseInt(juniorSeats || '0'),
-            subscription_price: parseFloat(pricePerMonth || '0'),
+            subscription_price: actualPricePerMonth,
+            price_per_month: actualPricePerMonth, // Also update this field
             discount_percentage: discountPercentage,
             stripe_subscription_id: (session.subscription as string) || session.id,
             subscription_started_at: new Date().toISOString(),
@@ -101,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (updateError) {
           console.error('Failed to update company:', updateError);
         } else {
-          console.log(`Company ${companyId} subscription activated with ${seatCount} seats (${adminSeats} admin, ${juniorSeats} junior)`);
+          console.log(`Company ${companyId} subscription activated with ${actualSeatCount} seats (${adminSeats} admin, ${juniorSeats} junior)`);
           
           // Send subscription activated email
           try {
@@ -116,10 +146,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 body: JSON.stringify({
                   companyId,
                   subscriptionType: billingPeriod,
-                  seatCount: parseInt(seatCount || '0'),
+                  seatCount: actualSeatCount,
                   adminSeats: parseInt(adminSeats || '0'),
                   juniorSeats: parseInt(juniorSeats || '0'),
-                  monthlyPrice: parseFloat(pricePerMonth || '0')
+                  monthlyPrice: actualPricePerMonth
                 })
               }
             );
@@ -149,12 +179,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .single();
 
         if (company) {
+          // Get the actual quantity and price from the subscription
+          let updateData: any = {
+            subscription_status: subscription.status,
+            updated_at: new Date().toISOString()
+          };
+
+          // If subscription has items, update seat count and price
+          if (subscription.items && subscription.items.data.length > 0) {
+            const item = subscription.items.data[0];
+            const quantity = item.quantity || 0;
+            const pricePerUnit = item.price.unit_amount || 0;
+            // Remove VAT to get base price (price includes 20% VAT)
+            const pricePerUnitExVat = pricePerUnit / 1.2;
+            const monthlyPrice = (pricePerUnitExVat * quantity) / 100; // Convert from pence to pounds
+            
+            updateData.subscription_seats = quantity;
+            updateData.subscription_price = monthlyPrice;
+            updateData.price_per_month = monthlyPrice;
+            
+            // Update discount percentage based on new quantity
+            updateData.discount_percentage = quantity >= 30 ? 20 : quantity >= 15 ? 10 : 0;
+            
+            console.log('Updating subscription with quantity:', quantity, 'price:', monthlyPrice);
+          }
+
           await supabase
             .from('companies')
-            .update({
-              subscription_status: subscription.status,
-              updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', company.id);
         }
         break;

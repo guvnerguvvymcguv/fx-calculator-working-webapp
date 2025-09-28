@@ -9,6 +9,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Define pricing tiers with Stripe price IDs
+const PRICING_TIERS = {
+  STANDARD: { 
+    priceId: 'price_1SCGF55du1W5ijSGxcs7zQQX', 
+    maxSeats: 14,
+    pricePerSeat: 30 // Pre-VAT price
+  },
+  TEAM: { 
+    priceId: 'price_1SCGHX5du1W5ijSGSx4iqFXi', 
+    maxSeats: 29,
+    pricePerSeat: 27 // Pre-VAT price
+  },
+  ENTERPRISE: { 
+    priceId: 'price_1SCGIk5du1W5ijSG3jIFMf9L', 
+    maxSeats: null,
+    pricePerSeat: 24 // Pre-VAT price
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -56,7 +75,7 @@ serve(async (req) => {
       throw new Error('Authentication required')
     }
 
-    // Parse request body - NOW INCLUDING adminSeats and juniorSeats
+    // Parse request body
     const body = await req.json()
     const { companyId, billingPeriod, seatCount, pricePerMonth, adminSeats, juniorSeats } = body
     
@@ -91,27 +110,24 @@ serve(async (req) => {
       throw new Error('Company data not found')
     }
 
-// Check if this is a resubscription (company already had a trial)
-const isResubscription = company.trial_ends_at !== null;
+    // Check if this is a resubscription (company already had a trial)
+    const isResubscription = company.trial_ends_at !== null;
+    if (isResubscription) {
+      console.log('Resubscription detected - no trial period will be applied');
+    }
 
-if (isResubscription) {
-  console.log('Resubscription detected - no trial period will be applied');
-  // Ensure they go straight to payment, no free period
-  // The checkout session already handles this correctly by charging immediately
-}
+    // Determine which pricing tier to use based on seat count
+    let selectedTier;
+    if (seatCount <= 14) {
+      selectedTier = PRICING_TIERS.STANDARD;
+    } else if (seatCount <= 29) {
+      selectedTier = PRICING_TIERS.TEAM;
+    } else {
+      selectedTier = PRICING_TIERS.ENTERPRISE;
+    }
 
-    // Calculate prices INCLUDING VAT (convert pounds to pence)
-    const vatRate = 0.2 // 20% VAT for UK
-    
-    // For monthly subscriptions
-    const monthlySubtotal = Math.round(pricePerMonth * 100)
-    const monthlyVat = Math.round(monthlySubtotal * vatRate)
-    const monthlyAmount = monthlySubtotal + monthlyVat
-    
-    // For annual subscriptions (with 10% discount)
-    const annualSubtotal = Math.round(pricePerMonth * 12 * 0.9 * 100)
-    const annualVat = Math.round(annualSubtotal * vatRate)
-    const annualAmount = annualSubtotal + annualVat
+    console.log('Selected tier:', selectedTier);
+    console.log('Seat count:', seatCount);
 
     // Create or retrieve Stripe customer
     let customerId = company.stripe_customer_id
@@ -140,7 +156,6 @@ if (isResubscription) {
 
         if (updateError) {
           console.error('Failed to save customer ID:', updateError)
-          // Continue anyway - customer is created in Stripe
         }
       } catch (stripeError) {
         console.error('Stripe customer creation failed:', stripeError)
@@ -153,48 +168,85 @@ if (isResubscription) {
     
     // Create Stripe checkout session
     console.log('Creating checkout session...')
+
+    // For monthly, we need to handle VAT differently since we're using quantity-based pricing
+    // Calculate VAT for display purposes
+    const vatRate = 0.2; // 20% VAT
+    const pricePerSeatWithVat = selectedTier.pricePerSeat * (1 + vatRate);
+    const totalMonthlyWithVat = pricePerSeatWithVat * seatCount;
     
-    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
-      customer: customerId,
-      payment_method_types: ['card'],
-      mode: billingPeriod === 'monthly' ? 'subscription' : 'payment',
-      success_url: `${origin}/admin?checkout=success`,
-      cancel_url: `${origin}/checkout?canceled=true`,
-      metadata: {
-        company_id: companyId,
-        seat_count: seatCount.toString(),
-        admin_seats: (adminSeats || company.admin_seats || 0).toString(),  // Added
-        junior_seats: (juniorSeats || company.junior_seats || 0).toString(), // Added
-        billing_period: billingPeriod,
-        price_per_month: pricePerMonth.toString(),
-        user_id: user.id
-      },
-      line_items: billingPeriod === 'monthly' 
-        ? [{
-            price_data: {
-              currency: 'gbp',
-              product_data: {
-                name: 'SpreadChecker Monthly Subscription',
-                description: `${seatCount} total seats (${adminSeats || company.admin_seats || 0} admin, ${juniorSeats || company.junior_seats || 0} junior)`,
-              },
-              unit_amount: monthlyAmount,
-              recurring: {
-                interval: 'month' as const
-              }
+    // For annual billing
+    const annualDiscount = 0.9; // 10% discount
+    const annualSubtotal = selectedTier.pricePerSeat * seatCount * 12 * annualDiscount;
+    const annualVat = annualSubtotal * vatRate;
+    const annualTotal = annualSubtotal + annualVat;
+
+    let sessionConfig: Stripe.Checkout.SessionCreateParams;
+
+    if (billingPeriod === 'monthly') {
+      // For monthly subscriptions, use quantity-based pricing with VAT-inclusive price
+      const vatAmount = Math.round(selectedTier.pricePerSeat * 100 * vatRate);
+      const priceWithVatPence = Math.round(selectedTier.pricePerSeat * 100) + vatAmount;
+
+      // Create a new price with VAT included for this checkout
+      const priceWithVat = await stripe.prices.create({
+        currency: 'gbp',
+        unit_amount: priceWithVatPence,
+        recurring: { interval: 'month' },
+        product_data: {
+          name: `SpreadChecker Seat - ${seatCount <= 14 ? 'Standard' : seatCount <= 29 ? 'Team' : 'Enterprise'}`
+        }
+      });
+
+      sessionConfig = {
+        customer: customerId,
+        payment_method_types: ['card'],
+        mode: 'subscription',
+        success_url: `${origin}/admin?checkout=success`,
+        cancel_url: `${origin}/checkout?canceled=true`,
+        metadata: {
+          company_id: companyId,
+          seat_count: seatCount.toString(),
+          admin_seats: (adminSeats || company.admin_seats || 0).toString(),
+          junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
+          billing_period: billingPeriod,
+          price_per_month: pricePerMonth.toString(),
+          user_id: user.id
+        },
+        line_items: [{
+          price: priceWithVat.id,
+          quantity: seatCount
+        }]
+      };
+    } else {
+      // For annual subscriptions, create a one-time payment with total amount
+      sessionConfig = {
+        customer: customerId,
+        payment_method_types: ['card'],
+        mode: 'payment',
+        success_url: `${origin}/admin?checkout=success`,
+        cancel_url: `${origin}/checkout?canceled=true`,
+        metadata: {
+          company_id: companyId,
+          seat_count: seatCount.toString(),
+          admin_seats: (adminSeats || company.admin_seats || 0).toString(),
+          junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
+          billing_period: billingPeriod,
+          price_per_month: pricePerMonth.toString(),
+          user_id: user.id
+        },
+        line_items: [{
+          price_data: {
+            currency: 'gbp',
+            product_data: {
+              name: 'SpreadChecker Annual Subscription',
+              description: `${seatCount} total seats for 12 months (${adminSeats || company.admin_seats || 0} admin, ${juniorSeats || company.junior_seats || 0} junior)`,
             },
-            quantity: 1,
-          }]
-        : [{
-            price_data: {
-              currency: 'gbp',
-              product_data: {
-                name: 'SpreadChecker Annual Subscription',
-                description: `${seatCount} total seats for 12 months (${adminSeats || company.admin_seats || 0} admin, ${juniorSeats || company.junior_seats || 0} junior)`,
-              },
-              unit_amount: annualAmount,
-            },
-            quantity: 1,
-          }]
+            unit_amount: Math.round(annualTotal * 100), // Convert to pence
+          },
+          quantity: 1,
+        }]
+      };
     }
 
     try {
