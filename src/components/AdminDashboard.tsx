@@ -23,6 +23,8 @@ export default function AdminDashboard() {
   const [scheduleHour, setScheduleHour] = useState('9'); // 9 AM
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [companyData, setCompanyData] = useState<any>(null);  // Added to store company data
+  const [userCalculationCounts, setUserCalculationCounts] = useState<Record<string, number>>({});
+  const [calculationCountLoading, setCalculationCountLoading] = useState(false);
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -49,6 +51,12 @@ export default function AdminDashboard() {
     checkSalesforceConnection();
     fetchWeeklyExportSchedule();
   }, [dateRange]);
+
+  useEffect(() => {
+    if (showExportModal && teamMembers.length > 0) {
+      fetchCalculationCounts();
+    }
+  }, [exportDateRange, customDateRange, showExportModal]);
 
   const checkSalesforceConnection = async () => {
     try {
@@ -103,6 +111,53 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error fetching export schedule:', error);
+    }
+  };
+
+  const fetchCalculationCounts = async () => {
+    setCalculationCountLoading(true);
+    try {
+      const { start, end } = getExportDateRange();
+      
+      const counts: Record<string, number> = {};
+      
+      // Fetch calculations for each team member for the selected period
+      for (const member of teamMembers) {
+        const { count } = await supabase
+          .from('activity_logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', member.id)
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString());
+        
+        counts[member.id] = count || 0;
+      }
+      
+      setUserCalculationCounts(counts);
+    } catch (error) {
+      console.error('Error fetching calculation counts:', error);
+    } finally {
+      setCalculationCountLoading(false);
+    }
+  };
+
+  const getPeriodLabel = () => {
+    switch (exportDateRange) {
+      case 'today':
+        return 'today';
+      case 'thisWeek':
+        return 'this week';
+      case 'thisMonth':
+        return 'this month';
+      case 'custom':
+        const start = new Date(customDateRange.start);
+        const end = new Date(customDateRange.end);
+        if (start.toDateString() === end.toDateString()) {
+          return 'on ' + start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+        }
+        return 'in selected period';
+      default:
+        return '';
     }
   };
 
@@ -223,33 +278,44 @@ export default function AdminDashboard() {
 
     switch (exportDateRange) {
       case 'today':
-        start = new Date(now.setHours(0, 0, 0, 0));
-        end = new Date(now.setHours(23, 59, 59, 999));
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
         break;
       case 'thisWeek':
-        // Last 5 working days
-        start = new Date();
-        start.setDate(start.getDate() - 4);
+        // Get the start of the current week (Sunday)
+        start = new Date(now);
+        const day = start.getDay();
+        const diff = start.getDate() - day;
+        start.setDate(diff);
         start.setHours(0, 0, 0, 0);
-        end = new Date();
+        
+        // Get the end of the current week (Saturday)
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
         end.setHours(23, 59, 59, 999);
         break;
       case 'thisMonth':
-        // Last 30 days
-        start = new Date();
-        start.setDate(start.getDate() - 29);
+        // Get the first day of the current month
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
         start.setHours(0, 0, 0, 0);
-        end = new Date();
+        
+        // Get the last day of the current month
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         end.setHours(23, 59, 59, 999);
         break;
       case 'custom':
         start = new Date(customDateRange.start);
+        start.setHours(0, 0, 0, 0);
         end = new Date(customDateRange.end);
         end.setHours(23, 59, 59, 999);
         break;
       default:
-        start = new Date(now.setHours(0, 0, 0, 0));
-        end = new Date(now.setHours(23, 59, 59, 999));
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
     }
 
     return { start, end };
@@ -839,23 +905,32 @@ export default function AdminDashboard() {
                     </Button>
                   </div>
                   <div className="max-h-60 overflow-y-auto border border-gray-700 rounded p-3">
-                    {teamMembers.map((member) => (
-                      <label 
-                        key={member.id} 
-                        className="flex items-center gap-3 p-2 hover:bg-gray-800 rounded cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedUsers.includes(member.id)}
-                          onChange={() => handleUserToggle(member.id)}
-                          className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="text-white">{member.full_name || member.email}</span>
-                        <span className="text-gray-400 text-sm ml-auto">
-                          {member.weeklyActivity} calculations this week
-                        </span>
-                      </label>
-                    ))}
+                    {calculationCountLoading ? (
+                      <div className="text-center py-4 text-gray-400">
+                        Loading calculation counts...
+                      </div>
+                    ) : (
+                      teamMembers.map((member) => {
+                        const calcCount = userCalculationCounts[member.id] || 0;
+                        return (
+                          <label 
+                            key={member.id} 
+                            className="flex items-center gap-3 p-2 hover:bg-gray-800 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedUsers.includes(member.id)}
+                              onChange={() => handleUserToggle(member.id)}
+                              className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-white">{member.full_name || member.email}</span>
+                            <span className="text-gray-400 text-sm ml-auto">
+                              {calcCount} calculation{calcCount !== 1 ? 's' : ''} {getPeriodLabel()}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
 
