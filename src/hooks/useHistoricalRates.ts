@@ -29,9 +29,9 @@ const AVAILABLE_PAIRS = [
   { value: 'GBPAUD', label: 'GBP/AUD' }
 ];
 
-// Timeframe configurations
+// Timeframe configurations - Fixed for 1D
 const TIMEFRAMES = [
-  { label: '1D', days: 1, interval: 'hourly' },
+  { label: '1D', days: 1, interval: 'hourly', hoursToShow: 24 },
   { label: '5D', days: 5, interval: 'daily' },
   { label: '1M', days: 30, interval: 'daily' },
   { label: '3M', days: 90, interval: 'daily' }
@@ -51,7 +51,9 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     
     const timeConfig = TIMEFRAMES.find(t => t.label === timeframe);
     if (timeConfig) {
-      startDate.setDate(endDate.getDate() - timeConfig.days);
+      // For 1D, fetch 2 days to ensure we have enough hourly data
+      const daysToFetch = timeConfig.label === '1D' ? 2 : timeConfig.days;
+      startDate.setDate(endDate.getDate() - daysToFetch);
     } else {
       startDate.setDate(endDate.getDate() - 30); // Default to 1 month
     }
@@ -61,6 +63,61 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       end: endDate.toISOString().split('T')[0],
       interval: timeConfig?.interval || 'daily'
     };
+  };
+
+  // Get mock data as fallback - Enhanced for 1D
+  const getMockData = (pair: string, timeframe: string): ChartDataPoint[] => {
+    const timeConfig = TIMEFRAMES.find(t => t.label === timeframe);
+    const basePrices: Record<string, number> = {
+      'GBPUSD': 1.27,
+      'GBPEUR': 1.18,
+      'EURUSD': 1.07,
+      'GBPNOK': 13.56,
+      'GBPSEK': 13.89,
+      'GBPAUD': 1.92
+    };
+    const basePrice = basePrices[pair] || 1.0;
+    
+    const data: ChartDataPoint[] = [];
+    let currentPrice = basePrice;
+    
+    if (timeframe === '1D') {
+      // Generate hourly data for the last 24 hours
+      for (let i = 24; i >= 0; i--) {
+        const date = new Date();
+        date.setHours(date.getHours() - i);
+        
+        // Create more realistic hourly price movement
+        const hourlyChange = (Math.random() - 0.5) * 0.0005; // Smaller changes for hourly
+        currentPrice = currentPrice * (1 + hourlyChange);
+        
+        data.push({
+          date: date.toISOString(),
+          price: Number(currentPrice.toFixed(4)),
+          timestamp: date.getTime()
+        });
+      }
+    } else {
+      // Daily data for other timeframes
+      const days = timeConfig?.days || 30;
+      for (let i = days; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        
+        const dailyChange = (Math.random() - 0.5) * 0.01;
+        currentPrice = currentPrice * (1 + dailyChange);
+        const intradayVariation = (Math.random() - 0.5) * 0.002;
+        
+        data.push({
+          date: date.toISOString().split('T')[0],
+          price: Number((currentPrice + intradayVariation).toFixed(4)),
+          timestamp: date.getTime()
+        });
+      }
+    }
+    
+    console.log(`Generated mock data for ${timeframe}, points:`, data.length);
+    return data;
   };
 
   // Fetch historical data from TraderMade
@@ -84,15 +141,20 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
         
         if (historicalData && historicalData.length > 0) {
           // Transform data for chart with timestamp
-          const transformedData: ChartDataPoint[] = historicalData.map(point => ({
+          let transformedData: ChartDataPoint[] = historicalData.map(point => ({
             date: point.date,
             price: point.close,
-            timestamp: new Date(point.date).getTime() // Add timestamp for chart
+            timestamp: new Date(point.date).getTime()
           }));
+          
+          // For 1D timeframe, filter to last 24 hours only
+          if (selectedTimeframe === '1D') {
+            const cutoffTime = Date.now() - (24 * 60 * 60 * 1000);
+            transformedData = transformedData.filter(point => point.timestamp >= cutoffTime);
+          }
           
           console.log('Using real TraderMade data, points:', transformedData.length);
           setChartData(transformedData);
-          // Clear error to indicate using real data
           setError(null);
         } else {
           console.log('No data from TraderMade, using mock data');
@@ -114,54 +176,33 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     }
   };
 
-  // Get mock data as fallback
-  const getMockData = (pair: string, timeframe: string): ChartDataPoint[] => {
-    const days = TIMEFRAMES.find(t => t.label === timeframe)?.days || 30;
-    const basePrices: Record<string, number> = {
-      'GBPUSD': 1.27,
-      'GBPEUR': 1.18,
-      'EURUSD': 1.07,
-      'GBPNOK': 13.56,
-      'GBPSEK': 13.89,
-      'GBPAUD': 1.92
-    };
-    const basePrice = basePrices[pair] || 1.0;
-    
-    const data: ChartDataPoint[] = [];
-    let currentPrice = basePrice;
-    
-    for (let i = days; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      
-      // Create more realistic price movement
-      const dailyChange = (Math.random() - 0.5) * 0.01;
-      currentPrice = currentPrice * (1 + dailyChange);
-      const intradayVariation = (Math.random() - 0.5) * 0.002;
-      
-      data.push({
-        date: date.toISOString().split('T')[0],
-        price: Number((currentPrice + intradayVariation).toFixed(4)),
-        timestamp: date.getTime() // Add timestamp for chart
-      });
-    }
-    
-    console.log('Generated mock data, points:', data.length);
-    return data;
-  };
-
-  // Fetch specific rate for date/time
+  // Fetch specific rate for date/time - Enhanced with validation
   const fetchRateForDateTime = async (date: Date, time: string): Promise<number | null> => {
     try {
+      // Validate date is not in the future
+      const now = new Date();
+      if (date > now) {
+        console.error('Cannot fetch rates for future dates');
+        setError('Cannot fetch rates for future dates');
+        return null;
+      }
+      
       // Format date for TraderMade API
       const dateStr = date.toISOString().split('T')[0];
       
       console.log(`Fetching rate for ${dateStr} at ${time}`);
       
-      // Parse time for minute-level data (with Professional plan)
+      // Parse time for minute-level data
       const [hours, minutes] = time.split(':').map(num => parseInt(num) || 0);
       const dateTime = new Date(date);
       dateTime.setHours(hours, minutes, 0, 0);
+      
+      // Check if the datetime is in the future
+      if (dateTime > now) {
+        console.error('Cannot fetch rates for future times');
+        setError('Cannot fetch rates for future times');
+        return null;
+      }
       
       // Try to get minute-level data with Professional plan
       try {
@@ -169,7 +210,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
           selectedPair,
           dateStr,
           dateStr,
-          'minute' // Use minute data for Professional plan
+          'minute' // Use minute data for specific times
         );
         
         if (historicalData && historicalData.length > 0) {
@@ -188,10 +229,15 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
           }
           
           console.log(`Found rate: ${closestRate.close} for ${dateStr} ${time}`);
+          setError(null); // Clear any previous errors
           return closestRate.close;
         }
-      } catch (apiError) {
+      } catch (apiError: any) {
         console.error('API error fetching specific rate:', apiError);
+        // Check if it's a 403 error
+        if (apiError.message?.includes('403') || apiError.message?.includes('HTTP error')) {
+          setError('API access error - Using simulated data');
+        }
       }
       
       // Fallback to mock rate
@@ -204,9 +250,12 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
         'GBPAUD': 1.92
       };
       const basePrice = basePrices[selectedPair] || 1.0;
-      return basePrice + (Math.random() - 0.5) * 0.02;
+      const mockRate = basePrice + (Math.random() - 0.5) * 0.02;
+      setError('Using simulated data - TraderMade data temporarily unavailable');
+      return mockRate;
     } catch (err) {
       console.error('Error fetching specific rate:', err);
+      setError('Error fetching historical rate');
       return null;
     }
   };
