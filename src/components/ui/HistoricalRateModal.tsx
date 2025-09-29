@@ -73,18 +73,9 @@ export function HistoricalRateModal({
     });
   };
 
-  // Handle date selection with future date validation
+  // Handle date selection
   const handleDateSelect = (day: number) => {
     const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // Set to end of today
-    
-    // Prevent selecting future dates
-    if (newDate > today) {
-      console.log('Cannot select future dates');
-      return;
-    }
-    
     setSelectedDate(newDate);
   };
 
@@ -269,34 +260,23 @@ export function HistoricalRateModal({
                           {day}
                         </div>
                       ))}
-                      {calendarDays.map((day, index) => {
-                        const dayDate = day ? new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day) : null;
-                        const isToday = dayDate ? dayDate.toDateString() === new Date().toDateString() : false;
-                        const isSelected = dayDate ? selectedDate.toDateString() === dayDate.toDateString() : false;
-                        const isFuture = dayDate ? dayDate > new Date() : false;
-                        
-                        return (
-                          <div key={index} className="aspect-square">
-                            {day && (
-                              <button
-                                onClick={() => handleDateSelect(day)}
-                                disabled={isFuture}
-                                className={`w-full h-full rounded transition-colors ${
-                                  isFuture 
-                                    ? 'text-gray-600 bg-gray-800/50 cursor-not-allowed opacity-50'
-                                    : isSelected
-                                      ? 'bg-purple-600 text-white'
-                                      : isToday
-                                        ? 'bg-purple-600/30 text-purple-300 border border-purple-600'
-                                        : 'hover:bg-gray-700 text-gray-300'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
+                      {calendarDays.map((day, index) => (
+                        <div key={index} className="aspect-square">
+                          {day && (
+                            <button
+                              onClick={() => handleDateSelect(day)}
+                              className={`w-full h-full rounded hover:bg-gray-700 transition-colors ${
+                                selectedDate.getDate() === day &&
+                                selectedDate.getMonth() === currentMonth.getMonth()
+                                  ? 'bg-purple-600 text-white'
+                                  : 'text-gray-300'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -365,13 +345,11 @@ export function HistoricalRateModal({
                 </div>
               ) : (
                 <HistoricalChart
-                  data={chartData as any}
-                  onPriceSelect={(price: number) => {
-                    onPriceSelect(price);
-                    onClose();
-                  }}
-                  selectedPair={selectedPair}
-                />
+                      data={chartData as any}
+                      onPriceSelect={(price: number) => {
+                        onPriceSelect(price);
+                        onClose();
+                      } } selectedPair={''}                />
               )}
             </div>
           </div>
