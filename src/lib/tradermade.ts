@@ -168,14 +168,14 @@ export async function getHistoricalRates(
 export function isDateAvailable(dateStr: string): boolean {
   const date = new Date(dateStr);
   const maxDate = getMaxHistoricalDate();
-  const minDate = new Date('2020-01-01');
+  const minDate = new Date('2018-01-01'); // Changed from 2020 to match the rest of the file
   
   return date >= minDate && date <= maxDate;
 }
 
 // Get the available date range for historical data
 export function getAvailableDateRange(): { min: string, max: string } {
-  const minDate = new Date('2020-01-01');
+  const minDate = new Date('2018-01-01'); // Changed from 2020 to match the rest of the file
   const maxDate = getMaxHistoricalDate();
   
   return {

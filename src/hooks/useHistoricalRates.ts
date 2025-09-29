@@ -58,8 +58,14 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     return `${year}-${month}-${day}`;
   };
 
-  // Check if date is within minute/hourly data range (30 days)
-  const isWithinGranularDataRange = (date: Date): boolean => {
+  // Check if date is today
+  const isToday = (date: Date): boolean => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  // Check if date is within hourly data range (30 days)
+  const isWithinHourlyDataRange = (date: Date): boolean => {
     const maxDate = getMaxHistoricalDate();
     const thirtyDaysAgo = new Date(maxDate);
     thirtyDaysAgo.setDate(maxDate.getDate() - 30);
@@ -70,18 +76,23 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
   const determineInterval = (startDate: Date, endDate: Date, timeframe: string): 
     { interval: 'minute' | 'hourly' | 'daily', precision: 'minute' | 'hourly' | 'daily' } => {
     
-    const startWithinRange = isWithinGranularDataRange(startDate);
-    const endWithinRange = isWithinGranularDataRange(endDate);
+    // Check if we're looking at today's data for 1D chart
+    if (timeframe === '1D' && isToday(endDate)) {
+      return { interval: 'minute', precision: 'minute' };
+    }
+    
+    const startWithinRange = isWithinHourlyDataRange(startDate);
+    const endWithinRange = isWithinHourlyDataRange(endDate);
     
     // If any part of the range is outside 30 days, use daily
     if (!startWithinRange || !endWithinRange) {
       return { interval: 'daily', precision: 'daily' };
     }
     
-    // Within 30 days - use appropriate granularity
+    // Within 30 days - use hourly (not minute for historical)
     switch (timeframe) {
       case '1D':
-        return { interval: 'minute', precision: 'minute' };
+        return { interval: 'hourly', precision: 'hourly' }; // Historical 1D uses hourly
       case '5D':
         return { interval: 'hourly', precision: 'hourly' };
       case '1M':
@@ -130,57 +141,6 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       precision,
       targetPoints: timeConfig.targetPoints
     };
-  };
-
-  // Generate mock data with proper density
-  const getMockData = (pair: string, timeframe: string, targetPoints: number, centerDate?: Date): ChartDataPoint[] => {
-    const timeConfig = TIMEFRAMES.find(t => t.label === timeframe);
-    if (!timeConfig) return [];
-
-    const basePrices: Record<string, number> = {
-      'GBPUSD': 1.27,
-      'GBPEUR': 1.18,
-      'EURUSD': 1.07,
-      'GBPNOK': 13.56,
-      'GBPSEK': 13.89,
-      'GBPAUD': 1.92
-    };
-    const basePrice = basePrices[pair] || 1.0;
-    
-    const data: ChartDataPoint[] = [];
-    let currentPrice = basePrice;
-    
-    const maxDate = getMaxHistoricalDate();
-    const startDate = centerDate ? new Date(validateHistoricalDate(formatToUKDate(centerDate))) : maxDate;
-    
-    // Calculate interval in hours based on target points
-    const totalHours = timeConfig.days * 24;
-    const intervalHours = totalHours / targetPoints;
-    
-    const startOffset = centerDate ? -Math.floor(targetPoints / 2) : -targetPoints + 1;
-    
-    for (let i = 0; i < targetPoints; i++) {
-      const pointDate = new Date(startDate);
-      pointDate.setHours(pointDate.getHours() + (startOffset + i) * intervalHours);
-      
-      if (pointDate > maxDate) continue;
-      
-      const volatility = timeframe === '1D' ? 0.0005 : 0.001;
-      const change = (Math.random() - 0.5) * volatility;
-      currentPrice = currentPrice * (1 + change);
-      
-      const maxDeviation = basePrice * 0.05;
-      currentPrice = Math.max(basePrice - maxDeviation, Math.min(basePrice + maxDeviation, currentPrice));
-      
-      data.push({
-        date: pointDate.toISOString(),
-        price: Number(currentPrice.toFixed(4)),
-        timestamp: pointDate.getTime()
-      });
-    }
-    
-    console.log(`Generated mock data for ${timeframe}, points:`, data.length);
-    return data.sort((a, b) => a.timestamp - b.timestamp);
   };
 
   // Process API data with improved density
@@ -252,9 +212,10 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       } catch (apiError: any) {
         console.error('TraderMade API error:', apiError);
         
-        let errorMessage = 'Using simulated data - ';
+        // Don't use mock data - show clear error message
+        let errorMessage = '';
         if (apiError.message?.includes('max one month history')) {
-          errorMessage += 'Data range exceeds API limits. Using daily precision for older dates.';
+          errorMessage = 'Data range exceeds API limits. Try a more recent date range.';
           // Try again with daily data
           try {
             const historicalData = await getHistoricalRates(
@@ -275,22 +236,21 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
             console.error('Retry with daily data failed:', retryError);
           }
         } else if (apiError.message?.includes('403')) {
-          errorMessage += 'API access denied.';
+          errorMessage = 'Unable to access historical data. Please check your API permissions.';
         } else if (apiError.message?.includes('404')) {
-          errorMessage += 'Data not available for this date range.';
+          errorMessage = 'No data available for this date range.';
         } else {
-          errorMessage += 'Unable to fetch live data.';
+          errorMessage = 'Unable to fetch historical data. Please try again.';
         }
         
-        setChartData(getMockData(selectedPair, selectedTimeframe, targetPoints, centerDate));
+        setChartData([]);
         setError(errorMessage);
         setIsRealData(false);
       }
     } catch (err: any) {
       console.error('Error in fetchHistoricalData:', err);
-      setError('Failed to load historical data - Using simulated data');
-      const { targetPoints } = getDateRange(selectedTimeframe, centerDate);
-      setChartData(getMockData(selectedPair, selectedTimeframe, targetPoints, centerDate));
+      setError('Failed to load historical data');
+      setChartData([]);
       setIsRealData(false);
     } finally {
       setIsLoading(false);
@@ -329,9 +289,20 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       
       setSearchedDate(dateTime);
       
-      // Determine if we can use minute data or need daily
-      const useMinuteData = isWithinGranularDataRange(date);
-      const interval = useMinuteData ? 'minute' : 'daily';
+      // Determine which interval to use based on date
+      let interval: 'minute' | 'hourly' | 'daily';
+      let precisionNote: string;
+      
+      if (isToday(date)) {
+        interval = 'minute';
+        precisionNote = 'minute precision';
+      } else if (isWithinHourlyDataRange(date)) {
+        interval = 'hourly';
+        precisionNote = 'hourly precision (exact time not available for historical dates)';
+      } else {
+        interval = 'daily';
+        precisionNote = 'daily precision only for this date';
+      }
       
       try {
         const historicalData = await getHistoricalRates(
@@ -342,8 +313,10 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
         );
         
         if (historicalData && historicalData.length > 0) {
+          let rate: number;
+          
           if (interval === 'minute') {
-            // Find closest time match for minute data
+            // For minute data (today only), find closest time match
             const targetTime = dateTime.getTime();
             let closestRate = historicalData[0];
             let closestDiff = Infinity;
@@ -357,42 +330,42 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
               }
             }
             
-            const rate = closestRate.close || closestRate.open;
+            rate = closestRate.close || closestRate.open;
             console.log(`Found real rate (minute precision): ${rate} for ${validatedDate} ${time}`);
             setError(null);
             setDataPrecision('minute');
+          } else if (interval === 'hourly') {
+            // For hourly data, find the hour that contains the requested time
+            const targetHour = hours;
+            const hourlyPoint = historicalData.find(point => {
+              const pointDate = new Date(point.date);
+              return pointDate.getHours() === targetHour;
+            }) || historicalData[0];
+            
+            rate = hourlyPoint.close || hourlyPoint.open;
+            console.log(`Found real rate (hourly precision): ${rate} for ${validatedDate} hour ${hours}:00`);
+            setError(`Note: ${precisionNote}`);
+            setDataPrecision('hourly');
           } else {
             // For daily data, use the day's close price
-            const rate = historicalData[0].close || historicalData[0].open;
+            rate = historicalData[0].close || historicalData[0].open;
             console.log(`Found real rate (daily precision): ${rate} for ${validatedDate}`);
-            setError('Note: Only daily precision available for this date');
+            setError(`Note: ${precisionNote}`);
             setDataPrecision('daily');
           }
           
           await fetchHistoricalData(dateTime);
           
-          return historicalData[0].close || historicalData[0].open;
+          return rate;
+        } else {
+          throw new Error('No data returned from API');
         }
       } catch (apiError: any) {
         console.error('API error fetching specific rate:', apiError);
-        setError('Unable to fetch real rate - Showing simulated rate');
+        setError('Unable to fetch historical rate for this date/time');
+        setChartData([]);
+        return null;
       }
-      
-      // Fallback to mock rate
-      const basePrices: Record<string, number> = {
-        'GBPUSD': 1.27,
-        'GBPEUR': 1.18,
-        'EURUSD': 1.07,
-        'GBPNOK': 13.56,
-        'GBPSEK': 13.89,
-        'GBPAUD': 1.92
-      };
-      const basePrice = basePrices[selectedPair] || 1.0;
-      const mockRate = basePrice + (Math.random() - 0.5) * 0.02;
-      
-      await fetchHistoricalData(dateTime);
-      
-      return mockRate;
     } catch (err: any) {
       console.error('Error fetching specific rate:', err);
       setError('Error fetching rate: ' + err.message);
