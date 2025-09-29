@@ -202,49 +202,44 @@ export function HistoricalRateModal({
               </Select>
             </div>
 
-            {/* Timeframe Buttons */}
-            <div className="flex items-center gap-2">
-              <span className="text-gray-300">Timeframe:</span>
-              <div className="flex gap-1">
-                {TIMEFRAMES.map((tf) => (
-                  <button
-                    key={tf}
-                    onClick={() => setSelectedTimeframe(tf)}
-                    className={`px-3 py-1 rounded transition-colors ${
-                      selectedTimeframe === tf
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    {tf}
-                  </button>
-                ))}
+            {/* Timeframe Buttons - Only show when not in date picker mode */}
+            {!showDatePicker && (
+              <div className="flex items-center gap-2">
+                <span className="text-gray-300">Timeframe:</span>
+                <div className="flex gap-1">
+                  {TIMEFRAMES.map((tf) => (
+                    <button
+                      key={tf}
+                      onClick={() => setSelectedTimeframe(tf)}
+                      className={`px-3 py-1 rounded transition-colors ${
+                        selectedTimeframe === tf
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {tf}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Date/Time Search Toggle */}
             <Button
-              onClick={() => setShowDatePicker(!showDatePicker)}
+              onClick={() => {
+                setShowDatePicker(!showDatePicker);
+                setSearchedRate(null); // Clear any previous search when toggling
+              }}
               variant="outline"
               className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
             >
               <Calendar className="h-4 w-4 mr-2" />
-              Date/Time Search
+              {showDatePicker ? 'Back to Chart' : 'Date/Time Search'}
             </Button>
-
-            {showDatePicker && (
-              <Button
-                onClick={() => setShowDatePicker(false)}
-                variant="ghost"
-                className="text-gray-400 hover:text-white"
-              >
-                Reset View
-              </Button>
-            )}
           </div>
 
-          {/* Data Source and Precision Indicators */}
-          {chartData.length > 0 && isRealData && (
+          {/* Data Source and Precision Indicators - Only show when chart is visible */}
+          {!showDatePicker && chartData.length > 0 && isRealData && (
             <div className="flex flex-wrap gap-2">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-green-500/20 text-green-400">
                 <div className="w-2 h-2 rounded-full bg-green-400" />
@@ -264,14 +259,14 @@ export function HistoricalRateModal({
               <span className="text-purple-400">💡</span>
               <span>
                 {showDatePicker 
-                  ? `Select a specific date and time to find the exact historical rate. Minute precision for last 2 days, hourly for older dates. Chart view remains unchanged during search.`
+                  ? "Select a specific date and time to find the exact historical rate. Minute precision is attempted for all dates, with hourly fallback if unavailable."
                   : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
                 }
               </span>
             </p>
           </div>
 
-          {/* Date/Time Picker */}
+          {/* Date/Time Picker - Only show when showDatePicker is true */}
           {showDatePicker && (
             <div className="bg-gray-800 rounded-lg p-4 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -359,25 +354,13 @@ export function HistoricalRateModal({
                         {formatSelectedDate(selectedDate)}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {(() => {
-                          const twoDaysAgo = new Date();
-                          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-                          return selectedDate >= twoDaysAgo 
-                            ? '✓ Minute precision available'
-                            : '⚠ Hourly precision for this date';
-                        })()}
+                        Searching for minute-precise data at your specified time
                       </div>
                     </div>
                     
                     <div>
                       <label className="text-sm text-gray-400">
-                        Time {(() => {
-                          const twoDaysAgo = new Date();
-                          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-                          return selectedDate >= twoDaysAgo 
-                            ? '(minute precision)'
-                            : '(hourly average)';
-                        })()}
+                        Time (24-hour format)
                       </label>
                       <Input
                         type="text"
@@ -419,29 +402,31 @@ export function HistoricalRateModal({
             </div>
           )}
 
-          {/* Chart Container - Fixed height */}
-          <div className="bg-gray-800 rounded-lg p-4">
-            <div className="relative" style={{ height: '350px' }}>
-              {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-gray-400">Loading chart data...</div>
-                </div>
-              ) : error && chartData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <div className="text-yellow-400 text-center">{error}</div>
-                </div>
-              ) : (
-                <HistoricalChart
-                  data={chartData}
-                  onPriceSelect={(price: number) => {
-                    onPriceSelect(price);
-                    onClose();
-                  }}
-                  selectedPair={selectedPair}
-                />
-              )}
+          {/* Chart Container - Only show when NOT in date picker mode */}
+          {!showDatePicker && (
+            <div className="bg-gray-800 rounded-lg p-4">
+              <div className="relative" style={{ height: '350px' }}>
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-gray-400">Loading chart data...</div>
+                  </div>
+                ) : error && chartData.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-2">
+                    <div className="text-yellow-400 text-center">{error}</div>
+                  </div>
+                ) : (
+                  <HistoricalChart
+                    data={chartData}
+                    onPriceSelect={(price: number) => {
+                      onPriceSelect(price);
+                      onClose();
+                    }}
+                    selectedPair={selectedPair}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
