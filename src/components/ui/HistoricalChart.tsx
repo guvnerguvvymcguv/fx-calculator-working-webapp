@@ -151,8 +151,8 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
       ctx.fillText(price.toFixed(4), padding.left - 5, y + 4);
     }
 
-    // Vertical grid lines (time labels)
-    const timeSteps = isMobile ? 3 : 5;
+    // Vertical grid lines (time labels) - Changed to exactly 5 labels
+    const timeSteps = 4; // 4 steps = 5 labels (0, 1, 2, 3, 4)
     for (let i = 0; i <= timeSteps; i++) {
       const ratio = i / timeSteps;
       const x = padding.left + ratio * chartWidth;
@@ -165,9 +165,23 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
 
       // Time labels
       const date = new Date(timestamp);
-      const label = isMobile 
-        ? `${date.getDate()}/${date.getMonth() + 1}`
-        : date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      
+      // Check if all data points are on the same day (for 1D chart)
+      const firstDate = new Date(minTime);
+      const lastDate = new Date(maxTime);
+      const isSameDay = firstDate.toDateString() === lastDate.toDateString();
+      
+      let label: string;
+      if (isSameDay) {
+        // For 1D chart, show time
+        label = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      } else if (isMobile) {
+        // For mobile, show day/month
+        label = `${date.getDate()}/${date.getMonth() + 1}`;
+      } else {
+        // For desktop, show day and month
+        label = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      }
       
       ctx.fillStyle = '#C7B3FF80';
       ctx.font = `${isMobile ? 10 : 12}px system-ui`;
@@ -314,7 +328,7 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
         className="cursor-crosshair rounded-lg w-full h-full"
-        style={{ maxWidth: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%' }}
       />
       
       {/* Pair label */}

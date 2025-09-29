@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from './button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Input } from './input';
-import { X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Calendar, Search, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { HistoricalChart } from './HistoricalChart';
 import { useHistoricalRates } from '../../hooks/useHistoricalRates';
 import { getMaxHistoricalDate } from '../../lib/tradermade';
@@ -26,6 +26,18 @@ const CURRENCY_PAIRS = [
 
 const TIMEFRAMES = ['1D', '5D', '1M', '3M'];
 
+// Helper to format data precision for display
+const formatDataPrecision = (precision: 'minute' | 'hourly' | 'daily'): string => {
+  switch (precision) {
+    case 'minute':
+      return 'Minute precision';
+    case 'hourly':
+      return 'Hourly precision';
+    case 'daily':
+      return 'Daily precision only';
+  }
+};
+
 export function HistoricalRateModal({ 
   isOpen, 
   onClose, 
@@ -41,6 +53,7 @@ export function HistoricalRateModal({
     isLoading,
     error,
     isRealData,
+    dataPrecision,
     setSelectedPair,
     setSelectedTimeframe,
     fetchRateForDateTime
@@ -50,12 +63,15 @@ export function HistoricalRateModal({
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState('09:00');
   const [searchedRate, setSearchedRate] = useState<number | null>(null);
+  const [searchPrecision, setSearchPrecision] = useState<'minute' | 'hourly' | 'daily' | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Get max available date for historical data
   const maxAvailableDate = getMaxHistoricalDate();
   const today = new Date();
+  const thirtyDaysAgo = new Date(maxAvailableDate);
+  thirtyDaysAgo.setDate(maxAvailableDate.getDate() - 30);
 
   // Calendar helper functions
   const getDaysInMonth = (date: Date) => {
@@ -82,7 +98,12 @@ export function HistoricalRateModal({
   // Check if a date is available for historical data
   const isDateAvailable = (year: number, month: number, day: number): boolean => {
     const checkDate = new Date(year, month, day);
-    return checkDate <= maxAvailableDate;
+    return checkDate <= maxAvailableDate && checkDate >= new Date('2018-01-01');
+  };
+
+  // Check if date has minute precision available
+  const hasMinutePrecision = (date: Date): boolean => {
+    return date >= thirtyDaysAgo && date <= maxAvailableDate;
   };
 
   // Handle date selection
@@ -90,7 +111,7 @@ export function HistoricalRateModal({
     const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
     
     // Only allow selection of available dates
-    if (newDate <= maxAvailableDate) {
+    if (isDateAvailable(currentMonth.getFullYear(), currentMonth.getMonth(), day)) {
       setSelectedDate(newDate);
     }
   };
@@ -113,6 +134,12 @@ export function HistoricalRateModal({
       const rate = await fetchRateForDateTime(selectedDate, selectedTime);
       if (rate !== null) {
         setSearchedRate(rate);
+        // Determine precision for the searched date
+        if (hasMinutePrecision(selectedDate)) {
+          setSearchPrecision('minute');
+        } else {
+          setSearchPrecision('daily');
+        }
       }
     } catch (error) {
       console.error('Error finding rate:', error);
@@ -229,13 +256,22 @@ export function HistoricalRateModal({
             )}
           </div>
 
-          {/* Data Source Indicator */}
+          {/* Data Source and Precision Indicators */}
           {chartData.length > 0 && (
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-              isRealData ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${isRealData ? 'bg-green-400' : 'bg-yellow-400'}`} />
-              {isRealData ? 'Real Market Data' : 'Simulated Data'}
+            <div className="flex flex-wrap gap-2">
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                isRealData ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${isRealData ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                {isRealData ? 'Real Market Data' : 'Simulated Data'}
+              </div>
+              
+              {isRealData && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-400">
+                  <AlertCircle className="h-3 w-3" />
+                  {formatDataPrecision(dataPrecision)}
+                </div>
+              )}
             </div>
           )}
 
@@ -245,7 +281,7 @@ export function HistoricalRateModal({
               <span className="text-purple-400">💡</span>
               <span>
                 {showDatePicker 
-                  ? `Select a specific date and time to find the historical rate. Data available up to ${maxAvailableDate.toLocaleDateString('en-GB')}.`
+                  ? `Select a specific date and time to find the historical rate. Minute precision available for last 30 days, daily precision for older dates.`
                   : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
                 }
               </span>
@@ -298,25 +334,33 @@ export function HistoricalRateModal({
                         const isToday = day === today.getDate() &&
                           currentMonth.getMonth() === today.getMonth() &&
                           currentMonth.getFullYear() === today.getFullYear();
+                        const hasMinute = day && isAvailable ? 
+                          hasMinutePrecision(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) : false;
 
                         return (
-                          <div key={index} className="aspect-square">
+                          <div key={index} className="aspect-square relative">
                             {day && (
-                              <button
-                                onClick={() => handleDateSelect(day)}
-                                disabled={!isAvailable}
-                                className={`w-full h-full rounded transition-colors ${
-                                  !isAvailable
-                                    ? 'text-gray-600 cursor-not-allowed opacity-50'
-                                    : isSelected
-                                    ? 'bg-purple-600 text-white'
-                                    : isToday
-                                    ? 'bg-gray-700 text-white border border-purple-500'
-                                    : 'text-gray-300 hover:bg-gray-700'
-                                }`}
-                              >
-                                {day}
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleDateSelect(day)}
+                                  disabled={!isAvailable}
+                                  className={`w-full h-full rounded transition-colors ${
+                                    !isAvailable
+                                      ? 'text-gray-600 cursor-not-allowed opacity-50'
+                                      : isSelected
+                                      ? 'bg-purple-600 text-white'
+                                      : isToday
+                                      ? 'bg-gray-700 text-white border border-purple-500'
+                                      : 'text-gray-300 hover:bg-gray-700'
+                                  }`}
+                                >
+                                  {day}
+                                </button>
+                                {isAvailable && !hasMinute && (
+                                  <div className="absolute top-0 right-0 w-1 h-1 bg-yellow-400 rounded-full" 
+                                       title="Daily precision only" />
+                                )}
+                              </>
                             )}
                           </div>
                         );
@@ -324,9 +368,15 @@ export function HistoricalRateModal({
                     </div>
                     
                     {/* Date availability note */}
-                    <div className="mt-3 text-xs text-gray-500">
-                     Historical data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')} (1-day processing delay)
-                   </div>
+                    <div className="mt-3 space-y-1">
+                      <div className="text-xs text-gray-500">
+                        Historical data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')}
+                      </div>
+                      <div className="text-xs text-gray-500 flex items-center gap-2">
+                        <span className="w-2 h-2 bg-yellow-400 rounded-full inline-block" />
+                        <span>Yellow dot = Daily precision only (older than 30 days)</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -339,16 +389,27 @@ export function HistoricalRateModal({
                       <div className="text-white font-medium">
                         {formatSelectedDate(selectedDate)}
                       </div>
+                      {selectedDate && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {hasMinutePrecision(selectedDate) 
+                            ? '✓ Minute precision available' 
+                            : '⚠ Daily precision only for this date'}
+                        </div>
+                      )}
                     </div>
                     
                     <div>
-                      <label className="text-sm text-gray-400">Time (e.g., 13:00, 1:00, 01:00)</label>
+                      <label className="text-sm text-gray-400">
+                        Time (e.g., 13:00, 1:00 PM)
+                        {!hasMinutePrecision(selectedDate) && ' - Daily rate only'}
+                      </label>
                       <Input
                         type="text"
                         value={selectedTime}
                         onChange={(e) => setSelectedTime(e.target.value)}
                         className="bg-gray-900 border-gray-700 text-white"
                         placeholder="09:00"
+                        disabled={!hasMinutePrecision(selectedDate)}
                       />
                     </div>
 
@@ -364,7 +425,8 @@ export function HistoricalRateModal({
                     {searchedRate !== null && (
                       <div className="bg-gray-900 rounded-lg p-3 space-y-2">
                         <div className="text-sm text-gray-400">
-                          Rate Found {!isRealData && '(Simulated)'}:
+                          Rate Found {!isRealData && '(Simulated)'}
+                          {isRealData && searchPrecision && ` - ${formatDataPrecision(searchPrecision)}`}:
                         </div>
                         <div className="text-2xl font-bold text-green-400">
                           {searchedRate.toFixed(4)}
