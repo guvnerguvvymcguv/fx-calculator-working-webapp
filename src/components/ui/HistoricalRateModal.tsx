@@ -5,6 +5,7 @@ import { Input } from './input';
 import { X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { HistoricalChart } from './HistoricalChart';
 import { useHistoricalRates } from '../../hooks/useHistoricalRates';
+import { getMaxHistoricalDate } from '../../lib/tradermade';
 
 interface HistoricalRateModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export function HistoricalRateModal({
     chartData,
     isLoading,
     error,
+    isRealData,
     setSelectedPair,
     setSelectedTimeframe,
     fetchRateForDateTime
@@ -50,6 +52,10 @@ export function HistoricalRateModal({
   const [searchedRate, setSearchedRate] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Get max available date for historical data
+  const maxAvailableDate = getMaxHistoricalDate();
+  const today = new Date();
 
   // Calendar helper functions
   const getDaysInMonth = (date: Date) => {
@@ -73,10 +79,20 @@ export function HistoricalRateModal({
     });
   };
 
+  // Check if a date is available for historical data
+  const isDateAvailable = (year: number, month: number, day: number): boolean => {
+    const checkDate = new Date(year, month, day);
+    return checkDate <= maxAvailableDate;
+  };
+
   // Handle date selection
   const handleDateSelect = (day: number) => {
     const newDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    setSelectedDate(newDate);
+    
+    // Only allow selection of available dates
+    if (newDate <= maxAvailableDate) {
+      setSelectedDate(newDate);
+    }
   };
 
   // Handle month navigation
@@ -213,13 +229,23 @@ export function HistoricalRateModal({
             )}
           </div>
 
+          {/* Data Source Indicator */}
+          {chartData.length > 0 && (
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+              isRealData ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${isRealData ? 'bg-green-400' : 'bg-yellow-400'}`} />
+              {isRealData ? 'Real Market Data' : 'Simulated Data'}
+            </div>
+          )}
+
           {/* Instructions */}
           <div className="bg-gray-800/50 rounded-lg p-3">
             <p className="text-sm text-gray-400 flex items-start gap-2">
               <span className="text-purple-400">💡</span>
               <span>
                 {showDatePicker 
-                  ? "Select a specific date and time to find the historical rate"
+                  ? `Select a specific date and time to find the historical rate. Data available up to ${maxAvailableDate.toLocaleDateString('en-GB')}.`
                   : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
                 }
               </span>
@@ -260,24 +286,47 @@ export function HistoricalRateModal({
                           {day}
                         </div>
                       ))}
-                      {calendarDays.map((day, index) => (
-                        <div key={index} className="aspect-square">
-                          {day && (
-                            <button
-                              onClick={() => handleDateSelect(day)}
-                              className={`w-full h-full rounded hover:bg-gray-700 transition-colors ${
-                                selectedDate.getDate() === day &&
-                                selectedDate.getMonth() === currentMonth.getMonth()
-                                  ? 'bg-purple-600 text-white'
-                                  : 'text-gray-300'
-                              }`}
-                            >
-                              {day}
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                      {calendarDays.map((day, index) => {
+                        const isAvailable = day ? isDateAvailable(
+                          currentMonth.getFullYear(),
+                          currentMonth.getMonth(),
+                          day
+                        ) : false;
+                        const isSelected = day === selectedDate.getDate() &&
+                          selectedDate.getMonth() === currentMonth.getMonth() &&
+                          selectedDate.getFullYear() === currentMonth.getFullYear();
+                        const isToday = day === today.getDate() &&
+                          currentMonth.getMonth() === today.getMonth() &&
+                          currentMonth.getFullYear() === today.getFullYear();
+
+                        return (
+                          <div key={index} className="aspect-square">
+                            {day && (
+                              <button
+                                onClick={() => handleDateSelect(day)}
+                                disabled={!isAvailable}
+                                className={`w-full h-full rounded transition-colors ${
+                                  !isAvailable
+                                    ? 'text-gray-600 cursor-not-allowed opacity-50'
+                                    : isSelected
+                                    ? 'bg-purple-600 text-white'
+                                    : isToday
+                                    ? 'bg-gray-700 text-white border border-purple-500'
+                                    : 'text-gray-300 hover:bg-gray-700'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
+                    
+                    {/* Date availability note */}
+                    <div className="mt-3 text-xs text-gray-500">
+                     Historical data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')} (1-day processing delay)
+                   </div>
                   </div>
                 </div>
 
@@ -293,7 +342,7 @@ export function HistoricalRateModal({
                     </div>
                     
                     <div>
-                      <label className="text-sm text-gray-400">Time (e.g., 13:00, 1:00 PM, 1pm)</label>
+                      <label className="text-sm text-gray-400">Time (e.g., 13:00, 1:00, 01:00)</label>
                       <Input
                         type="text"
                         value={selectedTime}
@@ -305,8 +354,8 @@ export function HistoricalRateModal({
 
                     <Button
                       onClick={handleFindRate}
-                      disabled={isSearching}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      disabled={isSearching || selectedDate > maxAvailableDate}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
                     >
                       <Search className="h-4 w-4 mr-2" />
                       {isSearching ? 'Searching...' : 'Find Rate'}
@@ -314,7 +363,9 @@ export function HistoricalRateModal({
 
                     {searchedRate !== null && (
                       <div className="bg-gray-900 rounded-lg p-3 space-y-2">
-                        <div className="text-sm text-gray-400">Rate Found:</div>
+                        <div className="text-sm text-gray-400">
+                          Rate Found {!isRealData && '(Simulated)'}:
+                        </div>
                         <div className="text-2xl font-bold text-green-400">
                           {searchedRate.toFixed(4)}
                         </div>
@@ -332,24 +383,29 @@ export function HistoricalRateModal({
             </div>
           )}
 
-          {/* Chart */}
+          {/* Chart Container - Fixed height */}
           <div className="bg-gray-800 rounded-lg p-4">
-            <div className="h-64 md:h-96">
+            <div className="relative" style={{ height: '350px' }}>
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-gray-400">Loading chart data...</div>
                 </div>
               ) : error ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-red-400">{error}</div>
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <div className="text-yellow-400 text-center">{error}</div>
+                  {!isRealData && chartData.length > 0 && (
+                    <div className="text-sm text-gray-500">Showing simulated data for demonstration</div>
+                  )}
                 </div>
               ) : (
                 <HistoricalChart
-                      data={chartData as any}
-                      onPriceSelect={(price: number) => {
-                        onPriceSelect(price);
-                        onClose();
-                      } } selectedPair={''}                />
+                  data={chartData}
+                  onPriceSelect={(price: number) => {
+                    onPriceSelect(price);
+                    onClose();
+                  }}
+                  selectedPair={selectedPair}
+                />
               )}
             </div>
           </div>

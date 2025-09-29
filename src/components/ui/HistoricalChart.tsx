@@ -1,5 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { type ChartDataPoint, formatChartDate } from '../../constants/mockChartData';
+
+interface ChartDataPoint {
+  date: string;
+  price: number;
+  timestamp: number;
+}
 
 interface HistoricalChartProps {
   data: ChartDataPoint[];
@@ -8,6 +13,19 @@ interface HistoricalChartProps {
   width?: number;
   height?: number;
 }
+
+// Format timestamp for UK display
+const formatChartDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+};
 
 export const HistoricalChart: React.FC<HistoricalChartProps> = ({
   data,
@@ -29,8 +47,9 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
         const containerWidth = containerRef.current.offsetWidth;
         const isMobile = containerWidth < 768;
         
-        const newWidth = Math.min(containerWidth - 32, width); // 32px for padding
-        const newHeight = isMobile ? Math.max(250, newWidth * 0.6) : height;
+        // Use full container width minus small padding
+        const newWidth = containerWidth - 2; // Just 2px total padding
+        const newHeight = isMobile ? 250 : 350; // Fixed heights for consistency
         
         setCanvasSize({ width: newWidth, height: newHeight });
       }
@@ -77,14 +96,6 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
     return minTime + ratio * (maxTime - minTime);
   };
 
-  // Convert canvas Y coordinate to price value (for future price-based interactions)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-// @ts-ignore
-const getPriceFromY = (y: number): number => {
-  const ratio = (y - padding.top) / chartHeight;
-  return (maxPrice + priceBuffer) - ratio * (priceRange + 2 * priceBuffer);
-};
-
   // Find closest data point to mouse position
   const findClosestPoint = (mouseX: number): ChartDataPoint | null => {
     if (data.length === 0) return null;
@@ -115,9 +126,8 @@ const getPriceFromY = (y: number): number => {
     // Clear canvas
     ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
-    // Set up styling
-    ctx.fillStyle = '#10051A';
-    ctx.fillRect(0, 0, canvasSize.width, canvasSize.height);
+    // Set up styling - use transparent background
+    ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
 
     // Draw grid lines
     ctx.strokeStyle = '#ffffff20';
@@ -141,6 +151,30 @@ const getPriceFromY = (y: number): number => {
       ctx.fillText(price.toFixed(4), padding.left - 5, y + 4);
     }
 
+    // Vertical grid lines (time labels)
+    const timeSteps = isMobile ? 3 : 5;
+    for (let i = 0; i <= timeSteps; i++) {
+      const ratio = i / timeSteps;
+      const x = padding.left + ratio * chartWidth;
+      const timestamp = minTime + ratio * (maxTime - minTime);
+      
+      ctx.beginPath();
+      ctx.moveTo(x, padding.top);
+      ctx.lineTo(x, canvasSize.height - padding.bottom);
+      ctx.stroke();
+
+      // Time labels
+      const date = new Date(timestamp);
+      const label = isMobile 
+        ? `${date.getDate()}/${date.getMonth() + 1}`
+        : date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+      
+      ctx.fillStyle = '#C7B3FF80';
+      ctx.font = `${isMobile ? 10 : 12}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x, canvasSize.height - padding.bottom + 20);
+    }
+
     // Draw price line
     ctx.strokeStyle = '#9333ea';
     ctx.lineWidth = 2;
@@ -158,6 +192,18 @@ const getPriceFromY = (y: number): number => {
     });
 
     ctx.stroke();
+
+    // Draw data points if there aren't too many
+    if (data.length <= 50) {
+      ctx.fillStyle = '#9333ea';
+      data.forEach(point => {
+        const x = getCanvasX(point.timestamp);
+        const y = getCanvasY(point.price);
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
 
     // Draw crosshair and tooltip if mouse is hovering
     if (mousePos && hoveredPoint) {
@@ -259,7 +305,7 @@ const getPriceFromY = (y: number): number => {
   }, [data, mousePos, hoveredPoint, canvasSize]);
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="w-full h-full">
       <canvas
         ref={canvasRef}
         width={canvasSize.width}
@@ -267,8 +313,8 @@ const getPriceFromY = (y: number): number => {
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onClick={handleClick}
-        className="cursor-crosshair border border-white/20 rounded-lg max-w-full"
-        style={{ backgroundColor: '#10051A' }}
+        className="cursor-crosshair rounded-lg w-full h-full"
+        style={{ maxWidth: '100%', height: '100%' }}
       />
       
       {/* Pair label */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getHistoricalRates } from '../lib/tradermade';
+import { getHistoricalRates, validateHistoricalDate, getMaxHistoricalDate } from '../lib/tradermade';
 
 interface ChartDataPoint {
   date: string;
@@ -64,27 +64,30 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       throw new Error(`Invalid timeframe: ${timeframe}`);
     }
 
+    const maxAvailableDate = getMaxHistoricalDate();
     let endDate: Date;
     let startDate: Date;
 
     if (centerDate) {
-      // For searched dates, center the range around the searched date
+      // For searched dates, validate the center date first
+      const validCenterDate = new Date(validateHistoricalDate(formatToUKDate(centerDate)));
+      
+      // Center the range around the searched date
       const halfDays = Math.floor(timeConfig.days / 2);
-      startDate = new Date(centerDate);
-      startDate.setDate(centerDate.getDate() - halfDays);
-      endDate = new Date(centerDate);
-      endDate.setDate(centerDate.getDate() + halfDays);
+      startDate = new Date(validCenterDate);
+      startDate.setDate(validCenterDate.getDate() - halfDays);
+      endDate = new Date(validCenterDate);
+      endDate.setDate(validCenterDate.getDate() + halfDays);
     } else {
-      // For normal view, show from past to now
-      endDate = new Date();
-      startDate = new Date();
-      startDate.setDate(endDate.getDate() - timeConfig.days);
+      // For normal view, show from past to current max available date
+      endDate = maxAvailableDate;
+      startDate = new Date(maxAvailableDate);
+      startDate.setDate(maxAvailableDate.getDate() - timeConfig.days);
     }
 
-    // Ensure we don't request future dates
-    const today = new Date();
-    if (endDate > today) {
-      endDate = today;
+    // Ensure dates are within available range
+    if (endDate > maxAvailableDate) {
+      endDate = maxAvailableDate;
     }
 
     return {
@@ -140,15 +143,16 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     }
     
     // Generate data points
-    const startDate = centerDate ? new Date(centerDate) : new Date();
+    const maxDate = getMaxHistoricalDate();
+    const startDate = centerDate ? new Date(validateHistoricalDate(formatToUKDate(centerDate))) : maxDate;
     const startOffset = centerDate ? -Math.floor(numPoints / 2) : -numPoints + 1;
     
     for (let i = 0; i < numPoints; i++) {
       const pointDate = new Date(startDate);
       pointDate.setHours(pointDate.getHours() + (startOffset + i) * intervalHours);
       
-      // Don't include future dates
-      if (pointDate > new Date()) continue;
+      // Don't include dates beyond max available date
+      if (pointDate > maxDate) continue;
       
       // Create realistic price movement
       const volatility = timeframe === '1D' ? 0.0005 : 0.001; // Less volatility for shorter timeframes
@@ -179,28 +183,28 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
 
     // For minute/hourly data, sample at appropriate intervals
     if (timeframe === '1D' && timeConfig.interval === 'minute') {
-      // Take every 30th minute for 1D view
+      // Take every 30th minute for 1D view (48 points for 24 hours)
       processedData = apiData
         .filter((_, index) => index % 30 === 0)
         .map(point => ({
           date: point.date,
-          price: point.close,
+          price: point.close || point.mid || point.open,
           timestamp: new Date(point.date).getTime()
         }));
     } else if (timeframe === '5D' && timeConfig.interval === 'hourly') {
-      // Take every 3rd hour for 5D view
+      // Take every 3rd hour for 5D view (40 points for 5 days)
       processedData = apiData
         .filter((_, index) => index % 3 === 0)
         .map(point => ({
           date: point.date,
-          price: point.close,
+          price: point.close || point.mid || point.open,
           timestamp: new Date(point.date).getTime()
         }));
     } else {
       // For daily data, use all points
       processedData = apiData.map(point => ({
         date: point.date,
-        price: point.close,
+        price: point.close || point.mid || point.open,
         timestamp: new Date(point.date).getTime()
       }));
     }
@@ -257,6 +261,10 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
           errorMessage += 'Data not available for this date range.';
         } else if (apiError.message?.includes('429')) {
           errorMessage += 'Rate limit reached. Please try again later.';
+        } else if (apiError.message?.includes('adjusted')) {
+          errorMessage = 'Date range adjusted to available data. Showing real data.';
+          // Don't use mock data if dates were just adjusted
+          return;
         } else {
           errorMessage += 'Unable to fetch live data.';
         }
@@ -279,17 +287,18 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
   // Fetch specific rate for date/time
   const fetchRateForDateTime = async (date: Date, time: string): Promise<number | null> => {
     try {
-      // Validate date is not in future
-      const now = new Date();
-      if (date > now) {
-        setError('Cannot fetch rates for future dates');
+      // Validate date is within available range
+      const maxDate = getMaxHistoricalDate();
+      if (date > maxDate) {
+        setError(`Historical data only available up to ${maxDate.toLocaleDateString('en-GB')}`);
         return null;
       }
       
       // Format date for TraderMade API
       const dateStr = formatToUKDate(date);
+      const validatedDate = validateHistoricalDate(dateStr);
       
-      console.log(`Fetching specific rate for ${dateStr} at ${time}`);
+      console.log(`Fetching specific rate for ${validatedDate} at ${time}`);
       
       // Parse time
       const timeParts = time.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
@@ -316,8 +325,8 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       try {
         const historicalData = await getHistoricalRates(
           selectedPair,
-          dateStr,
-          dateStr,
+          validatedDate,
+          validatedDate,
           'minute'
         );
         
@@ -336,17 +345,24 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
             }
           }
           
-          console.log(`Found real rate: ${closestRate.close} for ${dateStr} ${time}`);
+          const rate = closestRate.close || closestRate.open;
+          console.log(`Found real rate: ${rate} for ${validatedDate} ${time}`);
           setError(null);
           
           // Update chart to center on this date
           await fetchHistoricalData(dateTime);
           
-          return closestRate.close;
+          return rate;
         }
       } catch (apiError: any) {
         console.error('API error fetching specific rate:', apiError);
-        setError('Unable to fetch real rate - Showing simulated rate');
+        
+        // Check if date was adjusted
+        if (validatedDate !== dateStr) {
+          setError(`Date adjusted to ${validatedDate} (latest available data)`);
+        } else {
+          setError('Unable to fetch real rate - Showing simulated rate');
+        }
       }
       
       // Fallback to mock rate

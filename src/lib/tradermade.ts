@@ -28,6 +28,36 @@ interface HistoricalData {
   close: number;
 }
 
+// Get the maximum available date for historical data (current real-world date)
+export function getMaxHistoricalDate(): Date {
+  // TraderMade's historical data is available up to the current real-world date
+  // Since we're in late 2024 in real time, cap at current real date
+  const realWorldToday = new Date();
+  realWorldToday.setDate(realWorldToday.getDate() - 1); // 1-day buffer
+  return realWorldToday;
+}
+
+// Validate and adjust date to be within available range
+export function validateHistoricalDate(dateStr: string): string {
+  const requestedDate = new Date(dateStr);
+  const maxDate = getMaxHistoricalDate();
+  const minDate = new Date('2018-01-01'); // Reliable minute data start
+  
+  // If date is in the future (beyond real-world time), cap it
+  if (requestedDate > maxDate) {
+    console.warn(`Date ${dateStr} is beyond available data. Using ${maxDate.toISOString().split('T')[0]} instead.`);
+    return maxDate.toISOString().split('T')[0];
+  }
+  
+  // If date is too far in the past
+  if (requestedDate < minDate) {
+    console.warn(`Date ${dateStr} is before available data. Using ${minDate.toISOString().split('T')[0]} instead.`);
+    return minDate.toISOString().split('T')[0];
+  }
+  
+  return dateStr;
+}
+
 // Get live rates for multiple pairs
 export async function getLiveRates(pairs: string[]): Promise<LiveRate[]> {
   try {
@@ -66,7 +96,7 @@ export async function getLiveRate(pair: string): Promise<LiveRate | null> {
   }
 }
 
-// Get historical data for a pair
+// Get historical data for a pair with date validation
 export async function getHistoricalRates(
   pair: string,
   startDate: string,
@@ -74,15 +104,52 @@ export async function getHistoricalRates(
   interval: 'daily' | 'hourly' | 'minute' = 'daily'
 ): Promise<HistoricalData[]> {
   try {
+    // Validate and adjust dates to be within available range
+    const validatedStartDate = validateHistoricalDate(startDate);
+    const validatedEndDate = validateHistoricalDate(endDate);
+    
+    // Ensure start date is before end date
+    let finalStartDate = validatedStartDate;
+    let finalEndDate = validatedEndDate;
+    if (new Date(finalStartDate) > new Date(finalEndDate)) {
+      console.error('Start date is after end date, swapping them');
+      const temp = finalStartDate;
+      finalStartDate = finalEndDate;
+      finalEndDate = temp;
+    }
+    
+    // Log if dates were adjusted
+    if (finalStartDate !== startDate || finalEndDate !== endDate) {
+      console.info(`Date range adjusted from ${startDate} - ${endDate} to ${finalStartDate} - ${finalEndDate}`);
+    }
+    
     const response = await fetch(
-      `${BASE_URL}/timeseries?currency=${pair}&api_key=${API_KEY}&start_date=${startDate}&end_date=${endDate}&format=records&interval=${interval}`
+      `${BASE_URL}/timeseries?currency=${pair}&api_key=${API_KEY}&start_date=${finalStartDate}&end_date=${finalEndDate}&format=records&interval=${interval}`
     );
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Provide more detailed error information
+      const errorText = await response.text().catch(() => '');
+      console.error(`TraderMade API Error ${response.status}:`, errorText);
+      
+      if (response.status === 403) {
+        throw new Error(`Access denied. Please check your API key permissions.`);
+      } else if (response.status === 404) {
+        throw new Error(`No data available for ${pair} between ${finalStartDate} and ${finalEndDate}`);
+      } else if (response.status === 429) {
+        throw new Error(`Rate limit exceeded. Please try again later.`);
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
     }
     
     const data = await response.json();
+    
+    // Check if we got valid data
+    if (!data.quotes || data.quotes.length === 0) {
+      console.warn(`No historical data returned for ${pair} between ${finalStartDate} and ${finalEndDate}`);
+      return [];
+    }
     
     return data.quotes.map((quote: any) => ({
       date: quote.date,
@@ -95,6 +162,26 @@ export async function getHistoricalRates(
     console.error('Error fetching historical rates:', error);
     throw error;
   }
+}
+
+// Check if a date has available historical data
+export function isDateAvailable(dateStr: string): boolean {
+  const date = new Date(dateStr);
+  const maxDate = getMaxHistoricalDate();
+  const minDate = new Date('2020-01-01');
+  
+  return date >= minDate && date <= maxDate;
+}
+
+// Get the available date range for historical data
+export function getAvailableDateRange(): { min: string, max: string } {
+  const minDate = new Date('2020-01-01');
+  const maxDate = getMaxHistoricalDate();
+  
+  return {
+    min: minDate.toISOString().split('T')[0],
+    max: maxDate.toISOString().split('T')[0]
+  };
 }
 
 // Format pair for display (e.g., GBPUSD -> GBP/USD)
