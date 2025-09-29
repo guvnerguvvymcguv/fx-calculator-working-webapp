@@ -27,14 +27,14 @@ const CURRENCY_PAIRS = [
 const TIMEFRAMES = ['1D', '5D', '1M', '3M'];
 
 // Helper to format data precision for display
-const formatDataPrecision = (precision: 'minute' | 'hourly' | 'daily', isToday?: boolean): string => {
+const formatDataPrecision = (precision: 'minute' | 'hourly' | 'daily'): string => {
   switch (precision) {
     case 'minute':
-      return isToday ? 'Minute precision (today only)' : 'Minute precision';
+      return 'Minute precision';
     case 'hourly':
       return 'Hourly precision';
     case 'daily':
-      return 'Daily precision only';
+      return 'Daily precision';
   }
 };
 
@@ -63,20 +63,12 @@ export function HistoricalRateModal({
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState('09:00');
   const [searchedRate, setSearchedRate] = useState<number | null>(null);
-  const [searchPrecision, setSearchPrecision] = useState<'minute' | 'hourly' | 'daily' | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   // Get max available date for historical data
   const maxAvailableDate = getMaxHistoricalDate();
   const today = new Date();
-  const thirtyDaysAgo = new Date(maxAvailableDate);
-  thirtyDaysAgo.setDate(maxAvailableDate.getDate() - 30);
-
-  // Check if date is today
-  const isToday = (date: Date): boolean => {
-    return date.toDateString() === today.toDateString();
-  };
 
   // Calendar helper functions
   const getDaysInMonth = (date: Date) => {
@@ -104,13 +96,6 @@ export function HistoricalRateModal({
   const isDateAvailable = (year: number, month: number, day: number): boolean => {
     const checkDate = new Date(year, month, day);
     return checkDate <= maxAvailableDate && checkDate >= new Date('2018-01-01');
-  };
-
-  // Check what precision is available for a date
-  const getDatePrecision = (date: Date): 'minute' | 'hourly' | 'daily' => {
-    if (isToday(date)) return 'minute';
-    if (date >= thirtyDaysAgo && date <= maxAvailableDate) return 'hourly';
-    return 'daily';
   };
 
   // Handle date selection
@@ -142,7 +127,6 @@ export function HistoricalRateModal({
       const rate = await fetchRateForDateTime(selectedDate, selectedTime);
       if (rate !== null) {
         setSearchedRate(rate);
-        setSearchPrecision(getDatePrecision(selectedDate));
       }
     } catch (error) {
       console.error('Error finding rate:', error);
@@ -269,7 +253,7 @@ export function HistoricalRateModal({
               
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-400">
                 <AlertCircle className="h-3 w-3" />
-                {formatDataPrecision(dataPrecision, selectedTimeframe === '1D' && isToday(new Date()))}
+                {formatDataPrecision(dataPrecision)}
               </div>
             </div>
           )}
@@ -280,7 +264,7 @@ export function HistoricalRateModal({
               <span className="text-purple-400">💡</span>
               <span>
                 {showDatePicker 
-                  ? `Select a specific date and time to find the historical rate. Minute precision for today only, hourly precision for last 30 days, daily precision for older dates.`
+                  ? `Select a specific date and time to find the exact historical rate. Minute precision available for all dates back to 2018.`
                   : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
                 }
               </span>
@@ -333,37 +317,25 @@ export function HistoricalRateModal({
                         const isTodayDate = day === today.getDate() &&
                           currentMonth.getMonth() === today.getMonth() &&
                           currentMonth.getFullYear() === today.getFullYear();
-                        const precision = day && isAvailable ? 
-                          getDatePrecision(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)) : 'daily';
 
                         return (
                           <div key={index} className="aspect-square relative">
                             {day && (
-                              <>
-                                <button
-                                  onClick={() => handleDateSelect(day)}
-                                  disabled={!isAvailable}
-                                  className={`w-full h-full rounded transition-colors ${
-                                    !isAvailable
-                                      ? 'text-gray-600 cursor-not-allowed opacity-50'
-                                      : isSelected
-                                      ? 'bg-purple-600 text-white'
-                                      : isTodayDate
-                                      ? 'bg-gray-700 text-white border border-purple-500'
-                                      : 'text-gray-300 hover:bg-gray-700'
-                                  }`}
-                                >
-                                  {day}
-                                </button>
-                                {isAvailable && precision === 'daily' && (
-                                  <div className="absolute top-0 right-0 w-1 h-1 bg-yellow-400 rounded-full" 
-                                       title="Daily precision only" />
-                                )}
-                                {isAvailable && precision === 'hourly' && (
-                                  <div className="absolute top-0 right-0 w-1 h-1 bg-blue-400 rounded-full" 
-                                       title="Hourly precision" />
-                                )}
-                              </>
+                              <button
+                                onClick={() => handleDateSelect(day)}
+                                disabled={!isAvailable}
+                                className={`w-full h-full rounded transition-colors ${
+                                  !isAvailable
+                                    ? 'text-gray-600 cursor-not-allowed opacity-50'
+                                    : isSelected
+                                    ? 'bg-purple-600 text-white'
+                                    : isTodayDate
+                                    ? 'bg-gray-700 text-white border border-purple-500'
+                                    : 'text-gray-300 hover:bg-gray-700'
+                                }`}
+                              >
+                                {day}
+                              </button>
                             )}
                           </div>
                         );
@@ -371,24 +343,8 @@ export function HistoricalRateModal({
                     </div>
                     
                     {/* Date availability note */}
-                    <div className="mt-3 space-y-1">
-                      <div className="text-xs text-gray-500">
-                        Historical data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')}
-                      </div>
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 bg-green-400 rounded-full inline-block" />
-                          <span>Today = Minute precision</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 bg-blue-400 rounded-full inline-block" />
-                          <span>Blue dot = Hourly precision (last 30 days)</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 bg-yellow-400 rounded-full inline-block" />
-                          <span>Yellow dot = Daily precision only (older than 30 days)</span>
-                        </div>
-                      </div>
+                    <div className="mt-3 text-xs text-gray-500">
+                      Historical minute-by-minute data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')}
                     </div>
                   </div>
                 </div>
@@ -402,24 +358,14 @@ export function HistoricalRateModal({
                       <div className="text-white font-medium">
                         {formatSelectedDate(selectedDate)}
                       </div>
-                      {selectedDate && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {isToday(selectedDate)
-                            ? '✓ Minute precision available (today only)' 
-                            : getDatePrecision(selectedDate) === 'hourly'
-                            ? '⚠ Hourly precision only (approximate time)'
-                            : '⚠ Daily precision only (no time data)'}
-                        </div>
-                      )}
+                      <div className="text-xs text-gray-500 mt-1">
+                        ✓ Minute precision available for all dates
+                      </div>
                     </div>
                     
                     <div>
                       <label className="text-sm text-gray-400">
-                        {isToday(selectedDate) 
-                          ? 'Time (exact minute data available)'
-                          : getDatePrecision(selectedDate) === 'hourly'
-                          ? 'Time (will use hourly average)'
-                          : 'Time - Daily rate only'}
+                        Time (exact minute data available)
                       </label>
                       <Input
                         type="text"
@@ -427,7 +373,6 @@ export function HistoricalRateModal({
                         onChange={(e) => setSelectedTime(e.target.value)}
                         className="bg-gray-900 border-gray-700 text-white"
                         placeholder="09:00"
-                        disabled={getDatePrecision(selectedDate) === 'daily'}
                       />
                     </div>
 
@@ -443,7 +388,7 @@ export function HistoricalRateModal({
                     {searchedRate !== null && (
                       <div className="bg-gray-900 rounded-lg p-3 space-y-2">
                         <div className="text-sm text-gray-400">
-                          Rate Found - {formatDataPrecision(searchPrecision!)}:
+                          Rate Found - Minute precision:
                         </div>
                         <div className="text-2xl font-bold text-green-400">
                           {searchedRate.toFixed(4)}
