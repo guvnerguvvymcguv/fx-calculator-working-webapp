@@ -58,20 +58,28 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     return `${year}-${month}-${day}`;
   };
 
-  // Determine the best interval based on timeframe
+  // Check if date is within 2 working days of today
+  const isWithinTwoDays = (date: Date): boolean => {
+    const maxDate = getMaxHistoricalDate();
+    const twoDaysAgo = new Date(maxDate);
+    twoDaysAgo.setDate(maxDate.getDate() - 2);
+    return date >= twoDaysAgo && date <= maxDate;
+  };
+
+  // Determine the best interval based on timeframe and API limitations
   const determineInterval = (timeframe: string): 
     { interval: 'minute' | 'hourly' | 'daily', precision: 'minute' | 'hourly' | 'daily' } => {
     
-    // With Teams plan, we can use minute data for all timeframes where it makes sense
+    // Account for TraderMade's 2-working-day limit for minute data
     switch (timeframe) {
       case '1D':
-        return { interval: 'minute', precision: 'minute' };
+        return { interval: 'minute', precision: 'minute' }; // Within 2-day limit
       case '5D':
-        return { interval: 'minute', precision: 'minute' };
+        return { interval: 'hourly', precision: 'hourly' }; // Avoid 2-day limit
       case '1M':
-        return { interval: 'hourly', precision: 'hourly' }; // Hourly for 1M to avoid too much data
+        return { interval: 'hourly', precision: 'hourly' }; // Too much data for minute
       case '3M':
-        return { interval: 'daily', precision: 'daily' }; // Daily for 3M to keep it manageable
+        return { interval: 'daily', precision: 'daily' }; // Daily is appropriate
       default:
         return { interval: 'daily', precision: 'daily' };
     }
@@ -211,7 +219,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     }
   };
 
-  // Fetch specific rate for date/time with minute precision
+  // Fetch specific rate for date/time with appropriate precision
   const fetchRateForDateTime = async (date: Date, time: string): Promise<number | null> => {
     try {
       const maxDate = getMaxHistoricalDate();
@@ -243,36 +251,55 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       
       setSearchedDate(dateTime);
       
-      // Always use minute precision with Teams plan
+      // Determine best interval based on date proximity
+      const useMinuteData = isWithinTwoDays(date);
+      const interval = useMinuteData ? 'minute' : 'hourly';
+      
       try {
         const historicalData = await getHistoricalRates(
           selectedPair,
           validatedDate,
           validatedDate,
-          'minute'
+          interval
         );
         
         if (historicalData && historicalData.length > 0) {
-          // Find closest time match
-          const targetTime = dateTime.getTime();
-          let closestRate = historicalData[0];
-          let closestDiff = Infinity;
+          let rate: number;
+          let precisionText: string;
           
-          for (const point of historicalData) {
-            const pointTime = new Date(point.date).getTime();
-            const diff = Math.abs(pointTime - targetTime);
-            if (diff < closestDiff) {
-              closestDiff = diff;
-              closestRate = point;
+          if (interval === 'minute') {
+            // Find closest time match for minute data
+            const targetTime = dateTime.getTime();
+            let closestRate = historicalData[0];
+            let closestDiff = Infinity;
+            
+            for (const point of historicalData) {
+              const pointTime = new Date(point.date).getTime();
+              const diff = Math.abs(pointTime - targetTime);
+              if (diff < closestDiff) {
+                closestDiff = diff;
+                closestRate = point;
+              }
             }
+            
+            rate = closestRate.close || closestRate.open;
+            precisionText = 'minute precision';
+            console.log(`Found real rate (${precisionText}): ${rate} for ${validatedDate} ${time}`);
+          } else {
+            // For hourly data, find the matching hour
+            const targetHour = hours;
+            const hourlyPoint = historicalData.find(point => {
+              const pointDate = new Date(point.date);
+              return pointDate.getHours() === targetHour;
+            }) || historicalData[0];
+            
+            rate = hourlyPoint.close || hourlyPoint.open;
+            precisionText = 'hourly precision';
+            console.log(`Found real rate (${precisionText}): ${rate} for ${validatedDate} hour ${hours}:00`);
           }
           
-          const rate = closestRate.close || closestRate.open;
-          console.log(`Found real rate (minute precision): ${rate} for ${validatedDate} ${time}`);
           setError(null);
-          setDataPrecision('minute');
-          
-          await fetchHistoricalData(dateTime);
+          // Don't update the chart - just return the rate
           
           return rate;
         } else {
@@ -281,7 +308,6 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       } catch (apiError: any) {
         console.error('API error fetching specific rate:', apiError);
         setError('Unable to fetch historical rate for this date/time');
-        setChartData([]);
         return null;
       }
     } catch (err: any) {

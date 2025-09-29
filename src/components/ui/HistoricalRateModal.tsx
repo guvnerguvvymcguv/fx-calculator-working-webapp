@@ -264,7 +264,7 @@ export function HistoricalRateModal({
               <span className="text-purple-400">💡</span>
               <span>
                 {showDatePicker 
-                  ? `Select a specific date and time to find the exact historical rate. Minute precision available for all dates back to 2018.`
+                  ? `Select a specific date and time to find the exact historical rate. Minute precision for last 2 days, hourly for older dates. Chart view remains unchanged during search.`
                   : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
                 }
               </span>
@@ -344,7 +344,7 @@ export function HistoricalRateModal({
                     
                     {/* Date availability note */}
                     <div className="mt-3 text-xs text-gray-500">
-                      Historical minute-by-minute data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')}
+                      Historical data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')}
                     </div>
                   </div>
                 </div>
@@ -359,13 +359,25 @@ export function HistoricalRateModal({
                         {formatSelectedDate(selectedDate)}
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        ✓ Minute precision available for all dates
+                        {(() => {
+                          const twoDaysAgo = new Date();
+                          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+                          return selectedDate >= twoDaysAgo 
+                            ? '✓ Minute precision available'
+                            : '⚠ Hourly precision for this date';
+                        })()}
                       </div>
                     </div>
                     
                     <div>
                       <label className="text-sm text-gray-400">
-                        Time (exact minute data available)
+                        Time {(() => {
+                          const twoDaysAgo = new Date();
+                          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+                          return selectedDate >= twoDaysAgo 
+                            ? '(minute precision)'
+                            : '(hourly average)';
+                        })()}
                       </label>
                       <Input
                         type="text"
@@ -388,7 +400,7 @@ export function HistoricalRateModal({
                     {searchedRate !== null && (
                       <div className="bg-gray-900 rounded-lg p-3 space-y-2">
                         <div className="text-sm text-gray-400">
-                          Rate Found - Minute precision:
+                          Rate Found:
                         </div>
                         <div className="text-2xl font-bold text-green-400">
                           {searchedRate.toFixed(4)}
