@@ -33,7 +33,7 @@ export function getMaxHistoricalDate(): Date {
   // TraderMade's historical data is available up to the current real-world date
   // Since we're in late 2024 in real time, cap at current real date
   const realWorldToday = new Date();
-  realWorldToday.setDate(realWorldToday.getDate() - 1); // 1-day buffer
+  realWorldToday.setDate(realWorldToday.getDate() - 3); // 3-day buffer
   return realWorldToday;
 }
 
