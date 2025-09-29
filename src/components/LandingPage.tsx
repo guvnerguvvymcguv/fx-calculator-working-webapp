@@ -398,7 +398,10 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
               <div className="p-6 flex justify-center">
                 <div className="w-full max-w-4xl">
                   <HistoricalChart
-                    data={mockChartData}
+                    data={mockChartData.map(point => ({
+                    ...point,
+                    date: new Date(point.timestamp).toISOString()
+          }))}
                     onPriceSelect={handleMockPriceSelect}
                     selectedPair={selectedPair}
                     width={800}
