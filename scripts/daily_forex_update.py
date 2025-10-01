@@ -9,7 +9,7 @@ import sys
 
 # Supabase credentials
 SUPABASE_URL = "https://wvzqxwvlozzbmdrqyify.supabase.co"
-SUPABASE_KEY = SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')  # Fixed duplicate assignment
 if not SUPABASE_KEY:
     print("Missing SUPABASE_KEY env var")
     sys.exit(1)
@@ -17,8 +17,8 @@ if not SUPABASE_KEY:
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Currency pairs to update
-PAIRS = ['eurusd', 'gbpusd', 'eurgbp', 'gbpaud', 'gbpnok', 'gbpsek']
+# Currency pairs to update (set to EURGBP only for bulk)
+PAIRS = ['eurgbp']
 
 def download_yesterday_data():
     """Download yesterday's forex data"""
@@ -51,11 +51,11 @@ def upload_to_supabase():
     print(f"\nFound {len(csv_files)} CSV files to process")
     
     for csv_file in csv_files:
-        # Check if file contains yesterday's date in the format -YYYYMMDD-
-        if f"-{yesterday}-" not in csv_file and yesterday not in csv_file:
-            print(f"Skipping {csv_file} - not from yesterday")
-            continue
-            
+        # Temporarily disable date check for bulk upload (commented out)
+        # if f"-{yesterday}-" not in csv_file and yesterday not in csv_file:
+        #     print(f"Skipping {csv_file} - not from yesterday")
+        #     continue
+        
         print(f"\nProcessing {csv_file}...")
         
         # Parse filename to get pair
