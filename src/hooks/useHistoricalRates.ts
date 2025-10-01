@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getHistoricalRates, validateHistoricalDate, getMaxHistoricalDate } from '../lib/tradermade';
+import { getHistoricalForexRate, getHistoricalForexRange, hasHistoricalData } from '../lib/supabase';
 
 interface ChartDataPoint {
   date: string;
@@ -46,12 +46,11 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isRealData, setIsRealData] = useState<boolean>(false);
+  const isRealData = true; // Always true with Supabase data
   const [dataPrecision, setDataPrecision] = useState<'minute' | 'hourly' | 'daily'>('daily');
-  const [searchedDate, setSearchedDate] = useState<Date | null>(null);
 
-  // Format date to UK timezone
-  const formatToUKDate = (date: Date): string => {
+  // Format date to YYYY-MM-DD format for Supabase
+  const formatToSQLDate = (date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -66,7 +65,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       case '1D':
         return { interval: 'minute', precision: 'minute' }; // Minute data for 1 day
       case '5D':
-        return { interval: 'hourly', precision: 'hourly' }; // Hourly to avoid 2-day minute limit
+        return { interval: 'hourly', precision: 'hourly' }; // Hourly for 5 days
       case '1M':
         return { interval: 'hourly', precision: 'hourly' }; // Hourly for 1 month
       case '3M':
@@ -83,155 +82,119 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       throw new Error(`Invalid timeframe: ${timeframe}`);
     }
 
-    const maxAvailableDate = getMaxHistoricalDate();
+    // Get current date (we have data up to Sept 2025 in Supabase)
+    const maxAvailableDate = new Date(); // Current date
     let endDate: Date;
     let startDate: Date;
 
     if (centerDate) {
-      const validCenterDate = new Date(validateHistoricalDate(formatToUKDate(centerDate)));
       const halfDays = Math.floor(timeConfig.days / 2);
-      startDate = new Date(validCenterDate);
-      startDate.setDate(validCenterDate.getDate() - halfDays);
-      endDate = new Date(validCenterDate);
-      endDate.setDate(validCenterDate.getDate() + halfDays);
+      startDate = new Date(centerDate);
+      startDate.setDate(centerDate.getDate() - halfDays);
+      endDate = new Date(centerDate);
+      endDate.setDate(centerDate.getDate() + halfDays);
     } else {
       endDate = maxAvailableDate;
       startDate = new Date(maxAvailableDate);
       startDate.setDate(maxAvailableDate.getDate() - timeConfig.days);
     }
 
-    if (endDate > maxAvailableDate) {
-      endDate = maxAvailableDate;
-    }
+    // Cap at our data range (we have Sept 2024 - Sept 2025)
+    const minDataDate = new Date('2024-09-30');
+    const maxDataDate = new Date('2025-09-30');
+    
+    if (startDate < minDataDate) startDate = minDataDate;
+    if (endDate > maxDataDate) endDate = maxDataDate;
 
     const { interval, precision } = determineInterval(timeframe);
 
     return {
-      start: formatToUKDate(startDate),
-      end: formatToUKDate(endDate),
+      start: formatToSQLDate(startDate),
+      end: formatToSQLDate(endDate),
       interval,
       precision,
       targetPoints: timeConfig.targetPoints
     };
   };
 
-  // Process API data - don't sample if we want all the data
-  const processApiData = (apiData: any[], targetPoints: number, timeframe: string): ChartDataPoint[] => {
-    if (!apiData || apiData.length === 0) return [];
+  // Process Supabase data into chart format
+  const processSupabaseData = (data: any[]): ChartDataPoint[] => {
+    if (!data || data.length === 0) return [];
 
-    let processedData: ChartDataPoint[] = [];
-    
-    // For 1D with minute data, keep all points
-    if (timeframe === '1D') {
-      processedData = apiData.map(point => ({
-        date: point.date,
-        price: point.close || point.mid || point.open,
-        timestamp: new Date(point.date).getTime()
-      }));
-    } else {
-      // For other timeframes, sample if needed
-      const sampleInterval = Math.max(1, Math.floor(apiData.length / targetPoints));
-      
-      for (let i = 0; i < apiData.length; i += sampleInterval) {
-        if (i < apiData.length) {
-          const point = apiData[i];
-          processedData.push({
-            date: point.date,
-            price: point.close || point.mid || point.open,
-            timestamp: new Date(point.date).getTime()
-          });
-        }
-      }
-      
-      // Ensure we don't exceed target points for non-1D timeframes
-      if (processedData.length > targetPoints) {
-        processedData = processedData.slice(0, targetPoints);
-      }
-    }
-    
-    console.log(`Processed ${processedData.length} points from ${apiData.length} API data points`);
-    return processedData;
+    return data.map(point => ({
+      date: point.timestamp,
+      price: point.close,
+      timestamp: new Date(point.timestamp).getTime()
+    }));
   };
 
-  // Fetch historical data from TraderMade
+  // Fetch historical data from Supabase
   const fetchHistoricalData = async (centerDate?: Date) => {
     try {
       setIsLoading(true);
       setError(null);
-      setIsRealData(false);
       
-      const { start, end, interval, precision, targetPoints } = getDateRange(selectedTimeframe, centerDate);
+      const { start, end, interval, precision } = getDateRange(selectedTimeframe, centerDate);
       
-      console.log(`Fetching ${interval} data from ${start} to ${end} for ${selectedPair}`);
+      console.log(`Fetching ${interval} data from ${start} to ${end} for ${selectedPair} from Supabase`);
       setDataPrecision(precision);
       
-      try {
-        const historicalData = await getHistoricalRates(
-          selectedPair,
-          start,
-          end,
-          interval
-        );
+      // Fetch from Supabase
+      const historicalData = await getHistoricalForexRange(
+        selectedPair,
+        start,
+        end,
+        interval
+      );
+      
+      console.log(`Supabase returned ${historicalData.length} data points`);
+      
+      if (historicalData && historicalData.length > 0) {
+        const transformedData = processSupabaseData(historicalData);
         
-        console.log('TraderMade API response:', historicalData);
-        
-        if (historicalData && historicalData.length > 0) {
-          const transformedData = processApiData(historicalData, targetPoints, selectedTimeframe);
-          
-          if (transformedData.length > 0) {
-            console.log(`Using real TraderMade data, ${transformedData.length} points`);
-            setChartData(transformedData);
-            setIsRealData(true);
-            setError(null);
-          } else {
-            throw new Error('No valid data points after processing');
-          }
+        if (transformedData.length > 0) {
+          console.log(`Displaying ${transformedData.length} points from Supabase`);
+          setChartData(transformedData);
+          setError(null);
         } else {
-          throw new Error('No data returned from API');
+          throw new Error('No valid data points after processing');
         }
-      } catch (apiError: any) {
-        console.error('TraderMade API error:', apiError);
-        
-        // Show clear error message
-        let errorMessage = '';
-        if (apiError.message?.includes('403')) {
-          errorMessage = 'Unable to access historical data. Please check your API permissions.';
-        } else if (apiError.message?.includes('404')) {
-          errorMessage = 'No data available for this date range.';
-        } else if (apiError.message?.includes('429')) {
-          errorMessage = 'Rate limit exceeded. Please try again later.';
+      } else {
+        // Check if we have any data for this pair/date
+        const hasData = await hasHistoricalData(selectedPair, start);
+        if (!hasData) {
+          setError('No historical data available for this date range');
         } else {
-          errorMessage = 'Unable to fetch historical data. Please try again.';
+          setError('Unable to load data. Please try again.');
         }
-        
         setChartData([]);
-        setError(errorMessage);
-        setIsRealData(false);
       }
     } catch (err: any) {
       console.error('Error in fetchHistoricalData:', err);
-      setError('Failed to load historical data');
+      setError('Failed to load historical data from database');
       setChartData([]);
-      setIsRealData(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch specific rate for date/time - ALWAYS use minute precision for single day
+  // Fetch specific rate for date/time from Supabase
   const fetchRateForDateTime = async (date: Date, time: string): Promise<number | null> => {
     try {
-      const maxDate = getMaxHistoricalDate();
-      if (date > maxDate) {
-        setError(`Historical data only available up to ${maxDate.toLocaleDateString('en-GB')}`);
+      // Validate date is within our data range
+      const minDate = new Date('2024-09-30');
+      const maxDate = new Date('2025-09-30');
+      
+      if (date < minDate || date > maxDate) {
+        setError(`Historical data only available from Sept 2024 to Sept 2025`);
         return null;
       }
-     
-      const dateStr = formatToUKDate(date);
-      const validatedDate = validateHistoricalDate(dateStr);
       
-      console.log(`Fetching specific rate for ${validatedDate} at ${time}`);
+      const dateStr = formatToSQLDate(date);
       
+      console.log(`Fetching specific rate for ${dateStr} at ${time} from Supabase`);
+      
+      // Parse time string
       const timeParts = time.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
       if (!timeParts) {
         setError('Invalid time format. Use format like 09:00 or 9:00 AM');
@@ -242,78 +205,35 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       const minutes = parseInt(timeParts[2] || '0');
       const meridiem = timeParts[3]?.toLowerCase();
       
+      // Handle 12-hour format
       if (meridiem === 'pm' && hours !== 12) hours += 12;
       if (meridiem === 'am' && hours === 12) hours = 0;
       
-      const dateTime = new Date(date);
-      dateTime.setHours(hours, minutes, 0, 0);
+      // Format time as HH:MM
+      const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
       
-      setSearchedDate(dateTime);
+      // Query Supabase for exact minute
+      const rate = await getHistoricalForexRate(
+        selectedPair,
+        dateStr,
+        formattedTime
+      );
       
-      // Always try minute data first for date/time search (single day request)
-      try {
-        const historicalData = await getHistoricalRates(
-          selectedPair,
-          validatedDate,
-          validatedDate,
-          'minute'  // Always use minute for single day
-        );
+      if (rate !== null) {
+        console.log(`Found exact rate from Supabase: ${rate} for ${dateStr} ${formattedTime}`);
+        setError(null);
+        return rate;
+      } else {
+        // If exact minute not found, try to get the closest minute within the same hour
+        console.log('Exact minute not found, checking if data exists for this date');
         
-        if (historicalData && historicalData.length > 0) {
-          // Find closest time match for minute data
-          const targetTime = dateTime.getTime();
-          let closestRate = historicalData[0];
-          let closestDiff = Infinity;
-          
-          for (const point of historicalData) {
-            const pointTime = new Date(point.date).getTime();
-            const diff = Math.abs(pointTime - targetTime);
-            if (diff < closestDiff) {
-              closestDiff = diff;
-              closestRate = point;
-            }
-          }
-          
-          const rate = closestRate.close || closestRate.open;
-          console.log(`Found real rate (minute precision): ${rate} for ${validatedDate} ${time}`);
-          setError(null);
-          // Don't update the chart - just return the rate
-          
-          return rate;
+        const hasData = await hasHistoricalData(selectedPair, dateStr);
+        if (hasData) {
+          setError('Rate not available for exact time. Try a different time.');
         } else {
-          throw new Error('No data returned from API');
+          setError('No data available for this date');
         }
-      } catch (apiError: any) {
-        // If minute data fails, try hourly as fallback
-        console.log('Minute data failed, trying hourly fallback');
-        try {
-          const historicalData = await getHistoricalRates(
-            selectedPair,
-            validatedDate,
-            validatedDate,
-            'hourly'
-          );
-          
-          if (historicalData && historicalData.length > 0) {
-            const targetHour = hours;
-            const hourlyPoint = historicalData.find(point => {
-              const pointDate = new Date(point.date);
-              return pointDate.getHours() === targetHour;
-            }) || historicalData[0];
-            
-            const rate = hourlyPoint.close || hourlyPoint.open;
-            console.log(`Found real rate (hourly precision fallback): ${rate} for ${validatedDate} hour ${hours}:00`);
-            setError('Note: Using hourly average for this date');
-            
-            return rate;
-          } else {
-            throw new Error('No hourly data available');
-          }
-        } catch (hourlyError) {
-          console.error('Both minute and hourly data failed:', hourlyError);
-          setError('Unable to fetch historical rate for this date/time');
-          return null;
-        }
+        return null;
       }
     } catch (err: any) {
       console.error('Error fetching specific rate:', err);
@@ -324,7 +244,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
 
   // Fetch data when pair or timeframe changes
   useEffect(() => {
-    fetchHistoricalData(searchedDate || undefined);
+    fetchHistoricalData();
   }, [selectedPair, selectedTimeframe]);
 
   const availablePairs = AVAILABLE_PAIRS.map(p => p.value);
@@ -336,7 +256,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     availablePairs,
     isLoading,
     error,
-    isRealData,
+    isRealData, // Always true with Supabase data
     dataPrecision,
     setSelectedPair,
     setSelectedTimeframe,
