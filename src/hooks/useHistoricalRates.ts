@@ -40,6 +40,11 @@ const TIMEFRAMES = [
   { label: '3M', days: 90, targetPoints: 2160 }  // Hourly points for 90 days
 ];
 
+// Pair mapping for inverses (query EURGBP for GBPEUR label)
+const PAIR_MAP: Record<string, string> = {
+  'GBPEUR': 'EURGBP',
+};
+
 export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistoricalRatesReturn => {
   const [selectedPair, setSelectedPair] = useState<string>(initialPair);
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1M');
@@ -140,12 +145,20 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       setDataPrecision(precision);
       
       // Fetch from Supabase
+      const queryPair = PAIR_MAP[selectedPair] || selectedPair;
       const historicalData = await getHistoricalForexRange(
-        selectedPair,
+        queryPair,
         start,
         end,
         interval
       );
+      
+      // Invert for GBPEUR (close only; extend to OHLC if charts need full)
+      if (selectedPair === 'GBPEUR') {
+        historicalData.forEach(point => {
+          point.close = 1 / point.close;
+        });
+      }
       
       console.log(`Supabase returned ${historicalData.length} data points`);
       
@@ -213,16 +226,18 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
       
       // Query Supabase for exact minute
-      const rate = await getHistoricalForexRate(
-        selectedPair,
+      const queryPair = PAIR_MAP[selectedPair] || selectedPair;
+      const rawRate = await getHistoricalForexRate(
+        queryPair,
         dateStr,
         formattedTime
       );
       
-      if (rate !== null) {
-        console.log(`Found exact rate from Supabase: ${rate} for ${dateStr} ${formattedTime}`);
+      if (rawRate !== null) {
+        const displayRate = selectedPair === 'GBPEUR' ? 1 / rawRate : rawRate;  // Invert for GBPEUR
+        console.log(`Found raw rate: ${rawRate} (display: ${displayRate}) for ${dateStr} ${formattedTime}`);
         setError(null);
-        return rate;
+        return displayRate;  // Return inverted for modal/calculator
       } else {
         // If exact minute not found, try to get the closest minute within the same hour
         console.log('Exact minute not found, checking if data exists for this date');
