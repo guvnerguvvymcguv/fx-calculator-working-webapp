@@ -1,0 +1,44 @@
+name: Daily Forex Update
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily (adjust to '0 1 * * *' for 2 AM UK)
+  workflow_dispatch:  # Manual trigger from GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Node dependencies
+        run: npm install -g dukascopy-node
+
+      - name: Install Python dependencies
+        run: |
+          pip install pandas supabase
+
+      - name: Run forex update
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          # Copy script to working dir
+          mkdir -p dukascopy
+          cp scripts/daily_forex_update.py dukascopy/
+          cd dukascopy
+          python daily_forex_update.py
+
+      - name: Log completion
+        if: always()
+        run: echo "Update completed at $(date)"

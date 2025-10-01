@@ -9,7 +9,10 @@ import sys
 
 # Supabase credentials
 SUPABASE_URL = "https://wvzqxwvlozzbmdrqyify.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2enF4d3Zsb3p6Ym1kcnF5aWZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4MTgxMjQsImV4cCI6MjA3MjM5NDEyNH0.xWmR6pPUQb3QeVV-XNJlDNmH9XLXCSlLNry7yswPA3k"  # Replace with your actual key
+SUPABASE_KEY = SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+if not SUPABASE_KEY:
+    print("Missing SUPABASE_KEY env var")
+    sys.exit(1)
 
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -29,7 +32,7 @@ def download_yesterday_data():
         cmd = f"npx dukascopy-node -i {pair} -from {yesterday} -to {today} -t m1 -f csv"
         
         try:
-            subprocess.run(cmd, shell=True, check=True, cwd='/Users/rossj/Desktop/dukascopy')
+            subprocess.run(cmd, shell=True, check=True, cwd='.')
             print(f"✓ {pair.upper()} downloaded successfully")
         except subprocess.CalledProcessError as e:
             print(f"✗ Error downloading {pair.upper()}: {e}")
@@ -39,7 +42,7 @@ def download_yesterday_data():
 
 def upload_to_supabase():
     """Upload new CSV files to Supabase"""
-    os.chdir('/Users/rossj/Desktop/dukascopy')
+    os.chdir('.')
     csv_files = glob.glob('download/*.csv')
     
     yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
