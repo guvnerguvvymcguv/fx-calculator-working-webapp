@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Input } from './input';
-import { X, Calendar, Search, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
+import { X, Calendar, Search, ChevronLeft, ChevronRight, AlertCircle, TrendingUp } from 'lucide-react';
 import { HistoricalChart } from './HistoricalChart';
 import { useHistoricalRates } from '../../hooks/useHistoricalRates';
-import { getMaxHistoricalDate } from '../../lib/tradermade';
+import { supabase } from '../../lib/supabase';
 
 interface HistoricalRateModalProps {
   isOpen: boolean;
@@ -65,9 +65,47 @@ export function HistoricalRateModal({
   const [searchedRate, setSearchedRate] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  
+  // Dynamic date range from Supabase
+  const [dataDateRange, setDataDateRange] = useState({
+    min: new Date('2024-09-30'),
+    max: new Date('2025-09-30')
+  });
 
-  // Get max available date for historical data
-  const maxAvailableDate = getMaxHistoricalDate();
+  // Check actual date range in Supabase on mount
+  useEffect(() => {
+    const checkDataRange = async () => {
+      try {
+        // Query for the latest available date
+        const { data: latestData } = await supabase
+          .from('forex_prices')
+          .select('timestamp')
+          .eq('pair', selectedPair.toUpperCase())
+          .order('timestamp', { ascending: false })
+          .limit(1);
+        
+        // Query for the earliest available date
+        const { data: earliestData } = await supabase
+          .from('forex_prices')
+          .select('timestamp')
+          .eq('pair', selectedPair.toUpperCase())
+          .order('timestamp', { ascending: true })
+          .limit(1);
+        
+        if (latestData && latestData[0] && earliestData && earliestData[0]) {
+          setDataDateRange({
+            min: new Date(earliestData[0].timestamp),
+            max: new Date(latestData[0].timestamp)
+          });
+        }
+      } catch (err) {
+        console.error('Error checking data range:', err);
+      }
+    };
+    
+    checkDataRange();
+  }, [selectedPair]); // Re-check when pair changes
+
   const today = new Date();
 
   // Calendar helper functions
@@ -95,7 +133,7 @@ export function HistoricalRateModal({
   // Check if a date is available for historical data
   const isDateAvailable = (year: number, month: number, day: number): boolean => {
     const checkDate = new Date(year, month, day);
-    return checkDate <= maxAvailableDate && checkDate >= new Date('2018-01-01');
+    return checkDate <= dataDateRange.max && checkDate >= dataDateRange.min;
   };
 
   // Handle date selection
@@ -233,8 +271,17 @@ export function HistoricalRateModal({
               variant="outline"
               className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
             >
-              <Calendar className="h-4 w-4 mr-2" />
-              {showDatePicker ? 'Back to Chart' : 'Date/Time Search'}
+              {showDatePicker ? (
+                <>
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Back to Chart
+                </>
+              ) : (
+                <>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Date/Time Search
+                </>
+              )}
             </Button>
           </div>
 
@@ -339,7 +386,7 @@ export function HistoricalRateModal({
                     
                     {/* Date availability note */}
                     <div className="mt-3 text-xs text-gray-500">
-                      Historical data available from January 2018 to {maxAvailableDate.toLocaleDateString('en-GB')}
+                      Historical data available from {dataDateRange.min.toLocaleDateString('en-GB')} to {dataDateRange.max.toLocaleDateString('en-GB')}
                     </div>
                   </div>
                 </div>
@@ -373,7 +420,7 @@ export function HistoricalRateModal({
 
                     <Button
                       onClick={handleFindRate}
-                      disabled={isSearching || selectedDate > maxAvailableDate}
+                      disabled={isSearching || !isDateAvailable(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())}
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
                     >
                       <Search className="h-4 w-4 mr-2" />

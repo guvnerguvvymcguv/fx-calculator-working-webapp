@@ -186,7 +186,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       const maxDate = new Date('2025-09-30');
       
       if (date < minDate || date > maxDate) {
-        setError(`Historical data only available from Sept 2024 to Sept 2025`);
+        setError(`Historical data only available from 30/09/2024 to 30/09/2025`);
         return null;
       }
       
