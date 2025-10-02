@@ -96,35 +96,7 @@ export async function getHistoricalForexRange(
     
     let allData: ForexPriceData[] = [];
     
-    // For minute data (1D chart), fetch day by day to avoid limits
-    if (interval === 'minute') {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      
-      // Iterate through each day
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dayStr = formatToSQLDate(d);
-        const dayStart = `${dayStr} 00:00:00`;
-        const dayEnd = `${dayStr} 23:59:59`;
-        
-        const { data, error } = await supabase
-          .from('forex_prices')
-          .select('*')
-          .eq('pair', pair.toUpperCase())
-          .gte('timestamp', dayStart)
-          .lte('timestamp', dayEnd)
-          .order('timestamp', { ascending: true });
-        
-        if (!error && data) {
-          allData = allData.concat(data);
-        }
-      }
-      
-      console.log(`Returning ${allData.length} minute data points`);
-      return allData;
-    }
-    
-    // For other intervals, fetch data more intelligently
+    // Use the same approach for all intervals including minute data
     const start = new Date(startDate + ' 00:00:00');
     const end = new Date(endDate + ' 23:59:59');
     
@@ -138,6 +110,9 @@ export async function getHistoricalForexRange(
       let shouldInclude = false;
       
       switch (interval) {
+        case 'minute':
+          shouldInclude = true; // Include every minute
+          break;
         case '15min':
           shouldInclude = minutes % 15 === 0;
           break;
