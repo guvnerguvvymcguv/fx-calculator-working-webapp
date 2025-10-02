@@ -41,20 +41,20 @@ export async function getHistoricalForexRate(
   time: string
 ): Promise<number | null> {
   try {
-    // Construct the exact timestamp (assuming UTC)
-    const timestamp = `${date} ${time}:00`;
+    // Construct the start of the minute (assuming UTC)
+    const minuteStart = `${date} ${time}:00`;
     
-    console.log(`Querying Supabase for ${pair} at ${timestamp}`);
+    console.log(`Querying Supabase for ${pair} at ${minuteStart}`);
     
     const { data, error } = await supabase
       .from('forex_prices')
       .select('close')
       .eq('pair', pair.toUpperCase())
-      .gte('timestamp', timestamp)  // >= HH:MM:00
-      .lt('timestamp', new Date(new Date(timestamp).getTime() + 60000).toISOString())  // < HH:MM+1 min (60s)
+      .gte('timestamp', minuteStart)  // >= HH:MM:00
+      .lt('timestamp', new Date(new Date(minuteStart).getTime() + 60000).toISOString())  // < HH:MM+1 min (60s)
       .order('timestamp', { ascending: true })
       .limit(1)  // Closest/earliest in minute
-      .single();
+      .maybeSingle();  // Use maybeSingle to return null on empty/multi without error
     
     if (error) {
       console.error('Supabase query error:', error);
