@@ -180,7 +180,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
         }
       } else {
         // Check if we have any data for this pair/date
-        const hasData = await hasHistoricalData(selectedPair, start);
+        const hasData = await hasHistoricalData(queryPair, start);  // Changed from selectedPair to queryPair
         if (!hasData) {
           setError('No historical data available for this date range');
         } else {

@@ -10,6 +10,7 @@ interface HistoricalChartProps {
   data: ChartDataPoint[];
   onPriceSelect: (price: number) => void;
   selectedPair: string;
+  selectedTimeframe?: string; // Add this to identify which timeframe is selected
   width?: number;
   height?: number;
 }
@@ -31,6 +32,7 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
   data,
   onPriceSelect,
   selectedPair,
+  selectedTimeframe = '1D', // Default to 1D if not provided
   width = 800,
   height = 400
 }) => {
@@ -115,6 +117,59 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
     return closest;
   };
 
+  // Format x-axis label based on timeframe
+  const formatXAxisLabel = (timestamp: number, timeframe: string): string => {
+    const date = new Date(timestamp);
+    
+    switch(timeframe) {
+      case '1D':
+        // Show times for 1D chart
+        return date.toLocaleTimeString('en-GB', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          hour12: false 
+        });
+        
+      case '5D':
+      case '1M':
+      case '3M':
+        // Show dates for multi-day charts
+        if (isMobile) {
+          // Compact format for mobile
+          return `${date.getDate()}/${date.getMonth() + 1}`;
+        } else {
+          // Full format for desktop
+          return date.toLocaleDateString('en-GB', { 
+            day: '2-digit', 
+            month: 'short' 
+          });
+        }
+        
+      default:
+        // Fallback to date format
+        return date.toLocaleDateString('en-GB', { 
+          day: '2-digit', 
+          month: 'short' 
+        });
+    }
+  };
+
+  // Determine number of x-axis labels based on timeframe
+  const getTimeSteps = (timeframe: string): number => {
+    switch(timeframe) {
+      case '1D':
+        return isMobile ? 3 : 5; // Show fewer labels on mobile for 1D
+      case '5D':
+        return 5; // Show 5-6 day labels
+      case '1M':
+        return isMobile ? 3 : 5; // Show 4-6 date labels
+      case '3M':
+        return isMobile ? 3 : 5; // Show 4-6 date labels
+      default:
+        return 4;
+    }
+  };
+
   // Draw the chart
   const drawChart = () => {
     const canvas = canvasRef.current;
@@ -151,37 +206,22 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
       ctx.fillText(price.toFixed(4), padding.left - 5, y + 4);
     }
 
-    // Vertical grid lines (time labels) - Changed to exactly 5 labels
-    const timeSteps = 4; // 4 steps = 5 labels (0, 1, 2, 3, 4)
+    // Vertical grid lines (time/date labels)
+    const timeSteps = getTimeSteps(selectedTimeframe);
+    
     for (let i = 0; i <= timeSteps; i++) {
       const ratio = i / timeSteps;
       const x = padding.left + ratio * chartWidth;
       const timestamp = minTime + ratio * (maxTime - minTime);
       
+      // Draw grid line
       ctx.beginPath();
       ctx.moveTo(x, padding.top);
       ctx.lineTo(x, canvasSize.height - padding.bottom);
       ctx.stroke();
 
-      // Time labels
-      const date = new Date(timestamp);
-      
-      // Check if all data points are on the same day (for 1D chart)
-      const firstDate = new Date(minTime);
-      const lastDate = new Date(maxTime);
-      const isSameDay = firstDate.toDateString() === lastDate.toDateString();
-      
-      let label: string;
-      if (isSameDay) {
-        // For 1D chart, show time
-        label = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-      } else if (isMobile) {
-        // For mobile, show day/month
-        label = `${date.getDate()}/${date.getMonth() + 1}`;
-      } else {
-        // For desktop, show day and month
-        label = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-      }
+      // Draw x-axis label
+      const label = formatXAxisLabel(timestamp, selectedTimeframe);
       
       ctx.fillStyle = '#C7B3FF80';
       ctx.font = `${isMobile ? 10 : 12}px system-ui`;
@@ -316,7 +356,7 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
   // Redraw chart when data changes or mouse moves
   useEffect(() => {
     drawChart();
-  }, [data, mousePos, hoveredPoint, canvasSize]);
+  }, [data, mousePos, hoveredPoint, canvasSize, selectedTimeframe]);
 
   return (
     <div ref={containerRef} className="w-full h-full">
@@ -331,9 +371,9 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
         style={{ width: '100%', height: '100%' }}
       />
       
-      {/* Pair label */}
+      {/* Pair label with timeframe */}
       <div className={`absolute top-4 left-4 text-purple-300 font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
-        {selectedPair}
+        {selectedPair} - {selectedTimeframe}
       </div>
       
       {/* Click instruction */}

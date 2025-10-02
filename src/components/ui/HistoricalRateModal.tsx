@@ -473,6 +473,7 @@ export function HistoricalRateModal({
                       onClose();
                     }}
                     selectedPair={selectedPair}
+                    selectedTimeframe={selectedTimeframe}
                   />
                 )}
               </div>

@@ -82,7 +82,7 @@ export async function getHistoricalForexRate(
  * @param pair - Currency pair (e.g., 'GBPUSD')
  * @param startDate - Start date in YYYY-MM-DD format
  * @param endDate - End date in YYYY-MM-DD format
- * @param interval - Data interval: 'minute', 'hourly', or 'daily'
+ * @param interval - Data interval: 'minute', '15min', '30min', 'hourly', or 'daily'
  * @returns Array of price data points
  */
 export async function getHistoricalForexRange(
@@ -97,7 +97,7 @@ export async function getHistoricalForexRange(
     
     console.log(`Querying Supabase for ${pair} from ${startTimestamp} to ${endTimestamp}`);
     
-    // Build the base query
+    // Build the base query without limit for proper sampling
     let query = supabase
       .from('forex_prices')
       .select('*')
@@ -106,45 +106,75 @@ export async function getHistoricalForexRange(
       .lte('timestamp', endTimestamp)
       .order('timestamp', { ascending: true });
     
-    // Apply sampling based on interval
-    if (interval === 'hourly') {
-      // For hourly data, we'll filter in post-processing
-      // Fetch all data and sample every 60th row
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Supabase query error:', error);
-        return [];
-      }
-      
-      // Sample hourly (every 60 minutes)
-      const hourlyData = data?.filter((_, index) => index % 60 === 0) || [];
-      return hourlyData;
-      
-    } else if (interval === 'daily') {
-      // For daily data, sample every 1440 minutes (24 hours)
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Supabase query error:', error);
-        return [];
-      }
-      
-      // Sample daily (every 1440 minutes)
-      const dailyData = data?.filter((_, index) => index % 1440 === 0) || [];
-      return dailyData;
-      
-    } else {
-      // For minute data, return all records (be careful with large date ranges)
-      const { data, error } = await query.limit(10000); // Safety limit
-      
-      if (error) {
-        console.error('Supabase query error:', error);
-        return [];
-      }
-      
-      return data || [];
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Supabase query error:', error);
+      return [];
     }
+    
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
+    // Apply timestamp-based sampling
+    let sampledData: ForexPriceData[] = [];
+    
+    switch (interval) {
+      case 'minute':
+        // Return all minute data (no sampling needed)
+        sampledData = data;
+        break;
+        
+      case '15min':
+        // Sample every 15 minutes based on timestamp
+        sampledData = data.filter((item) => {
+          const date = new Date(item.timestamp);
+          const minutes = date.getMinutes();
+          // Keep data points at 00, 15, 30, 45 minutes
+          return minutes % 15 === 0;
+        });
+        break;
+        
+      case '30min':
+        // Sample every 30 minutes based on timestamp
+        sampledData = data.filter((item) => {
+          const date = new Date(item.timestamp);
+          const minutes = date.getMinutes();
+          // Keep data points at 00, 30 minutes
+          return minutes % 30 === 0;
+        });
+        break;
+        
+      case 'hourly':
+        // Sample every hour based on timestamp
+        sampledData = data.filter((item) => {
+          const date = new Date(item.timestamp);
+          const minutes = date.getMinutes();
+          // Keep data points at 00 minutes (start of each hour)
+          return minutes === 0;
+        });
+        break;
+        
+      case 'daily':
+        // Sample once per day at midnight
+        sampledData = data.filter((item) => {
+          const date = new Date(item.timestamp);
+          const hours = date.getHours();
+          const minutes = date.getMinutes();
+          // Keep data points at midnight (00:00)
+          return hours === 0 && minutes === 0;
+        });
+        break;
+        
+      default:
+        sampledData = data;
+        break;
+    }
+    
+    console.log(`Returning ${sampledData.length} sampled data points for ${interval} interval from ${data.length} total points`);
+    return sampledData;
+    
   } catch (err) {
     console.error('Error fetching historical range:', err);
     return [];
