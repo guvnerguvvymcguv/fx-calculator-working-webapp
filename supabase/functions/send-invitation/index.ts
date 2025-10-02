@@ -52,7 +52,7 @@ serve(async (req) => {
                       <td style="padding: 40px 30px;">
                         <p style="margin: 16px 0; color: #4a4a4a;">Hi there,</p>
                         
-                        <p style="margin: 16px 0; color: #4a4a4a;"><strong>${inviterEmail}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${role}</strong>.</p>
+                        <p style="margin: 16px 0; color: #4a4a4a;"><strong>${inviterEmail}</strong> has invited you to join <strong>${companyName}</strong> as ${role === 'Admin' ? 'an' : 'a'} <strong>${role}</strong>.</p>
                         
                         <!-- Info Box -->
                         <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
