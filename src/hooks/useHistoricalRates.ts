@@ -111,6 +111,11 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     if (startDate < minDataDate) startDate = minDataDate;
     if (endDate > maxDataDate) endDate = maxDataDate;
 
+    // Ensure start <= end (fix reversed range)
+    if (startDate > endDate) {
+      [startDate, endDate] = [endDate, startDate];
+    }
+
     const { interval, precision } = determineInterval(timeframe);
 
     return {
