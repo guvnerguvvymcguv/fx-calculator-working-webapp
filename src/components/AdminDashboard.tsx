@@ -22,7 +22,7 @@ export default function AdminDashboard() {
   const [scheduleDay, setScheduleDay] = useState('1'); // Monday
   const [scheduleHour, setScheduleHour] = useState('9'); // 9 AM
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [companyData, setCompanyData] = useState<any>(null);  // Added to store company data
+  const [companyData, setCompanyData] = useState<any>(null);
   const [userCalculationCounts, setUserCalculationCounts] = useState<Record<string, number>>({});
   const [calculationCountLoading, setCalculationCountLoading] = useState(false);
   const [metrics, setMetrics] = useState({
@@ -121,16 +121,19 @@ export default function AdminDashboard() {
       
       const counts: Record<string, number> = {};
       
-      // Fetch calculations for each team member for the selected period
+      // Fetch calculations for each active team member for the selected period
       for (const member of teamMembers) {
-        const { count } = await supabase
-          .from('activity_logs')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', member.id)
-          .gte('created_at', start.toISOString())
-          .lte('created_at', end.toISOString());
-        
-        counts[member.id] = count || 0;
+        // Only count if member is active
+        if (member.is_active !== false) {
+          const { count } = await supabase
+            .from('activity_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', member.id)
+            .gte('created_at', start.toISOString())
+            .lte('created_at', end.toISOString());
+          
+          counts[member.id] = count || 0;
+        }
       }
       
       setUserCalculationCounts(counts);
@@ -345,14 +348,14 @@ export default function AdminDashboard() {
       // Fetch company data with cancellation fields
       const { data: company } = await supabase
         .from('companies')
-        .select('*, cancel_at_period_end, scheduled_cancellation_date, cancelled_at')  // Added fields
+        .select('*, cancel_at_period_end, scheduled_cancellation_date, cancelled_at')
         .eq('id', profile.company_id)
         .single();
 
-      setCompanyData(company);  // Store company data
+      setCompanyData(company);
 
-      // Fetch team members with their calculation counts
-      const { data: members } = await supabase
+      // Fetch ALL team members (including inactive for seat count)
+      const { data: allMembers } = await supabase
         .from('user_profiles')
         .select(`
           *,
@@ -364,19 +367,30 @@ export default function AdminDashboard() {
       // Get date range for filtering
       const { start, end, previousStart, previousEnd } = getDateRangeFilter();
 
-      // Fetch calculations for current period
+      // Fetch calculations for current period (only from active users)
+      const { data: activeMembers } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('company_id', profile.company_id)
+        .neq('is_active', false);
+
+      const activeUserIds = activeMembers?.map(m => m.id) || [];
+
+      // Fetch calculations for current period from active users only
       const { data: currentCalculations } = await supabase
         .from('activity_logs')
         .select('*')
         .eq('company_id', profile.company_id)
+        .in('user_id', activeUserIds.length > 0 ? activeUserIds : ['no-users'])
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString());
 
-      // Fetch calculations for previous period
+      // Fetch calculations for previous period from active users only
       const { data: previousCalculations } = await supabase
         .from('activity_logs')
         .select('*')
         .eq('company_id', profile.company_id)
+        .in('user_id', activeUserIds.length > 0 ? activeUserIds : ['no-users'])
         .gte('created_at', previousStart.toISOString())
         .lte('created_at', previousEnd.toISOString());
 
@@ -390,10 +404,19 @@ export default function AdminDashboard() {
         totalTradeValue / currentCalculations.length : 0;
 
       // Count active users (users who made calculations in current period)
-      const activeUserIds = new Set(currentCalculations?.map(calc => calc.user_id) || []);
+      const activeUserIdsInPeriod = new Set(currentCalculations?.map(calc => calc.user_id) || []);
 
-      // Process team members data
-      const processedMembers = await Promise.all((members || []).map(async (member) => {
+      // Process team members data (only active members)
+      const processedMembers = await Promise.all((allMembers || []).map(async (member) => {
+        // Skip inactive members for calculations
+        if (member.is_active === false) {
+          return {
+            ...member,
+            weeklyActivity: 0,
+            lastActive: null
+          };
+        }
+
         // Get member's calculations for the current period
         const { data: memberCalcs } = await supabase
           .from('activity_logs')
@@ -418,17 +441,18 @@ export default function AdminDashboard() {
         };
       }));
 
-      setTeamMembers(processedMembers.filter(m => m.role_type === 'junior'));
+      // Filter to only show active junior members in the team members list
+      setTeamMembers(processedMembers.filter(m => m.role_type === 'junior' && m.is_active !== false));
 
-      // Update metrics
+      // Update metrics (count all members for seat usage)
       setMetrics({
         totalSeats: company?.subscription_seats || 0,
-        usedSeats: members?.length || 0,
-        availableSeats: (company?.subscription_seats || 0) - (members?.length || 0),
+        usedSeats: allMembers?.length || 0,
+        availableSeats: (company?.subscription_seats || 0) - (allMembers?.length || 0),
         periodCalculations: currentCalculations?.length || 0,
         previousPeriodCalculations: previousCalculations?.length || 0,
         avgTradeValue: avgTradeValue,
-        activeUsers: activeUserIds.size
+        activeUsers: activeUserIdsInPeriod.size
       });
 
     } catch (error) {
@@ -512,7 +536,7 @@ export default function AdminDashboard() {
             start: start.toISOString(),
             end: end.toISOString()
           },
-          companyId: profile!.company_id // ADD THIS LINE
+          companyId: profile!.company_id
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
