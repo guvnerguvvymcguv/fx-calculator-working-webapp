@@ -110,7 +110,8 @@ export default function CompanySignup() {
             subscription_status: 'trialing',
             subscription_type: billingPeriod,
             trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
-            role: 'admin'
+            role: 'admin',
+            role_type: "admin"
           }
         }
       });
