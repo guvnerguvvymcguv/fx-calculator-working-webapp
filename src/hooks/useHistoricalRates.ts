@@ -15,7 +15,7 @@ interface UseHistoricalRatesReturn {
   isLoading: boolean;
   error: string | null;
   isRealData: boolean;
-  dataPrecision: 'minute' | 'hourly' | 'daily';
+  dataPrecision: 'minute' | '15min' | '30min' | 'hourly' | 'daily';
   setSelectedPair: (pair: string) => void;
   setSelectedTimeframe: (timeframe: string) => void;
   fetchRateForDateTime: (date: Date, time: string) => Promise<number | null>;
@@ -35,9 +35,9 @@ const AVAILABLE_PAIRS = [
 // Updated timeframe configurations
 const TIMEFRAMES = [
   { label: '1D', days: 1, targetPoints: 1440 },  // All minute points for 1 day
-  { label: '5D', days: 5, targetPoints: 120 },   // Hourly points for 5 days
-  { label: '1M', days: 30, targetPoints: 720 },  // Hourly points for 30 days
-  { label: '3M', days: 90, targetPoints: 2160 }  // Hourly points for 90 days
+  { label: '5D', days: 5, targetPoints: 480 },   // 15-min points for 5 days (5*24*4)
+  { label: '1M', days: 30, targetPoints: 1440 }, // 30-min points for 30 days (30*24*2)
+  { label: '3M', days: 90, targetPoints: 2160 }  // Hourly points for 90 days (90*24)
 ];
 
 // Pair mapping for inverses (query EURGBP for GBPEUR label)
@@ -52,7 +52,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isRealData = true; // Always true with Supabase data
-  const [dataPrecision, setDataPrecision] = useState<'minute' | 'hourly' | 'daily'>('daily');
+  const [dataPrecision, setDataPrecision] = useState<'minute' | '15min' | '30min' | 'hourly' | 'daily'>('30min');
 
   // Format date to YYYY-MM-DD format for Supabase
   const formatToSQLDate = (date: Date): string => {
@@ -64,17 +64,17 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
 
   // Determine the best interval based on timeframe
   const determineInterval = (timeframe: string): 
-    { interval: 'minute' | 'hourly' | 'daily', precision: 'minute' | 'hourly' | 'daily' } => {
+    { interval: 'minute' | '15min' | '30min' | 'hourly' | 'daily', precision: 'minute' | '15min' | '30min' | 'hourly' | 'daily' } => {
     
     switch (timeframe) {
       case '1D':
         return { interval: 'minute', precision: 'minute' }; // Minute data for 1 day
       case '5D':
-        return { interval: 'hourly', precision: 'hourly' }; // Hourly for 5 days
+        return { interval: '15min', precision: '15min' }; // 15-min data for 5 days
       case '1M':
-        return { interval: 'hourly', precision: 'hourly' }; // Hourly for 1 month
+        return { interval: '30min', precision: '30min' }; // 30-min data for 1 month
       case '3M':
-        return { interval: 'hourly', precision: 'hourly' }; // Hourly for 3 months
+        return { interval: 'hourly', precision: 'hourly' }; // Hourly data for 3 months
       default:
         return { interval: 'daily', precision: 'daily' };
     }

@@ -89,7 +89,7 @@ export async function getHistoricalForexRange(
   pair: string,
   startDate: string,
   endDate: string,
-  interval: 'minute' | 'hourly' | 'daily' = 'hourly'
+  interval: 'minute' | '15min' | '30min' | 'hourly' | 'daily' = 'hourly'
 ): Promise<ForexPriceData[]> {
   try {
     const startTimestamp = `${startDate} 00:00:00`;
