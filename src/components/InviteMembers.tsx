@@ -102,6 +102,7 @@ export default function InviteMembers() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('Sending invitation with role:', roleType === 'admin' ? 'Admin' : 'Junior Broker');
       
       for (const email of validEmails) {
         const token = generateInviteToken();
