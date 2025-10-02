@@ -104,9 +104,9 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       startDate.setDate(maxAvailableDate.getDate() - timeConfig.days);
     }
 
-    // Cap at our data range (we have Sept 2024 - Sept 2025)
     const minDataDate = new Date('2024-09-30');
-    const maxDataDate = new Date('2025-09-30');
+    const maxDataDate = new Date();
+    maxDataDate.setDate(maxDataDate.getDate() - 1); // Allow up to yesterday
     
     if (startDate < minDataDate) startDate = minDataDate;
     if (endDate > maxDataDate) endDate = maxDataDate;
