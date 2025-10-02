@@ -330,32 +330,38 @@ export default function AccountManagement() {
   };
 
   const changeUserRole = async (memberId: string, newRole: 'admin' | 'junior') => {
-    // Check if there would still be at least one admin
-    if (newRole === 'junior') {
-      const adminCount = teamMembers.filter(m => m.role_type === 'admin' && m.id !== memberId && (m.is_active !== false)).length;
-      if (adminCount === 0) {
-        alert('Cannot change role: At least one active admin is required');
-        return;
-      }
+  // Check if there would still be at least one admin
+  if (newRole === 'junior') {
+    const adminCount = teamMembers.filter(m => m.role_type === 'admin' && m.id !== memberId && (m.is_active !== false)).length;
+    if (adminCount === 0) {
+      alert('Cannot change role: At least one active admin is required');
+      return;
     }
+  }
 
-    if (!confirm(`Are you sure you want to change this user to ${newRole}?`)) return;
+  if (!confirm(`Are you sure you want to change this user to ${newRole}?`)) return;
 
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ role_type: newRole })
-        .eq('id', memberId);
+  try {
+    // Update BOTH role_type and role fields
+    const roleValue = newRole === 'junior' ? 'junior_broker' : 'admin';
+    
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ 
+        role_type: newRole,
+        role: roleValue  // Added this line to update the role field as well
+      })
+      .eq('id', memberId);
 
-      if (error) throw error;
-      
-      alert('Role updated successfully');
-      await fetchAccountData();
-    } catch (error) {
-      console.error('Error updating role:', error);
-      alert('Failed to update role');
-    }
-  };
+    if (error) throw error;
+    
+    alert('Role updated successfully');
+    await fetchAccountData();
+  } catch (error) {
+    console.error('Error updating role:', error);
+    alert('Failed to update role');
+  }
+};
 
   const sendPasswordReset = async (email: string, memberName: string) => {
     if (!confirm(`Send password reset email to ${memberName}?`)) return;
