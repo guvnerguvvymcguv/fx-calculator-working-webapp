@@ -50,7 +50,10 @@ export async function getHistoricalForexRate(
       .from('forex_prices')
       .select('close')
       .eq('pair', pair.toUpperCase())
-      .eq('timestamp', timestamp)
+      .gte('timestamp', timestamp)  // >= HH:MM:00
+      .lt('timestamp', new Date(new Date(timestamp).getTime() + 60000).toISOString())  // < HH:MM+1 min (60s)
+      .order('timestamp', { ascending: true })
+      .limit(1)  // Closest/earliest in minute
       .single();
     
     if (error) {
