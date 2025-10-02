@@ -27,10 +27,14 @@ const CURRENCY_PAIRS = [
 const TIMEFRAMES = ['1D', '5D', '1M', '3M'];
 
 // Helper to format data precision for display
-const formatDataPrecision = (precision: 'minute' | 'hourly' | 'daily'): string => {
+const formatDataPrecision = (precision: 'minute' | '15min' | '30min' | 'hourly' | 'daily'): string => {
   switch (precision) {
     case 'minute':
       return 'Minute precision';
+    case '15min':
+      return '15-minute precision';
+    case '30min':
+      return '30-minute precision';
     case 'hourly':
       return 'Hourly precision';
     case 'daily':
