@@ -38,14 +38,34 @@ export default function InviteMembers() {
 
     const { data: members } = await supabase
       .from('user_profiles')
-      .select('id')
+      .select('id, role_type, role')
       .eq('company_id', profile!.company_id);
 
-    const usedSeats = members?.length || 0;
-    const totalSeats = company?.subscription_seats || 0;
+    // Count current admins and juniors (check both role_type and role fields)
+    const currentAdmins = members?.filter(m => 
+      m.role_type === 'admin' || m.role === 'admin'
+    ).length || 0;
+    const currentJuniors = members?.filter(m => 
+      m.role_type === 'junior' || m.role_type === 'junior_broker' || 
+      m.role === 'junior' || m.role === 'junior_broker'
+    ).length || 0;
     
-    setCompanyData(company);
-    setAvailableSeats(totalSeats - usedSeats);
+    // Calculate available seats by role
+    const adminSeatsTotal = company?.admin_seats || 0;
+    const juniorSeatsTotal = company?.junior_seats || 0;
+    const availableAdminSeats = Math.max(0, adminSeatsTotal - currentAdmins);
+    const availableJuniorSeats = Math.max(0, juniorSeatsTotal - currentJuniors);
+    
+    const totalAvailable = availableAdminSeats + availableJuniorSeats;
+    
+    setCompanyData({
+      ...company,
+      availableAdminSeats,
+      availableJuniorSeats,
+      currentAdmins,
+      currentJuniors
+    });
+    setAvailableSeats(totalAvailable);
   };
 
   const fetchInvitations = async () => {
@@ -94,15 +114,25 @@ export default function InviteMembers() {
       return;
     }
 
-    if (validEmails.length > availableSeats) {
-      alert(`You only have ${availableSeats} seats available`);
+    // Check role-specific seat availability
+    const availableForRole = roleType === 'admin' 
+      ? companyData.availableAdminSeats 
+      : companyData.availableJuniorSeats;
+    
+    if (availableForRole === 0) {
+      alert(`No ${roleType === 'admin' ? 'admin' : 'junior broker'} seats available. Please upgrade your subscription to add more seats.`);
+      setLoading(false);
+      return;
+    }
+    
+    if (validEmails.length > availableForRole) {
+      alert(`You only have ${availableForRole} ${roleType === 'admin' ? 'admin' : 'junior broker'} seat${availableForRole === 1 ? '' : 's'} available`);
       setLoading(false);
       return;
     }
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('Sending invitation with role:', roleType === 'admin' ? 'Admin' : 'Junior Broker');
       
       for (const email of validEmails) {
         const token = generateInviteToken();
@@ -131,7 +161,6 @@ export default function InviteMembers() {
 
         if (error) {
           console.error(`Failed to send email to ${email}:`, error);
-          // Continue with other emails even if one fails
         } else {
           console.log(`Invitation email sent to ${email}`);
         }
@@ -139,6 +168,7 @@ export default function InviteMembers() {
 
       alert(`Successfully sent ${validEmails.length} invitation(s)`);
       setEmails(['']);
+      fetchCompanyData(); // Refresh available seats
       fetchInvitations();
     } catch (error) {
       console.error('Error sending invitations:', error);
@@ -146,6 +176,14 @@ export default function InviteMembers() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate available seats for currently selected role
+  const getAvailableSeatsForRole = () => {
+    if (!companyData) return 0;
+    return roleType === 'admin' 
+      ? companyData.availableAdminSeats || 0
+      : companyData.availableJuniorSeats || 0;
   };
 
   return (
@@ -175,7 +213,10 @@ export default function InviteMembers() {
                 <Users className="h-5 w-5 text-purple-400" />
                 <div>
                   <p className="text-white font-semibold">Available Seats</p>
-                  <p className="text-sm text-gray-400">You can invite up to {availableSeats} more team members</p>
+                  <p className="text-sm text-gray-400">
+                    Admin: {companyData?.availableAdminSeats || 0} available | 
+                    Junior: {companyData?.availableJuniorSeats || 0} available
+                  </p>
                 </div>
               </div>
               <div className="text-3xl font-bold text-purple-400">{availableSeats}</div>
@@ -214,6 +255,10 @@ export default function InviteMembers() {
                   Admin
                 </Button>
               </div>
+              <p className="text-sm text-gray-400 mt-2">
+                {getAvailableSeatsForRole()} {roleType === 'admin' ? 'admin' : 'junior broker'} 
+                seat{getAvailableSeatsForRole() === 1 ? '' : 's'} available for invitation
+              </p>
             </div>
 
             {/* Email Fields */}
@@ -258,7 +303,7 @@ export default function InviteMembers() {
             {/* Send Button */}
             <Button
               onClick={sendInvitations}
-              disabled={loading || availableSeats === 0}
+              disabled={loading || getAvailableSeatsForRole() === 0}
               className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
             >
               <Mail className="h-4 w-4 mr-2" />
