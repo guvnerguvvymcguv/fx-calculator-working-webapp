@@ -32,6 +32,7 @@ jobs:
       - name: Run forex update
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           # Copy script to working dir
           mkdir -p dukascopy

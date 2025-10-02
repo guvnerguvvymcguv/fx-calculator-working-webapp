@@ -9,13 +9,13 @@ import sys
 
 # Supabase credentials
 SUPABASE_URL = "https://wvzqxwvlozzbmdrqyify.supabase.co"
-SUPABASE_KEY = SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
 if not SUPABASE_KEY:
-    print("Missing SUPABASE_KEY env var")
+    print("Missing SUPABASE_SERVICE_ROLE_KEY env var")
     sys.exit(1)
 
 # Initialize Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 # Currency pairs to update
 PAIRS = ['eurusd', 'gbpusd', 'eurgbp', 'gbpaud', 'gbpnok', 'gbpsek']
