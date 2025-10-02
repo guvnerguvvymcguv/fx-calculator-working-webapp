@@ -92,93 +92,119 @@ export async function getHistoricalForexRange(
   interval: 'minute' | '15min' | '30min' | 'hourly' | 'daily' = 'hourly'
 ): Promise<ForexPriceData[]> {
   try {
-    const startTimestamp = `${startDate} 00:00:00`;
-    const endTimestamp = `${endDate} 23:59:59`;
+    console.log(`Fetching ${interval} data for ${pair} from ${startDate} to ${endDate}`);
     
-    console.log(`Querying Supabase for ${pair} from ${startTimestamp} to ${endTimestamp}`);
+    let allData: ForexPriceData[] = [];
     
-    // Build the base query without limit for proper sampling
-    let query = supabase
-      .from('forex_prices')
-      .select('*')
-      .eq('pair', pair.toUpperCase())
-      .gte('timestamp', startTimestamp)
-      .lte('timestamp', endTimestamp)
-      .order('timestamp', { ascending: true });
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Supabase query error:', error);
-      return [];
+    // For minute data (1D chart), fetch day by day to avoid limits
+    if (interval === 'minute') {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      // Iterate through each day
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dayStr = formatToSQLDate(d);
+        const dayStart = `${dayStr} 00:00:00`;
+        const dayEnd = `${dayStr} 23:59:59`;
+        
+        const { data, error } = await supabase
+          .from('forex_prices')
+          .select('*')
+          .eq('pair', pair.toUpperCase())
+          .gte('timestamp', dayStart)
+          .lte('timestamp', dayEnd)
+          .order('timestamp', { ascending: true });
+        
+        if (!error && data) {
+          allData = allData.concat(data);
+        }
+      }
+      
+      console.log(`Returning ${allData.length} minute data points`);
+      return allData;
     }
     
-    if (!data || data.length === 0) {
-      return [];
+    // For other intervals, fetch data more intelligently
+    const start = new Date(startDate + ' 00:00:00');
+    const end = new Date(endDate + ' 23:59:59');
+    
+    // Build timestamps for the specific minutes we want
+    const timestamps: string[] = [];
+    
+    for (let current = new Date(start); current <= end; current.setMinutes(current.getMinutes() + 1)) {
+      const minutes = current.getMinutes();
+      const hours = current.getHours();
+      
+      let shouldInclude = false;
+      
+      switch (interval) {
+        case '15min':
+          shouldInclude = minutes % 15 === 0;
+          break;
+        case '30min':
+          shouldInclude = minutes % 30 === 0;
+          break;
+        case 'hourly':
+          shouldInclude = minutes === 0;
+          break;
+        case 'daily':
+          shouldInclude = hours === 0 && minutes === 0;
+          break;
+      }
+      
+      if (shouldInclude) {
+        timestamps.push(formatTimestamp(current));
+      }
     }
     
-    // Apply timestamp-based sampling
-    let sampledData: ForexPriceData[] = [];
+    console.log(`Fetching ${timestamps.length} specific timestamps for ${interval} interval`);
     
-    switch (interval) {
-      case 'minute':
-        // Return all minute data (no sampling needed)
-        sampledData = data;
-        break;
-        
-      case '15min':
-        // Sample every 15 minutes based on timestamp
-        sampledData = data.filter((item) => {
-          const date = new Date(item.timestamp);
-          const minutes = date.getMinutes();
-          // Keep data points at 00, 15, 30, 45 minutes
-          return minutes % 15 === 0;
-        });
-        break;
-        
-      case '30min':
-        // Sample every 30 minutes based on timestamp
-        sampledData = data.filter((item) => {
-          const date = new Date(item.timestamp);
-          const minutes = date.getMinutes();
-          // Keep data points at 00, 30 minutes
-          return minutes % 30 === 0;
-        });
-        break;
-        
-      case 'hourly':
-        // Sample every hour based on timestamp
-        sampledData = data.filter((item) => {
-          const date = new Date(item.timestamp);
-          const minutes = date.getMinutes();
-          // Keep data points at 00 minutes (start of each hour)
-          return minutes === 0;
-        });
-        break;
-        
-      case 'daily':
-        // Sample once per day at midnight
-        sampledData = data.filter((item) => {
-          const date = new Date(item.timestamp);
-          const hours = date.getHours();
-          const minutes = date.getMinutes();
-          // Keep data points at midnight (00:00)
-          return hours === 0 && minutes === 0;
-        });
-        break;
-        
-      default:
-        sampledData = data;
-        break;
+    // Fetch data in chunks to avoid query size limits
+    const chunkSize = 500;
+    
+    for (let i = 0; i < timestamps.length; i += chunkSize) {
+      const chunk = timestamps.slice(i, i + chunkSize);
+      
+      const { data, error } = await supabase
+        .from('forex_prices')
+        .select('*')
+        .eq('pair', pair.toUpperCase())
+        .in('timestamp', chunk)
+        .order('timestamp', { ascending: true });
+      
+      if (!error && data) {
+        allData = allData.concat(data);
+      }
     }
     
-    console.log(`Returning ${sampledData.length} sampled data points for ${interval} interval from ${data.length} total points`);
-    return sampledData;
+    console.log(`Returning ${allData.length} sampled data points for ${interval} interval`);
+    return allData;
     
   } catch (err) {
     console.error('Error fetching historical range:', err);
     return [];
   }
+}
+
+/**
+ * Helper function to format Date to SQL timestamp string
+ */
+function formatToSQLDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Helper function to format Date to full SQL timestamp
+ */
+function formatTimestamp(date: Date): string {
+  const dateStr = formatToSQLDate(date);
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${dateStr} ${hours}:${minutes}:${seconds}`;
 }
 
 /**
