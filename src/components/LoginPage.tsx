@@ -35,43 +35,48 @@ const LoginPage = () => {
       setError(signInError.message);
       setIsLoading(false);
     } else if (data.user) {
+      // Check if account is active before proceeding
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('is_active, role_type, role')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        setError('Unable to verify account status');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if account is deactivated
+      if (profile?.is_active === false) {
+        // Sign them out immediately
+        await supabase.auth.signOut();
+        setError('Your account has been deactivated. Please contact your administrator to reactivate your account.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Account is active, proceed with normal login flow
       authContext?.login();
       
       // Check user role if admin login selected
       if (loginType === 'admin') {
         console.log('Admin login attempted for user:', data.user.id);
-        console.log('User metadata:', data.user.user_metadata);
+        console.log('User profile role:', profile.role_type);
         
-        // Check role from user metadata first (avoids RLS issues)
-        const metadataRole = data.user.user_metadata?.role || data.user.user_metadata?.role_type;
-        
-        if (metadataRole && ['admin', 'super_admin'].includes(metadataRole)) {
-          console.log('Admin access granted via metadata');
+        // Check role from profile
+        if (profile.role_type === 'admin' || profile.role === 'admin') {
+          console.log('Admin access granted');
           navigate('/admin');
         } else {
-          // Fallback: Try direct database query with .rpc() to bypass RLS
-          try {
-            const { data: roleData, error: roleError } = await supabase.rpc('get_user_role', {
-              user_id: data.user.id
-            });
-            
-            console.log('RPC role check:', roleData, roleError);
-            
-            if (roleData && ['admin', 'super_admin'].includes(roleData)) {
-              navigate('/admin');
-            } else {
-              setError('You do not have admin access');
-              setIsLoading(false);
-              return;
-            }
-          } catch (err) {
-            console.error('Role check failed:', err);
-            setError('Unable to verify admin access');
-            setIsLoading(false);
-            return;
-          }
+          setError('You do not have admin access');
+          setIsLoading(false);
+          return;
         }
       } else {
+        // Regular user login - could be admin or junior
         navigate('/calculator');
       }
     }
