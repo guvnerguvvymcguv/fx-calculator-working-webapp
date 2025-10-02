@@ -87,7 +87,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       throw new Error(`Invalid timeframe: ${timeframe}`);
     }
 
-    // Get current date (we have data up to Sept 2025 in Supabase)
+    // Get current date (we have data up to yesterday)
     const maxAvailableDate = new Date(); // Current date
     let endDate: Date;
     let startDate: Date;
@@ -104,6 +104,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       startDate.setDate(maxAvailableDate.getDate() - timeConfig.days);
     }
 
+    // Cap at our data range (dynamic)
     const minDataDate = new Date('2024-09-30');
     const maxDataDate = new Date();
     maxDataDate.setDate(maxDataDate.getDate() - 1); // Allow up to yesterday
@@ -160,7 +161,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       
       // Invert for GBPEUR (close only; extend to OHLC if charts need full)
       if (selectedPair === 'GBPEUR') {
-        historicalData.forEach(point => {
+        historicalData.forEach((point: any) => {
           point.close = 1 / point.close;
         });
       }
@@ -199,12 +200,15 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
   // Fetch specific rate for date/time from Supabase
   const fetchRateForDateTime = async (date: Date, time: string): Promise<number | null> => {
     try {
-      // Validate date is within our data range
+      // Validate date is within our data range (dynamic)
       const minDate = new Date('2024-09-30');
-      const maxDate = new Date('2025-09-30');
+      const maxDate = new Date();
+      maxDate.setDate(maxDate.getDate() - 1); // Allow up to yesterday
       
       if (date < minDate || date > maxDate) {
-        setError(`Historical data only available from 30/09/2024 to 30/09/2025`);
+        const minDateStr = minDate.toLocaleDateString('en-GB');
+        const maxDateStr = maxDate.toLocaleDateString('en-GB');
+        setError(`Historical data only available from ${minDateStr} to ${maxDateStr}`);
         return null;
       }
       
@@ -247,7 +251,7 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
         // If exact minute not found, try to get the closest minute within the same hour
         console.log('Exact minute not found, checking if data exists for this date');
         
-        const hasData = await hasHistoricalData(selectedPair, dateStr);
+        const hasData = await hasHistoricalData(queryPair, dateStr);
         if (hasData) {
           setError('Rate not available for exact time. Try a different time.');
         } else {
