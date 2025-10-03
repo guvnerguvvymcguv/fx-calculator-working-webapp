@@ -9,8 +9,8 @@ import sys
 
 # Supabase credentials
 SUPABASE_URL = "https://wvzqxwvlozzbmdrqyify.supabase.co"
-SUPABASE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
-if not SUPABASE_KEY:
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
+if not SUPABASE_SERVICE_KEY:
     print("Missing SUPABASE_SERVICE_KEY env var")
     sys.exit(1)
 
