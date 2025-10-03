@@ -125,16 +125,11 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
     }
     
     if (selectedTimeframe === '5D') {
-      if (zoomLevel >= 4) return '1-min';
-      if (zoomLevel >= 2) return '5-min';
-      return '15-min';
+      return zoomLevel >= 2 ? '1-min' : '15-min';
     }
     
     if (selectedTimeframe === '2M') {
-      if (zoomLevel >= 8) return '1-min';
-      if (zoomLevel >= 4) return '5-min';
-      if (zoomLevel >= 2) return '15-min';
-      return '30-min';
+      return zoomLevel >= 3 ? '1-min' : '30-min';
     }
     
     return '1-min';
@@ -148,7 +143,7 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
         onGranularityChange(newGranularity);
       }
     }
-  }, [zoomLevel, selectedTimeframe]);
+  }, [zoomLevel, selectedTimeframe, currentGranularity, onGranularityChange]);
 
   // Convert data coordinates to canvas coordinates with zoom and pan
   const getCanvasX = (timestamp: number): number => {
