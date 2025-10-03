@@ -15,11 +15,12 @@ interface UseHistoricalRatesReturn {
   isLoading: boolean;
   error: string | null;
   isRealData: boolean;
-  dataPrecision: 'minute' | '15min' | '30min' | 'hourly' | 'daily';
+  dataPrecision: 'minute' | '5min' | '15min' | '30min' | 'hourly' | 'daily';
   setSelectedPair: (pair: string) => void;
   setSelectedTimeframe: (timeframe: string) => void;
   fetchRateForDateTime: (date: Date, time: string) => Promise<number | null>;
   fetchHistoricalDataForDate?: (centerDate: Date, timeframe: string) => Promise<void>;
+  fetchDataWithGranularity?: (granularity: string) => Promise<void>;
 }
 
 // Available pairs matching main calculator
@@ -32,12 +33,11 @@ const AVAILABLE_PAIRS = [
   { value: 'GBPAUD', label: 'GBP/AUD' }
 ];
 
-// Updated timeframe configurations
+// Updated timeframe configurations - removed 1M and 3M, added 2M
 const TIMEFRAMES = [
-  { label: '1D', days: 1, targetPoints: 1440 },  // All minute points for 1 day
-  { label: '5D', days: 5, targetPoints: 480 },   // 15-min points for 5 days (5*24*4)
-  { label: '1M', days: 30, targetPoints: 1440 }, // 30-min points for 30 days (30*24*2)
-  { label: '3M', days: 90, targetPoints: 2160 }  // Hourly points for 90 days (90*24)
+  { label: '1D', days: 1, targetPoints: 1440 },   // All minute points for 1 day
+  { label: '5D', days: 5, targetPoints: 480 },    // Default 15-min points for 5 days
+  { label: '2M', days: 60, targetPoints: 2880 }   // Default 30-min points for 60 days
 ];
 
 // Pair mapping for inverses (query EURGBP for GBPEUR label)
@@ -47,12 +47,13 @@ const PAIR_MAP: Record<string, string> = {
 
 export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistoricalRatesReturn => {
   const [selectedPair, setSelectedPair] = useState<string>(initialPair);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1M');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('2M');
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const isRealData = true; // Always true with Supabase data
-  const [dataPrecision, setDataPrecision] = useState<'minute' | '15min' | '30min' | 'hourly' | 'daily'>('30min');
+  const [dataPrecision, setDataPrecision] = useState<'minute' | '5min' | '15min' | '30min' | 'hourly' | 'daily'>('30min');
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date } | null>(null);
 
   // Format date to YYYY-MM-DD format for Supabase
   const formatToSQLDate = (date: Date): string => {
@@ -62,19 +63,35 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     return `${year}-${month}-${day}`;
   };
 
-  // Determine the best interval based on timeframe
-  const determineInterval = (timeframe: string): 
-    { interval: 'minute' | '15min' | '30min' | 'hourly' | 'daily', precision: 'minute' | '15min' | '30min' | 'hourly' | 'daily' } => {
+  // Convert granularity string to interval type
+  const granularityToInterval = (granularity: string): 'minute' | '5min' | '15min' | '30min' | 'hourly' | 'daily' => {
+    switch (granularity) {
+      case '1-min':
+        return 'minute';
+      case '5-min':
+        return '5min';
+      case '15-min':
+        return '15min';
+      case '30-min':
+        return '30min';
+      case '1-hour':
+        return 'hourly';
+      default:
+        return '30min';
+    }
+  };
+
+  // Determine the default interval based on timeframe
+  const determineDefaultInterval = (timeframe: string): 
+    { interval: 'minute' | '5min' | '15min' | '30min' | 'hourly' | 'daily', precision: 'minute' | '5min' | '15min' | '30min' | 'hourly' | 'daily' } => {
     
     switch (timeframe) {
       case '1D':
-        return { interval: 'minute', precision: 'minute' }; // Minute data for 1 day
+        return { interval: 'minute', precision: 'minute' }; // Always minute data for 1 day
       case '5D':
-        return { interval: '15min', precision: '15min' }; // 15-min data for 5 days
-      case '1M':
-        return { interval: '30min', precision: '30min' }; // 30-min data for 1 month
-      case '3M':
-        return { interval: 'hourly', precision: 'hourly' }; // Hourly data for 3 months
+        return { interval: '15min', precision: '15min' }; // Start with 15-min data for 5 days
+      case '2M':
+        return { interval: '30min', precision: '30min' }; // Start with 30-min data for 2 months
       default:
         return { interval: 'daily', precision: 'daily' };
     }
@@ -117,7 +134,10 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       [startDate, endDate] = [endDate, startDate];
     }
 
-    const { interval, precision } = determineInterval(timeframe);
+    // Store the date range for later use
+    setDateRange({ start: startDate, end: endDate });
+
+    const { interval, precision } = determineDefaultInterval(timeframe);
 
     return {
       start: formatToSQLDate(startDate),
@@ -139,63 +159,103 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     }));
   };
 
-  // Fetch historical data from Supabase
-  const fetchHistoricalData = async (centerDate?: Date) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const { start, end, interval, precision } = getDateRange(selectedTimeframe, centerDate);
-      
-      console.log(`Fetching ${interval} data from ${start} to ${end} for ${selectedPair} from Supabase`);
-      setDataPrecision(precision);
-      
-      // Fetch from Supabase
-      const queryPair = PAIR_MAP[selectedPair] || selectedPair;
-      const historicalData = await getHistoricalForexRange(
-        queryPair,
-        start,
-        end,
-        interval
-      );
-      
-      // Invert for GBPEUR (close only; extend to OHLC if charts need full)
-      if (selectedPair === 'GBPEUR') {
-        historicalData.forEach((point: any) => {
-          point.close = 1 / point.close;
-        });
-      }
-      
-      console.log(`Supabase returned ${historicalData.length} data points`);
-      
-      if (historicalData && historicalData.length > 0) {
-        const transformedData = processSupabaseData(historicalData);
-        
-        if (transformedData.length > 0) {
-          console.log(`Displaying ${transformedData.length} points from Supabase`);
-          setChartData(transformedData);
-          setError(null);
-        } else {
-          throw new Error('No valid data points after processing');
-        }
-      } else {
-        // Check if we have any data for this pair/date
-        const hasData = await hasHistoricalData(queryPair, start);  // Changed from selectedPair to queryPair
-        if (!hasData) {
-          setError('No historical data available for this date range');
-        } else {
-          setError('Unable to load data. Please try again.');
-        }
-        setChartData([]);
-      }
-    } catch (err: any) {
-      console.error('Error in fetchHistoricalData:', err);
-      setError('Failed to load historical data from database');
-      setChartData([]);
-    } finally {
-      setIsLoading(false);
+  // Fetch historical data from Supabase with specific granularity
+const fetchHistoricalDataWithGranularity = async (granularity?: string, centerDate?: Date) => {
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    let interval: 'minute' | '5min' | '15min' | '30min' | 'hourly' | 'daily';
+    let start: string;
+    let end: string;
+    
+    if (granularity && dateRange) {
+      // Use the stored date range with new granularity
+      const convertedInterval = granularityToInterval(granularity);
+      interval = convertedInterval;
+      start = formatToSQLDate(dateRange.start);
+      end = formatToSQLDate(dateRange.end);
+    } else {
+      // Use default calculation
+      const rangeData = getDateRange(selectedTimeframe, centerDate);
+      interval = rangeData.interval;
+      start = rangeData.start;
+      end = rangeData.end;
     }
-  };
+    
+    console.log(`Fetching ${interval} data from ${start} to ${end} for ${selectedPair} from Supabase`);
+    
+    // Set data precision based on interval using switch statement
+    switch (interval) {
+      case 'minute':
+        setDataPrecision('minute');
+        break;
+      case '5min':
+        setDataPrecision('5min');
+        break;
+      case '15min':
+        setDataPrecision('15min');
+        break;
+      case '30min':
+        setDataPrecision('30min');
+        break;
+      case 'hourly':
+        setDataPrecision('hourly');
+        break;
+      case 'daily':
+        setDataPrecision('daily');
+        break;
+      default:
+        setDataPrecision('daily');
+    }
+    
+    // Fetch from Supabase - explicitly type the interval parameter
+    const queryPair = PAIR_MAP[selectedPair] || selectedPair;
+    const typedInterval = interval as Parameters<typeof getHistoricalForexRange>[3];
+    const historicalData = await getHistoricalForexRange(
+      queryPair,
+      start,
+      end,
+      typedInterval
+    );
+    
+    // Invert for GBPEUR (close only; extend to OHLC if charts need full)
+    if (selectedPair === 'GBPEUR') {
+      historicalData.forEach((point: any) => {
+        point.close = 1 / point.close;
+      });
+    }
+    
+    console.log(`Supabase returned ${historicalData.length} data points`);
+    
+    if (historicalData && historicalData.length > 0) {
+      const transformedData = processSupabaseData(historicalData);
+      
+      if (transformedData.length > 0) {
+        console.log(`Displaying ${transformedData.length} points from Supabase`);
+        setChartData(transformedData);
+        setError(null);
+      } else {
+        throw new Error('No valid data points after processing');
+      }
+    } else {
+      // Check if we have any data for this pair/date
+      const hasData = await hasHistoricalData(queryPair, start);
+      if (!hasData) {
+        setError('No historical data available for this date range');
+      } else {
+        setError('Unable to load data. Please try again.');
+      }
+      setChartData([]);
+    }
+  } catch (err: any) {
+    console.error('Error in fetchHistoricalData:', err);
+    setError('Failed to load historical data from database');
+    setChartData([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Fetch specific rate for date/time from Supabase
   const fetchRateForDateTime = async (date: Date, time: string): Promise<number | null> => {
@@ -243,10 +303,10 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
       );
       
       if (rawRate !== null) {
-        const displayRate = selectedPair === 'GBPEUR' ? 1 / rawRate : rawRate;  // Invert for GBPEUR
+        const displayRate = selectedPair === 'GBPEUR' ? 1 / rawRate : rawRate;
         console.log(`Found raw rate: ${rawRate} (display: ${displayRate}) for ${dateStr} ${formattedTime}`);
         setError(null);
-        return displayRate;  // Return inverted for modal/calculator
+        return displayRate;
       } else {
         // If exact minute not found, try to get the closest minute within the same hour
         console.log('Exact minute not found, checking if data exists for this date');
@@ -266,9 +326,14 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     }
   };
 
+  // Wrapper for fetchDataWithGranularity to be exposed in the return
+  const fetchDataWithGranularity = async (granularity: string): Promise<void> => {
+    await fetchHistoricalDataWithGranularity(granularity);
+  };
+
   // Fetch data when pair or timeframe changes
   useEffect(() => {
-    fetchHistoricalData();
+    fetchHistoricalDataWithGranularity();
   }, [selectedPair, selectedTimeframe]);
 
   const availablePairs = AVAILABLE_PAIRS.map(p => p.value);
@@ -285,6 +350,9 @@ export const useHistoricalRates = (initialPair: string = 'GBPUSD'): UseHistorica
     setSelectedPair,
     setSelectedTimeframe,
     fetchRateForDateTime,
-    fetchHistoricalDataForDate: fetchHistoricalData
+    fetchHistoricalDataForDate: async (centerDate: Date, _timeframe: string) => {
+      await fetchHistoricalDataWithGranularity(undefined, centerDate);
+    },
+    fetchDataWithGranularity
   };
 };

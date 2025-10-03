@@ -14,6 +14,8 @@ interface HistoricalChartProps {
   selectedTimeframe?: string;
   width?: number;
   height?: number;
+  onGranularityChange?: (granularity: string) => void;
+  currentGranularity?: string;
 }
 
 // Format timestamp for UK display
@@ -35,7 +37,9 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
   selectedPair,
   selectedTimeframe = '1D',
   width = 800,
-  height = 400
+  height = 400,
+  onGranularityChange,
+  currentGranularity = '1m'
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,6 +95,61 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
   const minTime = data[0]?.timestamp || 0;
   const maxTime = data[data.length - 1]?.timestamp || 0;
 
+  // Calculate pan constraints
+  const calculatePanLimits = () => {
+    // Calculate how much of the chart extends beyond the visible area when zoomed
+    const scaledChartWidth = chartWidth * zoomLevel;
+    const scaledChartHeight = chartHeight * zoomLevel;
+    
+    // Maximum pan offsets (allow panning only within data bounds)
+    const maxPanX = Math.max(0, (scaledChartWidth - chartWidth) / 2);
+    const maxPanY = Math.max(0, (scaledChartHeight - chartHeight) / 2);
+    
+    return { maxPanX, maxPanY };
+  };
+
+  // Constrain pan offset to valid bounds
+  const constrainPanOffset = (offset: { x: number, y: number }) => {
+    const { maxPanX, maxPanY } = calculatePanLimits();
+    
+    return {
+      x: Math.max(-maxPanX, Math.min(maxPanX, offset.x)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, offset.y))
+    };
+  };
+
+  // Calculate granularity based on zoom level and timeframe
+  const calculateGranularity = () => {
+    if (selectedTimeframe === '1D') {
+      return '1-min';
+    }
+    
+    if (selectedTimeframe === '5D') {
+      if (zoomLevel >= 4) return '1-min';
+      if (zoomLevel >= 2) return '5-min';
+      return '15-min';
+    }
+    
+    if (selectedTimeframe === '2M') {
+      if (zoomLevel >= 8) return '1-min';
+      if (zoomLevel >= 4) return '5-min';
+      if (zoomLevel >= 2) return '15-min';
+      return '30-min';
+    }
+    
+    return '1-min';
+  };
+
+  // Update granularity when zoom changes
+  useEffect(() => {
+    if (selectedTimeframe !== '1D') {
+      const newGranularity = calculateGranularity();
+      if (onGranularityChange && newGranularity !== currentGranularity) {
+        onGranularityChange(newGranularity);
+      }
+    }
+  }, [zoomLevel, selectedTimeframe]);
+
   // Convert data coordinates to canvas coordinates with zoom and pan
   const getCanvasX = (timestamp: number): number => {
     const baseX = padding.left + ((timestamp - minTime) / (maxTime - minTime)) * chartWidth;
@@ -141,8 +200,7 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
         });
         
       case '5D':
-      case '1M':
-      case '3M':
+      case '2M':
         if (isMobile) {
           return `${date.getDate()}/${date.getMonth() + 1}`;
         } else {
@@ -167,10 +225,8 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
         return isMobile ? 3 : 5;
       case '5D':
         return 5;
-      case '1M':
-        return isMobile ? 3 : 5;
-      case '3M':
-        return isMobile ? 3 : 5;
+      case '2M':
+        return isMobile ? 4 : 6;
       default:
         return 4;
     }
@@ -178,11 +234,27 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
 
   // Zoom handlers
   const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev * 1.2, 10)); // Max 10x zoom
+    const newZoom = Math.min(zoomLevel * 1.2, 10);
+    setZoomLevel(newZoom);
+    
+    // Adjust pan offset to keep zoom centered
+    const newPanOffset = {
+      x: panOffset.x * 1.2,
+      y: panOffset.y * 1.2
+    };
+    setPanOffset(constrainPanOffset(newPanOffset));
   };
 
   const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev / 1.2, 0.5)); // Min 0.5x zoom
+    const newZoom = Math.max(zoomLevel / 1.2, 1); // Don't allow zoom out beyond 1x
+    setZoomLevel(newZoom);
+    
+    // Adjust pan offset proportionally
+    const newPanOffset = {
+      x: panOffset.x / 1.2,
+      y: panOffset.y / 1.2
+    };
+    setPanOffset(constrainPanOffset(newPanOffset));
   };
 
   const handleResetView = () => {
@@ -381,13 +453,17 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
     setMousePos({ x, y });
 
     if (panMode && isPanning && dragStart && dragStartOffset) {
-      // Calculate pan offset
+      // Calculate pan offset with constraints
       const dx = x - dragStart.x;
       const dy = y - dragStart.y;
-      setPanOffset({
+      
+      const newPanOffset = {
         x: dragStartOffset.x + dx,
         y: dragStartOffset.y + dy
-      });
+      };
+      
+      // Apply constraints
+      setPanOffset(constrainPanOffset(newPanOffset));
     } else if (!panMode) {
       // Only show crosshair if mouse is within chart area and not in pan mode
       if (x >= padding.left && x <= canvasSize.width - padding.right && 
@@ -459,9 +535,16 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
         style={{ width: '100%', height: '100%' }}
       />
       
-      {/* Pair label with timeframe */}
-      <div className={`absolute top-4 left-4 text-purple-300 font-semibold ${isMobile ? 'text-base' : 'text-lg'}`}>
-        {selectedPair} - {selectedTimeframe}
+      {/* Pair label with timeframe and granularity */}
+      <div className={`absolute top-4 left-4 ${isMobile ? 'text-sm' : 'text-base'}`}>
+        <div className="text-purple-300 font-semibold">
+          {selectedPair} - {selectedTimeframe}
+        </div>
+        {selectedTimeframe !== '1D' && (
+          <div className="text-purple-400 text-xs mt-1">
+            Interval: {calculateGranularity()}
+          </div>
+        )}
       </div>
       
       {/* Zoom and pan controls */}
