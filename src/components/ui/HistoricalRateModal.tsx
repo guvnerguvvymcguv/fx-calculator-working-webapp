@@ -24,16 +24,13 @@ const CURRENCY_PAIRS = [
   { value: 'GBPAUD', label: 'GBP/AUD' }
 ];
 
-// Updated timeframes - removed 1M and 3M, added 2M
-const TIMEFRAMES = ['1D', '5D', '2M'];
+const TIMEFRAMES = ['1D', '5D', '1M', '3M'];
 
 // Helper to format data precision for display
-const formatDataPrecision = (precision: 'minute' | '5min' | '15min' | '30min' | 'hourly' | 'daily'): string => {
+const formatDataPrecision = (precision: 'minute' | '15min' | '30min' | 'hourly' | 'daily'): string => {
   switch (precision) {
     case 'minute':
-      return '1-minute precision';
-    case '5min':
-      return '5-minute precision';
+      return 'Minute precision';
     case '15min':
       return '15-minute precision';
     case '30min':
@@ -60,10 +57,10 @@ export function HistoricalRateModal({
     isLoading,
     error,
     isRealData,
+    dataPrecision,
     setSelectedPair,
     setSelectedTimeframe,
-    fetchRateForDateTime,
-    fetchDataWithGranularity
+    fetchRateForDateTime
   } = useHistoricalRates(initialPair);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -72,7 +69,6 @@ export function HistoricalRateModal({
   const [searchedRate, setSearchedRate] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [currentGranularity, setCurrentGranularity] = useState<string>('1-min');
   
   // Dynamic date range from Supabase
   const [dataDateRange, setDataDateRange] = useState({
@@ -115,15 +111,6 @@ export function HistoricalRateModal({
   }, [selectedPair]); // Re-check when pair changes
 
   const today = new Date();
-
-  // Handle granularity change from chart component
-  const handleGranularityChange = async (newGranularity: string) => {
-    if (newGranularity !== currentGranularity && fetchDataWithGranularity) {
-      setCurrentGranularity(newGranularity);
-      // Fetch new data with the updated granularity
-      await fetchDataWithGranularity(newGranularity);
-    }
-  };
 
   // Calendar helper functions
   const getDaysInMonth = (date: Date) => {
@@ -219,15 +206,6 @@ export function HistoricalRateModal({
 
   const calendarDays = generateCalendarDays();
 
-  // Get the appropriate data precision display
-  const getDisplayPrecision = () => {
-    if (selectedTimeframe === '1D') {
-      return 'minute';
-    }
-    // For 5D and 2M, use the current granularity
-    return currentGranularity.replace('-min', 'min').replace('-', '');
-  };
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-gray-900 rounded-xl w-full max-w-5xl max-h-[90vh] overflow-auto">
@@ -274,17 +252,7 @@ export function HistoricalRateModal({
                   {TIMEFRAMES.map((tf) => (
                     <button
                       key={tf}
-                      onClick={() => {
-                        setSelectedTimeframe(tf);
-                        // Reset granularity when changing timeframe
-                        if (tf === '1D') {
-                          setCurrentGranularity('1-min');
-                        } else if (tf === '5D') {
-                          setCurrentGranularity('15-min');
-                        } else if (tf === '2M') {
-                          setCurrentGranularity('30-min');
-                        }
-                      }}
+                      onClick={() => setSelectedTimeframe(tf)}
                       className={`px-3 py-1 rounded transition-colors ${
                         selectedTimeframe === tf
                           ? 'bg-purple-600 text-white'
@@ -331,7 +299,7 @@ export function HistoricalRateModal({
               
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-400">
                 <AlertCircle className="h-3 w-3" />
-                {formatDataPrecision(getDisplayPrecision() as any)}
+                {formatDataPrecision(dataPrecision)}
               </div>
             </div>
           )}
@@ -339,15 +307,11 @@ export function HistoricalRateModal({
           {/* Instructions */}
           <div className="bg-gray-800/50 rounded-lg p-3">
             <p className="text-sm text-gray-400 flex items-start gap-2">
-              <span className="text-purple-400">💡</span>
+              <span className="text-purple-400">ðŸ’¡</span>
               <span>
                 {showDatePicker 
                   ? "Select a specific date and time to find the exact historical rate. Minute precision is attempted for all dates, with hourly fallback if unavailable."
-                  : selectedTimeframe === '1D'
-                  ? "View today's rates with minute precision. Hover over the chart to see rates and click to select."
-                  : selectedTimeframe === '5D'
-                  ? "View 5-day rates starting at 15-minute intervals. Zoom in to see more granular data down to 1-minute precision."
-                  : "View 2-month rates starting at 30-minute intervals. Zoom in to see more granular data down to 1-minute precision."
+                  : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
                 }
               </span>
             </p>
@@ -510,8 +474,6 @@ export function HistoricalRateModal({
                     }}
                     selectedPair={selectedPair}
                     selectedTimeframe={selectedTimeframe}
-                    onGranularityChange={handleGranularityChange}
-                    currentGranularity={currentGranularity}
                   />
                 )}
               </div>
