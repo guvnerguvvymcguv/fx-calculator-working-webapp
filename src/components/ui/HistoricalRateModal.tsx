@@ -307,7 +307,7 @@ export function HistoricalRateModal({
           {/* Instructions */}
           <div className="bg-gray-800/50 rounded-lg p-3">
             <p className="text-sm text-gray-400 flex items-start gap-2">
-              <span className="text-purple-400">ðŸ’¡</span>
+              <span className="text-purple-400">💡</span>
               <span>
                 {showDatePicker 
                   ? "Select a specific date and time to find the exact historical rate. Minute precision is attempted for all dates, with hourly fallback if unavailable."
