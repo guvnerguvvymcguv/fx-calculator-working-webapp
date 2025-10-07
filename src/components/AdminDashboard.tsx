@@ -325,142 +325,143 @@ export default function AdminDashboard() {
   };
 
   const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  try {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-      // Get user's company
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('company_id, role_type')
-        .eq('id', user.id)
-        .single();
+    // Get user's company
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('company_id, role_type')
+      .eq('id', user.id)
+      .single();
 
-      if (!profile?.company_id) return;
+    if (!profile?.company_id) return;
 
-      // Verify admin access
-      if (!['admin', 'super_admin'].includes(profile.role_type)) {
-        navigate('/calculator');
-        return;
+    // Verify admin access
+    if (!['admin', 'super_admin'].includes(profile.role_type)) {
+      navigate('/calculator');
+      return;
+    }
+
+    // Fetch company data with cancellation fields
+    const { data: company } = await supabase
+      .from('companies')
+      .select('*, cancel_at_period_end, scheduled_cancellation_date, cancelled_at')
+      .eq('id', profile.company_id)
+      .single();
+
+    setCompanyData(company);
+
+    // Fetch ALL team members (including inactive for seat count)
+    const { data: allMembers } = await supabase
+      .from('user_profiles')
+      .select(`
+        *,
+        activity_logs!left(count)
+      `)
+      .eq('company_id', profile.company_id)
+      .order('created_at', { ascending: false });
+
+    // Get date range for filtering
+    const { start, end, previousStart, previousEnd } = getDateRangeFilter();
+
+    // Fetch calculations for current period (ONLY from active JUNIOR users)
+    const { data: activeJuniorMembers } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('company_id', profile.company_id)
+      .eq('role_type', 'junior')  // ADDED: Only junior brokers
+      .neq('is_active', false);
+
+    const activeJuniorUserIds = activeJuniorMembers?.map(m => m.id) || [];
+
+    // Fetch calculations for current period from active junior users only
+    const { data: currentCalculations } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .in('user_id', activeJuniorUserIds.length > 0 ? activeJuniorUserIds : ['no-users'])
+      .gte('created_at', start.toISOString())
+      .lte('created_at', end.toISOString());
+
+    // Fetch calculations for previous period from active junior users only
+    const { data: previousCalculations } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .in('user_id', activeJuniorUserIds.length > 0 ? activeJuniorUserIds : ['no-users'])
+      .gte('created_at', previousStart.toISOString())
+      .lte('created_at', previousEnd.toISOString());
+
+    // Calculate average trade value
+    const totalTradeValue = currentCalculations?.reduce((sum, calc) => {
+      const amount = parseFloat(calc.amount) || 0;
+      return sum + amount;
+    }, 0) || 0;
+
+    const avgTradeValue = currentCalculations?.length ? 
+      totalTradeValue / currentCalculations.length : 0;
+
+    // Count active users (users who made calculations in current period)
+    const activeUserIdsInPeriod = new Set(currentCalculations?.map(calc => calc.user_id) || []);
+
+    // Process team members data (only active members)
+    const processedMembers = await Promise.all((allMembers || []).map(async (member) => {
+      // Skip inactive members for calculations
+      if (member.is_active === false) {
+        return {
+          ...member,
+          weeklyActivity: 0,
+          lastActive: null
+        };
       }
 
-      // Fetch company data with cancellation fields
-      const { data: company } = await supabase
-        .from('companies')
-        .select('*, cancel_at_period_end, scheduled_cancellation_date, cancelled_at')
-        .eq('id', profile.company_id)
-        .single();
-
-      setCompanyData(company);
-
-      // Fetch ALL team members (including inactive for seat count)
-      const { data: allMembers } = await supabase
-        .from('user_profiles')
-        .select(`
-          *,
-          activity_logs!left(count)
-        `)
-        .eq('company_id', profile.company_id)
-        .order('created_at', { ascending: false });
-
-      // Get date range for filtering
-      const { start, end, previousStart, previousEnd } = getDateRangeFilter();
-
-      // Fetch calculations for current period (only from active users)
-      const { data: activeMembers } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('company_id', profile.company_id)
-        .neq('is_active', false);
-
-      const activeUserIds = activeMembers?.map(m => m.id) || [];
-
-      // Fetch calculations for current period from active users only
-      const { data: currentCalculations } = await supabase
+      // Get member's calculations for the current period
+      const { data: memberCalcs } = await supabase
         .from('activity_logs')
         .select('*')
-        .eq('company_id', profile.company_id)
-        .in('user_id', activeUserIds.length > 0 ? activeUserIds : ['no-users'])
+        .eq('user_id', member.id)
         .gte('created_at', start.toISOString())
         .lte('created_at', end.toISOString());
 
-      // Fetch calculations for previous period from active users only
-      const { data: previousCalculations } = await supabase
+      // Get last activity
+      const { data: lastCalc } = await supabase
         .from('activity_logs')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .in('user_id', activeUserIds.length > 0 ? activeUserIds : ['no-users'])
-        .gte('created_at', previousStart.toISOString())
-        .lte('created_at', previousEnd.toISOString());
+        .select('created_at')
+        .eq('user_id', member.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-      // Calculate average trade value
-      const totalTradeValue = currentCalculations?.reduce((sum, calc) => {
-        const amount = parseFloat(calc.amount) || 0;
-        return sum + amount;
-      }, 0) || 0;
+      return {
+        ...member,
+        weeklyActivity: memberCalcs?.length || 0,
+        lastActive: lastCalc?.created_at || null
+      };
+    }));
 
-      const avgTradeValue = currentCalculations?.length ? 
-        totalTradeValue / currentCalculations.length : 0;
+    // Filter to only show active junior members in the team members list
+    setTeamMembers(processedMembers.filter(m => m.role_type === 'junior' && m.is_active !== false));
 
-      // Count active users (users who made calculations in current period)
-      const activeUserIdsInPeriod = new Set(currentCalculations?.map(calc => calc.user_id) || []);
+    // Update metrics (count all members for seat usage)
+    setMetrics({
+      totalSeats: company?.subscription_seats || 0,
+      usedSeats: allMembers?.length || 0,
+      availableSeats: (company?.subscription_seats || 0) - (allMembers?.length || 0),
+      periodCalculations: currentCalculations?.length || 0,
+      previousPeriodCalculations: previousCalculations?.length || 0,
+      avgTradeValue: avgTradeValue,
+      activeUsers: activeUserIdsInPeriod.size
+    });
 
-      // Process team members data (only active members)
-      const processedMembers = await Promise.all((allMembers || []).map(async (member) => {
-        // Skip inactive members for calculations
-        if (member.is_active === false) {
-          return {
-            ...member,
-            weeklyActivity: 0,
-            lastActive: null
-          };
-        }
-
-        // Get member's calculations for the current period
-        const { data: memberCalcs } = await supabase
-          .from('activity_logs')
-          .select('*')
-          .eq('user_id', member.id)
-          .gte('created_at', start.toISOString())
-          .lte('created_at', end.toISOString());
-
-        // Get last activity
-        const { data: lastCalc } = await supabase
-          .from('activity_logs')
-          .select('created_at')
-          .eq('user_id', member.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        return {
-          ...member,
-          weeklyActivity: memberCalcs?.length || 0,
-          lastActive: lastCalc?.created_at || null
-        };
-      }));
-
-      // Filter to only show active junior members in the team members list
-      setTeamMembers(processedMembers.filter(m => m.role_type === 'junior' && m.is_active !== false));
-
-      // Update metrics (count all members for seat usage)
-      setMetrics({
-        totalSeats: company?.subscription_seats || 0,
-        usedSeats: allMembers?.length || 0,
-        availableSeats: (company?.subscription_seats || 0) - (allMembers?.length || 0),
-        periodCalculations: currentCalculations?.length || 0,
-        previousPeriodCalculations: previousCalculations?.length || 0,
-        avgTradeValue: avgTradeValue,
-        activeUsers: activeUserIdsInPeriod.size
-      });
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
