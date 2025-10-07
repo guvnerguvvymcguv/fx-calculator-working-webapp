@@ -489,43 +489,121 @@ export default function UserActivity() {
           <CardContent>
             {activities.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-3 px-4 text-gray-400">Time</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Client</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Currency Pair</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Your Rate</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Competitor Rate</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Amount</th>
-                      <th className="text-left py-3 px-4 text-gray-400">PIPs Saved</th>
-                      <th className="text-left py-3 px-4 text-gray-400">Savings</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activities.map((activity) => (
-                      <tr key={activity.id} className="border-b border-gray-800">
-                        <td className="py-3 px-4 text-white">
-                          {new Date(activity.created_at).toLocaleTimeString('en-GB', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </td>
-                        <td className="py-3 px-4 text-gray-300">{activity.client_name || 'N/A'}</td>
-                        <td className="py-3 px-4 text-gray-300">{activity.currency_pair}</td>
-                        <td className="py-3 px-4 text-gray-300">{activity.your_rate?.toFixed(4)}</td>
-                        <td className="py-3 px-4 text-gray-300">{activity.competitor_rate?.toFixed(4)}</td>
-                        <td className="py-3 px-4 text-gray-300">
-                          £{activity.amount?.toLocaleString()}
-                        </td>
-                        <td className="py-3 px-4 text-green-400">{activity.pips_difference}</td>
-                        <td className="py-3 px-4 text-green-400">
-                          £{activity.savings_amount?.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="min-w-[1200px]">
+                  {activities.map((activity) => {
+                    // Extract calculation data
+                    const calcData = activity.calculation_data || {};
+                    const costWithCompetitor = calcData.cost_with_competitor || 0;
+                    const costWithUs = calcData.cost_with_us || 0;
+                    const annualSavings = calcData.annual_savings || 0;
+                    const percentageSavings = calcData.percentage_savings || 0;
+                    const tradesPerYear = calcData.trades_per_year || 0;
+                    const comparisonDate = calcData.comparison_date || '';
+                    const priceDifference = calcData.price_difference || 0;
+                    
+                    return (
+                      <div key={activity.id} className="border-b border-gray-700 py-4">
+                        {/* Row 1: Calc Details */}
+                        <div className="grid grid-cols-7 gap-4 mb-2">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Time & Date</div>
+                            <div className="text-sm text-white">
+                              {new Date(activity.created_at).toLocaleString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: viewType !== 'daily' ? 'numeric' : undefined,
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Your Rate</div>
+                            <div className="text-sm text-gray-300">
+                              {activity.your_rate?.toFixed(4) || 'N/A'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Comp Rate</div>
+                            <div className="text-sm text-gray-300">
+                              {activity.competitor_rate?.toFixed(4) || 'N/A'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Client Name</div>
+                            <div className="text-sm text-gray-300">
+                              {activity.client_name || 'N/A'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Comp Date</div>
+                            <div className="text-sm text-gray-300">
+                              {comparisonDate ? new Date(comparisonDate).toLocaleDateString('en-GB') : 'N/A'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Amt to Buy</div>
+                            <div className="text-sm text-gray-300">
+                              £{activity.amount?.toLocaleString() || '0'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Trades/Year</div>
+                            <div className="text-sm text-gray-300">
+                              {tradesPerYear || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Row 2: Results */}
+                        <div className="grid grid-cols-7 gap-4 pl-0 border-l-4 border-purple-500 ml-0 pl-2">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Price Diff</div>
+                            <div className="text-sm text-white font-semibold">
+                              {priceDifference > 0 ? '+' : ''}{priceDifference.toFixed(4)}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">PIPs</div>
+                            <div className="text-sm text-green-400 font-semibold">
+                              {activity.pips_difference || 0}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Cost w/ Comp</div>
+                            <div className="text-sm text-red-400">
+                              £{costWithCompetitor.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Cost w/ Us</div>
+                            <div className="text-sm text-green-400">
+                              £{costWithUs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Savings/Trade</div>
+                            <div className="text-sm text-green-400 font-semibold">
+                              £{activity.savings_amount?.toFixed(2) || '0.00'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">Annual Savings</div>
+                            <div className="text-sm text-green-400 font-semibold">
+                              £{annualSavings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-1">% Savings</div>
+                            <div className="text-sm text-green-400 font-semibold">
+                              {percentageSavings.toFixed(2)}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8 text-gray-400">
