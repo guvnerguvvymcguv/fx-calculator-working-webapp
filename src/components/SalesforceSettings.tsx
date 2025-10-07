@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { supabase } from '../lib/supabase';
-import { CheckCircle, XCircle, Send, ArrowLeft, LogOut } from 'lucide-react';
+import { CheckCircle, XCircle, Send, ArrowLeft } from 'lucide-react';
 
 export default function SalesforceSettings() {
   const navigate = useNavigate();
@@ -82,39 +82,6 @@ export default function SalesforceSettings() {
     } catch (error) {
       console.error('Token exchange error:', error);
       alert('Failed to complete connection. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const disconnectSalesforce = async () => {
-    if (!confirm('Are you sure you want to disconnect from Salesforce? You will need to reconnect to resume exports.')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('id', user!.id)
-        .single();
-
-      // Delete the Salesforce connection
-      const { error } = await supabase
-        .from('salesforce_connections')
-        .delete()
-        .eq('company_id', profile!.company_id);
-
-      if (error) throw error;
-
-      alert('Successfully disconnected from Salesforce');
-      setIsConnected(false);
-      setConnectionDetails(null);
-    } catch (error) {
-      console.error('Disconnect error:', error);
-      alert('Failed to disconnect. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -246,25 +213,14 @@ export default function SalesforceSettings() {
                     ? new Date(connectionDetails.last_sync).toLocaleString() 
                     : 'Never'}
                 </p>
-                <div className="flex gap-3">
-                  <Button
-                    onClick={testExport}
-                    disabled={loading}
-                    className="bg-purple-600 hover:bg-purple-700"
-                  >
-                    <Send className="h-4 w-4 mr-2" />
-                    Test Export
-                  </Button>
-                  <Button
-                    onClick={disconnectSalesforce}
-                    disabled={loading}
-                    variant="outline"
-                    className="border-red-600 text-red-400 hover:bg-red-900/20"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Disconnect
-                  </Button>
-                </div>
+                <Button
+                  onClick={testExport}
+                  disabled={loading}
+                  className="bg-purple-600 hover:bg-purple-700"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Test Export
+                </Button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -276,7 +232,7 @@ export default function SalesforceSettings() {
                   className="bg-blue-600 hover:bg-blue-700"
                   disabled={loading}
                 >
-                  {connectionDetails ? 'Reconnect to Salesforce' : 'Connect to Salesforce'}
+                  Connect to Salesforce
                 </Button>
               </div>
             )}
