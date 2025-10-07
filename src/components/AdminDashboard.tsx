@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check, AlertCircle } from 'lucide-react';
+import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check, AlertCircle, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminDashboard() {
@@ -81,6 +81,36 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Error checking Salesforce connection:', error);
       setSalesforceConnected(false);
+    }
+  };
+
+  const disconnectSalesforce = async () => {
+    if (!confirm('Are you sure you want to disconnect from Salesforce? You will need to reconnect to resume exports.')) {
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user!.id)
+        .single();
+
+      // Delete the Salesforce connection
+      const { error } = await supabase
+        .from('salesforce_connections')
+        .delete()
+        .eq('company_id', profile!.company_id);
+
+      if (error) throw error;
+
+      alert('Successfully disconnected from Salesforce');
+      setSalesforceConnected(false);
+      checkSalesforceConnection(); // Refresh connection status
+    } catch (error) {
+      console.error('Disconnect error:', error);
+      alert('Failed to disconnect. Please try again.');
     }
   };
 
@@ -742,6 +772,17 @@ export default function AdminDashboard() {
                   <Download className="h-4 w-4 mr-2" />
                   Export Data
                 </Button>
+                {salesforceConnected && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={disconnectSalesforce}
+                    className="border-red-600 text-red-400 hover:bg-red-900/20"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Disconnect
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
