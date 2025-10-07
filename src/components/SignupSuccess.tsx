@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { CheckCircle, Calendar, AlertCircle } from 'lucide-react';
+import { CheckCircle, Calendar, AlertCircle, BookOpen } from 'lucide-react';
 
 export default function SignupSuccess() {
   const navigate = useNavigate();
@@ -44,6 +44,27 @@ export default function SignupSuccess() {
             <p className="flex items-center gap-2">
               <span className="text-green-400">✓</span> Team seats configured
             </p>
+          </div>
+
+          {/* Documentation Link */}
+          <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
+            <div className="flex items-start gap-2">
+              <BookOpen className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-gray-300 text-sm">
+                  New to SpreadChecker? Visit our{' '}
+                  <a 
+                    href="https://spreadchecker.notion.site/2845045c15cc802e976bfd236ad9179c?v=2845045c15cc80e4a823000c53b37e34"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-400 hover:text-purple-300 font-semibold underline"
+                  >
+                    SpreadChecker Docs
+                  </a>{' '}
+                  for setup guides and product documentation.
+                </p>
+              </div>
+            </div>
           </div>
           
           <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
