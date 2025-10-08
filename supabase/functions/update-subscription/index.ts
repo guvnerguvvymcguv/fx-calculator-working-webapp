@@ -13,18 +13,21 @@ const corsHeaders = {
 const PRICING_TIERS = {
   STANDARD: { 
     productId: 'prod_T8XJnL61gY927i',
+    annualProductId: 'prod_TCLns1si1ulZ4p',
     priceId: 'price_1SCGF55du1W5ijSGxcs7zQQX', 
     maxSeats: 14,
     pricePerSeat: 30
   },
   TEAM: { 
     productId: 'prod_T8XMTp9qKMSyVh',
+    annualProductId: 'prod_TCLoT9ndmjiSkW',
     priceId: 'price_1SCGHX5du1W5ijSGSx4iqFXi', 
     maxSeats: 29,
     pricePerSeat: 27
   },
   ENTERPRISE: { 
     productId: 'prod_T8XNn9mRSDskk7',
+    annualProductId: 'prod_TCLqYrus5QQlKi',
     priceId: 'price_1SCGIk5du1W5ijSG3jIFMf9L', 
     maxSeats: null,
     pricePerSeat: 24

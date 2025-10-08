@@ -13,18 +13,21 @@ const corsHeaders = {
 const PRICING_TIERS = {
   STANDARD: { 
     productId: 'prod_T8XJnL61gY927i',
+    annualProductId: 'prod_TCLns1si1ulZ4p',
     priceId: 'price_1SCGF55du1W5ijSGxcs7zQQX', 
     maxSeats: 14,
     pricePerSeat: 30 // Pre-VAT price
   },
   TEAM: { 
     productId: 'prod_T8XMTp9qKMSyVh',
+    annualProductId: 'prod_TCLoT9ndmjiSkW',
     priceId: 'price_1SCGHX5du1W5ijSGSx4iqFXi', 
     maxSeats: 29,
     pricePerSeat: 27 // Pre-VAT price
   },
   ENTERPRISE: { 
     productId: 'prod_T8XNn9mRSDskk7',
+    annualProductId: 'prod_TCLqYrus5QQlKi',
     priceId: 'price_1SCGIk5du1W5ijSG3jIFMf9L', 
     maxSeats: null,
     pricePerSeat: 24 // Pre-VAT price
@@ -218,8 +221,9 @@ serve(async (req) => {
       };
     } else {
       // For annual subscriptions, create a recurring subscription with annual interval
-      const vatAmount = Math.round(selectedTier.pricePerSeat * 100 * vatRate);
-      const priceWithVatPence = Math.round(selectedTier.pricePerSeat * 100) + vatAmount;
+      const annualPricePerSeat = selectedTier.pricePerSeat * 12; // Annual price per seat
+      const vatAmount = Math.round(annualPricePerSeat * 100 * vatRate);
+      const priceWithVatPence = Math.round(annualPricePerSeat * 100) + vatAmount;
       
       // Create an annual price for the selected tier
       const annualPrice = await stripe.prices.create({
@@ -229,7 +233,7 @@ serve(async (req) => {
           interval: 'year',  // Annual billing
           interval_count: 1 
         },
-        product: selectedTier.productId
+        product: selectedTier.annualProductId
       });
 
       sessionConfig = {
