@@ -203,10 +203,19 @@ serve(async (req) => {
         customer: customerId,
         payment_method_types: ['card'],
         mode: 'subscription',
-        payment_method_options: {
-          card: {
-            setup_future_usage: 'off_session'
+        subscription_data: {
+          metadata: {
+            company_id: companyId,
+            seat_count: seatCount.toString(),
+            admin_seats: (adminSeats || company.admin_seats || 0).toString(),
+            junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
+            billing_period: billingPeriod,
+            price_per_month: pricePerMonth.toString(),
+            user_id: user.id
           }
+        },
+        payment_intent_data: {
+          setup_future_usage: 'off_session'
         },
         success_url: `${origin}/admin?checkout=success`,
         cancel_url: `${origin}/checkout?canceled=true`,
@@ -246,10 +255,19 @@ serve(async (req) => {
         customer: customerId,
         payment_method_types: ['card'],
         mode: 'subscription',
-        payment_method_options: {
-          card: {
-            setup_future_usage: 'off_session'
+        subscription_data: {
+          metadata: {
+            company_id: companyId,
+            seat_count: seatCount.toString(),
+            admin_seats: (adminSeats || company.admin_seats || 0).toString(),
+            junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
+            billing_period: billingPeriod,
+            price_per_month: pricePerMonth.toString(),
+            user_id: user.id
           }
+        },
+        payment_intent_data: {
+          setup_future_usage: 'off_session'
         },
         success_url: `${origin}/admin?checkout=success`,
         cancel_url: `${origin}/checkout?canceled=true`,
