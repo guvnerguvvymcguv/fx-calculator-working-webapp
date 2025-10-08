@@ -56,38 +56,22 @@ serve(async (req) => {
       throw new Error('No active subscription found')
     }
 
-    // Cancel the subscription in Stripe at period end for ALL subscription types
-    let updatedSubscription
-    try {
-      if (company.stripe_subscription_id.startsWith('sub_')) {
-        // Update subscription to cancel at period end (for both monthly and annual)
-        updatedSubscription = await stripe.subscriptions.update(
-          company.stripe_subscription_id,
-          {
-            cancel_at_period_end: true,
-            cancellation_details: {
-              comment: feedback || reason || 'Customer requested cancellation',
-            },
-            metadata: {
-              cancelled_by: 'customer',
-              cancellation_reason: reason || 'not_specified',
-              cancellation_feedback: feedback || '',
-              cancelled_at: new Date().toISOString()
-            }
-          }
-        )
-      } else {
-        // It's a one-time payment session ID (annual), need to handle differently
-        // For annual payments that aren't subscriptions, we just mark as cancelled in our DB
-        updatedSubscription = { 
-          id: company.stripe_subscription_id,
-          current_period_end: Math.floor(Date.now() / 1000) + (365 * 24 * 60 * 60) // 1 year from now
+    // Cancel the subscription in Stripe at period end (for both monthly and annual)
+    const updatedSubscription = await stripe.subscriptions.update(
+      company.stripe_subscription_id,
+      {
+        cancel_at_period_end: true,
+        cancellation_details: {
+          comment: feedback || reason || 'Customer requested cancellation',
+        },
+        metadata: {
+          cancelled_by: 'customer',
+          cancellation_reason: reason || 'not_specified',
+          cancellation_feedback: feedback || '',
+          cancelled_at: new Date().toISOString()
         }
       }
-    } catch (stripeError) {
-      console.error('Stripe cancellation error:', stripeError)
-      throw new Error('Failed to cancel subscription with payment provider')
-    }
+    )
 
     // Calculate when access ends
     const scheduledCancellationDate = updatedSubscription.current_period_end 
