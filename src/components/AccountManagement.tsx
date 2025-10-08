@@ -65,7 +65,7 @@ export default function AccountManagement() {
       // Calculate trial status
       const now = new Date();
       const trialEndsAt = companyData?.trial_ends_at ? new Date(companyData.trial_ends_at) : null;
-      const isInTrial = trialEndsAt && trialEndsAt > now && !companyData?.subscription_active;
+      const isInTrial = trialEndsAt && trialEndsAt > now && companyData?.subscription_status === 'trialing';
       const daysLeftInTrial = isInTrial ? Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
       // Get allocated seats from company data if available, otherwise calculate from total
