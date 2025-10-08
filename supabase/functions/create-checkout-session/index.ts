@@ -217,11 +217,25 @@ serve(async (req) => {
         }]
       };
     } else {
-      // For annual subscriptions, create a one-time payment with total amount
+      // For annual subscriptions, create a recurring subscription with annual interval
+      const vatAmount = Math.round(selectedTier.pricePerSeat * 100 * vatRate);
+      const priceWithVatPence = Math.round(selectedTier.pricePerSeat * 100) + vatAmount;
+      
+      // Create an annual price for the selected tier
+      const annualPrice = await stripe.prices.create({
+        currency: 'gbp',
+        unit_amount: priceWithVatPence,
+        recurring: { 
+          interval: 'year',  // Annual billing
+          interval_count: 1 
+        },
+        product: selectedTier.productId
+      });
+
       sessionConfig = {
         customer: customerId,
         payment_method_types: ['card'],
-        mode: 'payment',
+        mode: 'subscription',  // Changed from 'payment' to 'subscription'
         success_url: `${origin}/admin?checkout=success`,
         cancel_url: `${origin}/checkout?canceled=true`,
         metadata: {
@@ -234,15 +248,8 @@ serve(async (req) => {
           user_id: user.id
         },
         line_items: [{
-          price_data: {
-            currency: 'gbp',
-            product_data: {
-              name: 'SpreadChecker Annual Subscription',
-              description: `${seatCount} total seats for 12 months (${adminSeats || company.admin_seats || 0} admin, ${juniorSeats || company.junior_seats || 0} junior)`,
-            },
-            unit_amount: Math.round(annualTotal * 100), // Convert to pence
-          },
-          quantity: 1,
+          price: annualPrice.id,
+          quantity: seatCount
         }]
       };
     }
