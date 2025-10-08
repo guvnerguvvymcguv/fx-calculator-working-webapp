@@ -109,12 +109,10 @@ serve(async (req) => {
       throw new Error('Company not found')
     }
 
-    // Handle annual subscriptions differently from monthly
+    // Handle annual subscriptions
     if (company.subscription_type === 'annual') {
       console.log('Processing annual subscription seat change');
       
-      // For annual subscriptions, we need to calculate pro-rata charge
-      // Get the current subscription to find the renewal date
       if (!company.stripe_subscription_id) {
         throw new Error('No active Stripe subscription found');
       }
@@ -125,113 +123,20 @@ serve(async (req) => {
         throw new Error('Subscription is not active');
       }
 
-      // Get current seat count from subscription
+      // Get current seat count
       const currentSeatCount = subscription.items.data[0].quantity || 0;
       const seatDifference = newSeatCount - currentSeatCount;
       
       if (seatDifference === 0) {
         return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: 'No seat changes detected' 
-          }),
-          {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200,
-          }
+          JSON.stringify({ success: true, message: 'No seat changes detected' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
         );
       }
 
-      // Calculate pro-rata amount for the remainder of the year
-      const now = Math.floor(Date.now() / 1000);
-      const periodEnd = subscription.current_period_end;
-      const periodStart = subscription.current_period_start;
-      const totalPeriodDays = (periodEnd - periodStart) / (60 * 60 * 24);
-      const remainingDays = (periodEnd - now) / (60 * 60 * 24);
-      const proRataPercentage = remainingDays / totalPeriodDays;
+      console.log('Updating annual subscription from', currentSeatCount, 'to', newSeatCount, 'seats');
 
-      console.log('Annual subscription details:', {
-        currentSeats: currentSeatCount,
-        newSeats: newSeatCount,
-        seatDifference,
-        totalPeriodDays: Math.round(totalPeriodDays),
-        remainingDays: Math.round(remainingDays),
-        proRataPercentage: proRataPercentage.toFixed(2)
-      });
-
-      // Determine pricing tier
-      let selectedTier;
-      if (newSeatCount <= 14) {
-        selectedTier = PRICING_TIERS.STANDARD;
-      } else if (newSeatCount <= 29) {
-        selectedTier = PRICING_TIERS.TEAM;
-      } else {
-        selectedTier = PRICING_TIERS.ENTERPRISE;
-      }
-
-      // Calculate annual price per seat with VAT
-      const vatRate = 0.2;
-      const annualPricePerSeat = selectedTier.pricePerSeat * 12; // Annual price
-      const pricePerSeatWithVat = annualPricePerSeat * (1 + vatRate);
-      
-      // Calculate pro-rata charge/credit for seat difference
-      const proRataAmount = Math.round(seatDifference * pricePerSeatWithVat * proRataPercentage * 100); // in pence
-
-      console.log('Pro-rata calculation:', {
-        annualPricePerSeat,
-        pricePerSeatWithVat: pricePerSeatWithVat.toFixed(2),
-        proRataAmount: (proRataAmount / 100).toFixed(2)
-      });
-
-      if (seatDifference > 0) {
-        // Adding seats - create an invoice item for the pro-rata charge
-        await stripe.invoiceItems.create({
-          customer: company.stripe_customer_id,
-          amount: proRataAmount,
-          currency: 'gbp',
-          description: `Pro-rata charge for ${seatDifference} additional seat(s) (${Math.round(remainingDays)} days remaining)`,
-          metadata: {
-            company_id: companyId,
-            seat_change: seatDifference.toString(),
-            subscription_type: 'annual',
-            pro_rata_days: Math.round(remainingDays).toString()
-          }
-        });
-
-        // Create and finalize the invoice immediately
-        const invoice = await stripe.invoices.create({
-          customer: company.stripe_customer_id,
-          auto_advance: true,
-          description: `Seat adjustment for annual subscription`,
-          metadata: {
-            company_id: companyId,
-            seat_change: seatDifference.toString()
-          }
-        });
-
-        await stripe.invoices.finalizeInvoice(invoice.id);
-
-        console.log('Pro-rata invoice created:', invoice.id);
-      } else {
-        // Removing seats - create a credit note for the pro-rata refund
-        // Note: For annual, we apply credit to customer account balance
-        const creditAmount = Math.abs(proRataAmount);
-        
-        await stripe.customers.createBalanceTransaction(company.stripe_customer_id, {
-          amount: -creditAmount, // Negative amount = credit to customer
-          currency: 'gbp',
-          description: `Pro-rata credit for ${Math.abs(seatDifference)} removed seat(s) (${Math.round(remainingDays)} days remaining)`,
-          metadata: {
-            company_id: companyId,
-            seat_change: seatDifference.toString(),
-            subscription_type: 'annual'
-          }
-        });
-        
-        console.log('Pro-rata credit applied:', (creditAmount / 100).toFixed(2));
-      }
-
-      // Update the subscription quantity (no price change needed for annual)
+      // Update the subscription with proration - Stripe handles the rest!
       const updatedSubscription = await stripe.subscriptions.update(
         company.stripe_subscription_id,
         {
@@ -239,7 +144,7 @@ serve(async (req) => {
             id: subscription.items.data[0].id,
             quantity: newSeatCount
           }],
-          proration_behavior: 'none', // We handled proration manually above
+          proration_behavior: 'always_invoice', // Stripe automatically charges pro-rata!
           metadata: {
             seat_count: newSeatCount.toString(),
             last_seat_change: new Date().toISOString()
@@ -254,21 +159,17 @@ serve(async (req) => {
           success: true,
           subscription_type: 'annual',
           seat_change: seatDifference,
-          pro_rata_amount: (proRataAmount / 100).toFixed(2),
           subscription: {
             id: updatedSubscription.id,
             status: updatedSubscription.status,
             current_period_end: updatedSubscription.current_period_end
           }
         }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Handle monthly subscriptions with Stripe's automatic proration
+    // Handle monthly subscriptions
     if (company.subscription_type !== 'monthly') {
       console.log('Unknown subscription type')
       return new Response(
