@@ -211,13 +211,14 @@ export default function AccountManagement() {
       } else if (company.subscription_type === 'monthly') {
         alertMessage += `\n- New price: £${newPrice}/month\n\n* Your next monthly payment will reflect this change`;
       } else if (company.subscription_type === 'annual') {
-        alertMessage += `\n\n* Seats updated for your annual subscription`;
-      }
+        alertMessage += `\n\n* Pro-rata charge will be applied for the remainder of your annual subscription`;
+  }
       
       alert(alertMessage);
 
       // Only update Stripe if they're on active monthly subscription
-      if (company.subscription_active && company.subscription_type === 'monthly') {
+      // Update Stripe if they're on active subscription (monthly or annual)
+        if (company.subscription_active && (company.subscription_type === 'monthly' || company.subscription_type === 'annual')) {
         const { data: { session } } = await supabase.auth.getSession();
         const response = await supabase.functions.invoke('update-subscription', {
           body: { 
