@@ -119,9 +119,9 @@ serve(async (req) => {
       
       const subscription = await stripe.subscriptions.retrieve(company.stripe_subscription_id);
       
-      if (!subscription || subscription.status !== 'active') {
-        throw new Error('Subscription is not active');
-      }
+      if (!subscription || (subscription.status !== 'active' && subscription.status !== 'past_due')) {
+      throw new Error('Subscription is not active')
+   }
 
       // Get current seat count
       const currentSeatCount = subscription.items.data[0].quantity || 0;
