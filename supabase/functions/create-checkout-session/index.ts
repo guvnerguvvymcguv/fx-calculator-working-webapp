@@ -203,6 +203,11 @@ serve(async (req) => {
         customer: customerId,
         payment_method_types: ['card'],
         mode: 'subscription',
+        payment_method_options: {
+          card: {
+            setup_future_usage: 'off_session'
+          }
+        },
         success_url: `${origin}/admin?checkout=success`,
         cancel_url: `${origin}/checkout?canceled=true`,
         metadata: {
@@ -240,7 +245,12 @@ serve(async (req) => {
       sessionConfig = {
         customer: customerId,
         payment_method_types: ['card'],
-        mode: 'subscription',  // Changed from 'payment' to 'subscription'
+        mode: 'subscription',
+        payment_method_options: {
+          card: {
+            setup_future_usage: 'off_session'
+          }
+        },
         success_url: `${origin}/admin?checkout=success`,
         cancel_url: `${origin}/checkout?canceled=true`,
         metadata: {
