@@ -379,7 +379,7 @@ export default function Checkout() {
                   <h3 className="text-white font-semibold text-lg">Annual</h3>
                   <p className="text-green-400 text-sm mt-1">Save 10%</p>
                   <p className="text-white text-2xl font-bold mt-3">
-                    £{(monthlyPrice * 0.9).toFixed(0)}/month
+                    £{((monthlyPrice * 12 * 0.9 * 1.2) / 12).toFixed(0)}/month
                   </p>
                   <p className="text-gray-400 text-xs">Billed annually</p>
                 </div>
