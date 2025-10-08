@@ -221,9 +221,10 @@ serve(async (req) => {
       };
     } else {
       // For annual subscriptions, create a recurring subscription with annual interval
-      const annualPricePerSeat = selectedTier.pricePerSeat * 12; // Annual price per seat
-      const vatAmount = Math.round(annualPricePerSeat * 100 * vatRate);
-      const priceWithVatPence = Math.round(annualPricePerSeat * 100) + vatAmount;
+      const annualPricePerSeat = selectedTier.pricePerSeat * 12; // £360/year
+      const annualPriceWithDiscount = annualPricePerSeat * 0.9; // Apply 10% discount: £324/year
+      const vatAmount = Math.round(annualPriceWithDiscount * 100 * vatRate);
+      const priceWithVatPence = Math.round(annualPriceWithDiscount * 100) + vatAmount;
       
       // Create an annual price for the selected tier
       const annualPrice = await stripe.prices.create({
