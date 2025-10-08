@@ -210,7 +210,6 @@ serve(async (req) => {
         });
 
         await stripe.invoices.finalizeInvoice(invoice.id);
-        await stripe.invoices.pay(invoice.id);
 
         console.log('Pro-rata invoice created:', invoice.id);
       } else {
