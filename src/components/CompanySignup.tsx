@@ -109,6 +109,7 @@ export default function CompanySignup() {
             discount_percentage: parseInt(pricing.discount),
             subscription_status: 'trialing',
             subscription_type: billingPeriod,
+            subscription_active: true,
             trial_ends_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
             role: 'admin',
           }
