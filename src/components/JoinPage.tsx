@@ -99,13 +99,15 @@ export default function JoinPage() {
     setError('');
 
     try {
-      // Create user account
-      const { error: authError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password: password,
+      // Create user account with metadata to identify as invited user
+const { error: authError } = await supabase.auth.signUp({
+  email: invitation.email,
+  password: password,
         options: {
           emailRedirectTo: window.location.origin,
           data: {
+            // These fields will tell the trigger to skip profile creation
+            is_invited_user: true,
             company_id: invitation.company_id,
             role_type: invitation.role_type,
             invited_by: invitation.invited_by,
@@ -116,7 +118,10 @@ export default function JoinPage() {
 
       if (authError) throw authError;
 
-      // Immediately sign in to confirm the user
+      // Wait a moment for the auth user to be created
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Sign in the user
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: invitation.email,
         password: password
@@ -126,8 +131,8 @@ export default function JoinPage() {
 
       if (signInData.user) {
         // Call Edge Function to create profile (bypasses RLS)
-        const { error: profileError } = await supabase.functions.invoke('create-user-profile', {
-          body: {
+const { error: profileError } = await supabase.functions.invoke('create-user-profile', {
+  body: {
             userId: signInData.user.id,
             email: invitation.email,
             companyId: invitation.company_id,
@@ -138,7 +143,15 @@ export default function JoinPage() {
           }
         });
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // Check if it's a duplicate error (profile might already exist)
+          if (profileError.message?.includes('already') || profileError.status === 409) {
+            console.log('Profile may already exist, continuing...');
+          } else {
+            throw profileError;
+          }
+        }
 
         // Update invitation status
         await supabase
@@ -157,6 +170,7 @@ export default function JoinPage() {
         }
       }
     } catch (err: any) {
+      console.error('Signup error:', err);
       setError(err.message || 'Failed to create account');
       setLoading(false);
     }
