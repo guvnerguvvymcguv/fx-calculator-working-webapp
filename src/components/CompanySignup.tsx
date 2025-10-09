@@ -1,18 +1,24 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { ArrowLeft, Users, Shield, Minus, Plus } from 'lucide-react';
+import { ArrowLeft, Users, Shield, Minus, Plus, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function CompanySignup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const searchParams = new URLSearchParams(window.location.search);
   const billingPeriod = searchParams.get('plan') || 'monthly';
+  const invitationId = searchParams.get('invitation');
+  
+  // Invitation state
+  const [invitation, setInvitation] = useState<any>(null);
+  const [invitePassword, setInvitePassword] = useState('');
+  const [inviteError, setInviteError] = useState('');
   
   // Company details
   const [companyName, setCompanyName] = useState('');
@@ -26,6 +32,235 @@ export default function CompanySignup() {
   // Seat selection
   const [adminSeats, setAdminSeats] = useState(1);
   const [juniorSeats, setJuniorSeats] = useState(5);
+  
+  // Fetch invitation details if ID is present
+  useEffect(() => {
+    if (invitationId) {
+      fetchInvitation();
+    }
+  }, [invitationId]);
+  
+  const fetchInvitation = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('invitations')
+        .select(`
+          *,
+          companies (
+            id,
+            name,
+            domain
+          )
+        `)
+        .eq('id', invitationId)
+        .eq('status', 'pending')
+        .single();
+      
+      if (error || !data) {
+        setInviteError('Invalid or expired invitation');
+        return;
+      }
+      
+      setInvitation(data);
+    } catch (error) {
+      console.error('Error fetching invitation:', error);
+      setInviteError('Failed to load invitation');
+    }
+  };
+  
+  const handleInvitedUserSignup = async () => {
+    if (!invitation) return;
+    
+    setIsLoading(true);
+    setInviteError('');
+    
+    try {
+      // Sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: invitation.email,
+        password: invitePassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('No user returned from signup');
+      
+      // Call the edge function to create the user profile with company assignment
+const { error: profileError } = await supabase.functions.invoke(
+  'create-user-profile',
+  {
+    body: {
+      userId: authData.user.id,
+      email: invitation.email,
+      companyId: invitation.company_id,
+      roleType: invitation.role,
+      fullName: invitation.invitee_name,
+      invitedBy: invitation.invited_by,
+      invitedAt: invitation.created_at
+    }
+  }
+);
+      
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // If profile already exists (409), try to sign in instead
+        if (profileError.status === 409) {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: invitation.email,
+            password: invitePassword
+          });
+          
+          if (signInError) {
+            setInviteError('Account already exists. Please use your existing password.');
+            return;
+          }
+        } else {
+          throw profileError;
+        }
+      }
+      
+      // Update invitation status
+      const { error: inviteUpdateError } = await supabase
+        .from('invitations')
+        .update({ 
+          status: 'accepted',
+          accepted_at: new Date().toISOString()
+        })
+        .eq('id', invitationId);
+      
+      if (inviteUpdateError) {
+        console.error('Failed to update invitation:', inviteUpdateError);
+      }
+      
+      // Sign in the user
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password: invitePassword
+      });
+      
+      if (signInError) throw signInError;
+      
+      // Navigate based on role
+      if (invitation.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/calculator');
+      }
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      setInviteError(error.message || 'Failed to accept invitation');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // If this is an invitation acceptance, show different UI
+  if (invitationId && invitation) {
+    return (
+      <div className="min-h-screen relative" style={{ backgroundColor: '#10051A' }}>
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-8 left-8 p-3 bg-gray-900/90 hover:bg-gray-800/90 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5 text-gray-400" />
+        </button>
+        
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-white">
+                Accept Invitation
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                You've been invited to join {invitation.companies?.name}
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-gray-800 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-400">Email</span>
+                </div>
+                <p className="text-white font-medium">{invitation.email}</p>
+              </div>
+              
+              <div className="p-4 bg-gray-800 rounded-lg space-y-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-400">Role</span>
+                </div>
+                <p className="text-white font-medium capitalize">{invitation.role} Broker</p>
+              </div>
+              
+              <div>
+                <Label className="text-gray-300">Create Password</Label>
+                <Input
+                  type="password"
+                  value={invitePassword}
+                  onChange={(e) => setInvitePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="mt-2 bg-gray-800 border-gray-700 text-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Must be 8+ characters with uppercase, lowercase, numbers, and special characters
+                </p>
+              </div>
+              
+              {inviteError && (
+                <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                  <p className="text-sm text-red-400">{inviteError}</p>
+                </div>
+              )}
+              
+              <Button
+                onClick={handleInvitedUserSignup}
+                disabled={isLoading || !invitePassword}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                {isLoading ? 'Creating Account...' : 'Accept Invitation'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  
+  // If invitation ID provided but loading failed
+  if (invitationId && inviteError) {
+    return (
+      <div className="min-h-screen relative" style={{ backgroundColor: '#10051A' }}>
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-8 left-8 p-3 bg-gray-900/90 hover:bg-gray-800/90 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="h-5 w-5 text-gray-400" />
+        </button>
+        
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
+            <CardHeader>
+              <CardTitle className="text-2xl font-bold text-white">
+                Invalid Invitation
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-400 mb-4">{inviteError}</p>
+              <Button
+                onClick={() => navigate('/')}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                Return to Home
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
   
   // Password validation function
   const validatePassword = (password: string) => {
