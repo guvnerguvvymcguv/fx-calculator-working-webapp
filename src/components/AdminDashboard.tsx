@@ -144,6 +144,13 @@ useEffect(() => {
             counts[member.id] = count || 0;
           }
         }
+
+        useEffect(() => {
+    console.log('AdminDashboard mounted, calling fetchDashboardData');
+    fetchDashboardData();
+    checkSalesforceConnection();
+    fetchWeeklyExportSchedule();
+  }, [dateRange]);
         
         setUserCalculationCounts(counts);
       } catch (error) {
@@ -425,32 +432,58 @@ useEffect(() => {
   };
 
   const fetchDashboardData = async () => {
+  console.log('=== fetchDashboardData START ===');
   try {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    console.log('User fetched:', user);
+    
+    if (!user) {
+      console.log('No user found, returning early');
+      setLoading(false); // ADD THIS - was missing!
+      return;
+    }
 
     // Get user's company
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
       .select('company_id, role_type')
       .eq('id', user.id)
       .single();
 
-    if (!profile?.company_id) return;
+    console.log('Profile fetched:', profile);
+    console.log('Profile error:', profileError);
 
-    // Verify admin access
-    if (!['admin', 'super_admin'].includes(profile.role_type)) {
-      navigate('/calculator');
+    if (!profile?.company_id) {
+      console.log('No company_id found, returning early');
+      setLoading(false); // ADD THIS - was missing!
       return;
     }
 
+    // Verify admin access
+    if (!['admin', 'super_admin'].includes(profile.role_type)) {
+      console.log('User is not admin, redirecting to calculator');
+      navigate('/calculator');
+      setLoading(false); // ADD THIS - was missing!
+      return;
+    }
+
+    console.log('Fetching company data...');
     // Fetch company data with cancellation fields
-    const { data: company } = await supabase
+    const { data: company, error: companyError } = await supabase
       .from('companies')
       .select('*, cancel_at_period_end, scheduled_cancellation_date, cancelled_at')
       .eq('id', profile.company_id)
       .single();
+
+    console.log('Company fetched:', company);
+    console.log('Company error:', companyError);
+
+    if (companyError) {
+      console.error('Failed to fetch company:', companyError);
+      setLoading(false);
+      return;
+    }
 
     setCompanyData(company);
 
@@ -556,9 +589,11 @@ useEffect(() => {
       activeUsers: activeUserIdsInPeriod.size
     });
 
+      console.log('=== fetchDashboardData COMPLETE ===');
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error('=== fetchDashboardData ERROR ===', error);
   } finally {
+    console.log('=== Setting loading to false ===');
     setLoading(false);
   }
 };
