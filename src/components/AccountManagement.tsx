@@ -184,7 +184,7 @@ export default function AccountManagement() {
       if (company.subscription_status === 'trialing') {
         console.log('Trial account detected - updating database only');
         
-        const { data, error: companyError } = await supabase
+        const { error: companyError } = await supabase
           .from('companies')
           .update({
             subscription_seats: totalNewSeats,
@@ -257,7 +257,7 @@ export default function AccountManagement() {
         console.log('Active subscription reducing seats - no payment required');
         
         // Update database
-        const { data, error: companyError } = await supabase
+        const { error: companyError } = await supabase
           .from('companies')
           .update({
             subscription_seats: totalNewSeats,
