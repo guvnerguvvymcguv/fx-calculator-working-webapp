@@ -83,12 +83,14 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json()
-    const { companyId, newSeatCount, newPrice } = body
+    const { companyId, newSeatCount, newPrice, isReduction = false, skipPayment = false } = body
     
     console.log('Update subscription request:', { 
       companyId, 
       newSeatCount,
       newPrice,
+      isReduction,
+      skipPayment,
       userId: user.id 
     })
 
@@ -100,7 +102,7 @@ serve(async (req) => {
     // Get company details
     const { data: company, error: companyError } = await supabaseClient
       .from('companies')
-      .select('stripe_subscription_id, subscription_type, stripe_customer_id')
+      .select('stripe_subscription_id, subscription_type, stripe_customer_id, subscription_seats')
       .eq('id', companyId)
       .single()
 
@@ -109,98 +111,41 @@ serve(async (req) => {
       throw new Error('Company not found')
     }
 
-    // Handle annual subscriptions
-    if (company.subscription_type === 'annual') {
-      console.log('Processing annual subscription seat change');
-      
-      if (!company.stripe_subscription_id) {
-        throw new Error('No active Stripe subscription found');
-      }
-      
-      const subscription = await stripe.subscriptions.retrieve(company.stripe_subscription_id);
-      
-      if (!subscription || (subscription.status !== 'active' && subscription.status !== 'past_due')) {
-      throw new Error('Subscription is not active')
-   }
-
-      // Get current seat count
-      const currentSeatCount = subscription.items.data[0].quantity || 0;
-      const seatDifference = newSeatCount - currentSeatCount;
-      
-      if (seatDifference === 0) {
-        return new Response(
-          JSON.stringify({ success: true, message: 'No seat changes detected' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
-      }
-
-      console.log('Updating annual subscription from', currentSeatCount, 'to', newSeatCount, 'seats');
-
-      // Update the subscription with proration - Stripe handles the rest!
-      const updatedSubscription = await stripe.subscriptions.update(
-        company.stripe_subscription_id,
-        {
-          items: [{
-            id: subscription.items.data[0].id,
-            quantity: newSeatCount
-          }],
-          proration_behavior: 'always_invoice', // Stripe automatically charges pro-rata!
-          metadata: {
-            seat_count: newSeatCount.toString(),
-            last_seat_change: new Date().toISOString()
-          }
-        }
-      );
-
-      console.log('Annual subscription updated successfully:', updatedSubscription.id);
-
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          subscription_type: 'annual',
-          seat_change: seatDifference,
-          subscription: {
-            id: updatedSubscription.id,
-            status: updatedSubscription.status,
-            current_period_end: updatedSubscription.current_period_end
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
-    // Handle monthly subscriptions
-    if (company.subscription_type !== 'monthly') {
-      console.log('Unknown subscription type')
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Unknown subscription type - no adjustment made' 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      )
-    }
-
     // Check if subscription ID exists
     if (!company.stripe_subscription_id) {
       throw new Error('No active Stripe subscription found')
     }
 
-    console.log('Retrieving monthly subscription:', company.stripe_subscription_id)
+    console.log('Retrieving subscription:', company.stripe_subscription_id)
 
     // Get the current subscription
     const subscription = await stripe.subscriptions.retrieve(company.stripe_subscription_id)
 
-    if (!subscription || subscription.status !== 'active') {
+    if (!subscription || (subscription.status !== 'active' && subscription.status !== 'past_due')) {
       throw new Error('Subscription is not active')
     }
 
-    console.log('Updating monthly subscription with new pricing...')
+    // Get current seat count
+    const currentSeatCount = subscription.items.data[0].quantity || 0;
+    const seatDifference = newSeatCount - currentSeatCount;
+    
+    console.log('Seat change details:', {
+      current: currentSeatCount,
+      new: newSeatCount,
+      difference: seatDifference,
+      isReduction,
+      skipPayment
+    });
 
-    // Determine which pricing tier to use based on seat count
+    // If no changes, exit early
+    if (seatDifference === 0) {
+      return new Response(
+        JSON.stringify({ success: true, message: 'No seat changes detected' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+
+    // Determine which pricing tier to use based on NEW seat count
     let selectedTier;
     if (newSeatCount <= 14) {
       selectedTier = PRICING_TIERS.STANDARD;
@@ -211,27 +156,64 @@ serve(async (req) => {
     }
 
     console.log('Selected tier:', selectedTier);
-    console.log('Quantity:', newSeatCount);
 
-    // Since we're using quantity-based pricing, we need to create a new price with VAT included
-    // Calculate the price per seat INCLUDING VAT
-    const vatRate = 0.2; // 20% VAT for UK
-    const pricePerSeatPreVat = selectedTier.pricePerSeat * 100; // Convert to pence
-    const vatAmount = Math.round(pricePerSeatPreVat * vatRate);
-    const pricePerSeatWithVat = pricePerSeatPreVat + vatAmount;
+    // Determine the product ID based on subscription type
+    const productId = company.subscription_type === 'annual' 
+      ? selectedTier.annualProductId 
+      : selectedTier.productId;
 
-    console.log('Price per seat (pre-VAT):', selectedTier.pricePerSeat);
-    console.log('Price per seat with VAT (pence):', pricePerSeatWithVat);
+    // Calculate price based on subscription type
+    let priceWithVatPence;
+    let recurringInterval;
+    
+    if (company.subscription_type === 'annual') {
+      // Annual: price per seat per year with 10% discount
+      const annualPricePerSeat = selectedTier.pricePerSeat * 12 * 0.9; // 10% discount
+      const vatAmount = Math.round(annualPricePerSeat * 100 * 0.2);
+      priceWithVatPence = Math.round(annualPricePerSeat * 100) + vatAmount;
+      recurringInterval = { interval: 'year' as const };
+    } else {
+      // Monthly: price per seat per month
+      const pricePerSeatPreVat = selectedTier.pricePerSeat * 100; // Convert to pence
+      const vatAmount = Math.round(pricePerSeatPreVat * 0.2);
+      priceWithVatPence = pricePerSeatPreVat + vatAmount;
+      recurringInterval = { interval: 'month' as const };
+    }
 
-    // Create a new price with VAT included for this subscription update
-    const stripePriceWithVat = await stripe.prices.create({
-      currency: 'gbp',
-      unit_amount: pricePerSeatWithVat,
-      recurring: { interval: 'month' },
-      product: selectedTier.productId,
+    console.log('Price calculation:', {
+      subscriptionType: company.subscription_type,
+      pricePerSeat: selectedTier.pricePerSeat,
+      priceWithVatPence,
+      interval: recurringInterval.interval
     });
 
-    // Update the subscription with the new price and quantity
+    // Create a new price with VAT included
+    const stripePriceWithVat = await stripe.prices.create({
+      currency: 'gbp',
+      unit_amount: priceWithVatPence,
+      recurring: recurringInterval,
+      product: productId,
+    });
+
+    // Determine proration behavior based on the situation
+    let prorationBehavior: 'always_invoice' | 'none' = 'always_invoice';
+    
+    if (skipPayment) {
+      // After successful payment, don't charge again
+      prorationBehavior = 'none';
+      console.log('Skipping payment - already paid through checkout');
+    } else if (isReduction) {
+      // For seat reductions, update without creating charges
+      prorationBehavior = 'none';
+      console.log('Seat reduction - no proration charge');
+    } else {
+      // This shouldn't happen anymore as additions go through payment flow
+      // But keeping as fallback
+      prorationBehavior = 'always_invoice';
+      console.log('Standard update with proration');
+    }
+
+    // Update the subscription
     const updatedSubscription = await stripe.subscriptions.update(
       company.stripe_subscription_id,
       {
@@ -240,32 +222,59 @@ serve(async (req) => {
           price: stripePriceWithVat.id,
           quantity: newSeatCount
         }],
-        proration_behavior: 'always_invoice', // Create prorated charges/credits
+        proration_behavior: prorationBehavior,
         metadata: {
           seat_count: newSeatCount.toString(),
-          price_per_month: newPrice.toString()
+          price_per_month: newPrice.toString(),
+          last_seat_change: new Date().toISOString(),
+          change_type: isReduction ? 'reduction' : 'addition'
         }
       }
-    )
+    );
 
-    console.log('Monthly subscription updated successfully:', updatedSubscription.id)
+    console.log('Subscription updated successfully:', {
+      subscriptionId: updatedSubscription.id,
+      status: updatedSubscription.status,
+      prorationBehavior,
+      newQuantity: newSeatCount
+    });
+
+    // Clear any pending seat changes if this was called after payment
+    if (skipPayment) {
+      const { error: clearError } = await supabaseClient
+        .from('companies')
+        .update({
+          pending_seat_change: null,
+          pending_admin_seats: null,
+          pending_junior_seats: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', companyId);
+
+      if (clearError) {
+        console.error('Failed to clear pending changes:', clearError);
+      }
+    }
 
     // Return success response
     return new Response(
       JSON.stringify({ 
         success: true,
-        subscription_type: 'monthly',
+        subscription_type: company.subscription_type,
+        seat_change: seatDifference,
+        proration_applied: !skipPayment && !isReduction,
         subscription: {
           id: updatedSubscription.id,
           status: updatedSubscription.status,
-          current_period_end: updatedSubscription.current_period_end
+          current_period_end: updatedSubscription.current_period_end,
+          new_quantity: newSeatCount
         }
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
-    )
+    );
 
   } catch (error) {
     console.error('Edge function error:', error)

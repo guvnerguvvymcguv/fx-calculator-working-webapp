@@ -167,64 +167,121 @@ export default function AccountManagement() {
     try {
       const totalNewSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
       const newPrice = calculatePrice(totalNewSeats);
+      const seatDifference = totalNewSeats - company.currentTotalSeats;
 
       console.log('Attempting to save:', {
         adminSeats: seatChanges.adminSeats,
         juniorSeats: seatChanges.juniorSeats,
         totalNewSeats,
         newPrice,
-        companyId: company.id
+        seatDifference,
+        companyId: company.id,
+        subscriptionStatus: company.subscription_status,
+        isInTrial: company.isInTrial
       });
 
-      // Update company subscription seats and allocation in database
-      const { data, error: companyError } = await supabase
-        .from('companies')
-        .update({
-          subscription_seats: totalNewSeats,
-          subscription_price: newPrice,
-          admin_seats: seatChanges.adminSeats,
-          junior_seats: seatChanges.juniorSeats,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', company.id)
-        .select();
+      // TRIAL ACCOUNTS - Database only, no Stripe
+      if (company.subscription_status === 'trialing') {
+        console.log('Trial account detected - updating database only');
+        
+        const { data, error: companyError } = await supabase
+          .from('companies')
+          .update({
+            subscription_seats: totalNewSeats,
+            subscription_price: newPrice,
+            admin_seats: seatChanges.adminSeats,
+            junior_seats: seatChanges.juniorSeats,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', company.id)
+          .select();
 
-      if (companyError) {
-        console.error('Database update FAILED:', companyError);
-        alert(`Database update failed: ${companyError.message}\n\nDetails: ${JSON.stringify(companyError.details)}\n\nHint: ${companyError.hint}`);
-        throw companyError;
+        if (companyError) {
+          console.error('Database update failed:', companyError);
+          throw companyError;
+        }
+
+        alert(`Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats\n- Price: £${newPrice}/month\n\n* Billing will start after your trial ends`);
+        
+        await fetchAccountData();
+        setSaving(false);
+        return; // Exit early for trial accounts
       }
 
-      if (!data || data.length === 0) {
-        console.error('No rows updated - check if company ID exists:', company.id);
-        alert('No rows were updated. The company ID might not exist.');
-        throw new Error('No rows updated');
+      // ACTIVE SUBSCRIPTIONS - Adding seats requires payment authentication
+      if (company.subscription_status === 'active' && seatDifference > 0) {
+        console.log('Active subscription adding seats - payment required');
+        
+        // Update database with pending changes
+        const { error: companyError } = await supabase
+          .from('companies')
+          .update({
+            pending_seat_change: totalNewSeats,
+            pending_admin_seats: seatChanges.adminSeats,
+            pending_junior_seats: seatChanges.juniorSeats,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', company.id);
+
+        if (companyError) {
+          console.error('Database update failed:', companyError);
+          throw companyError;
+        }
+
+        // Create payment session for pro-rata charge
+        const { data, error } = await supabase.functions.invoke('create-seat-update-payment', {
+          body: {
+            companyId: company.id,
+            newSeatCount: totalNewSeats,
+            currentSeatCount: company.currentTotalSeats,
+            subscriptionType: company.subscription_type
+          }
+        });
+
+        if (error) {
+          console.error('Payment session creation failed:', error);
+          throw error;
+        }
+
+        if (!data?.url) {
+          throw new Error('No payment URL received');
+        }
+
+        // Redirect to Stripe for payment
+        window.location.href = data.url;
+        return;
       }
 
-      console.log('Database update successful:', data);
-      
-      // Customize alert message based on subscription type
-      let alertMessage = `Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats`;
-      
-      if (company.isInTrial) {
-        alertMessage += `\n- Price: £${newPrice}/month\n\n* Billing will start after your trial ends`;
-      } else if (company.subscription_type === 'monthly') {
-        alertMessage += `\n- New price: £${newPrice}/month\n\n* Your next monthly payment will reflect this change`;
-      } else if (company.subscription_type === 'annual') {
-        alertMessage += `\n\n* Pro-rata charge will be applied for the remainder of your annual subscription`;
-  }
-      
-      alert(alertMessage);
+      // ACTIVE SUBSCRIPTIONS - Reducing seats (no payment required)
+      if (company.subscription_status === 'active' && seatDifference < 0) {
+        console.log('Active subscription reducing seats - no payment required');
+        
+        // Update database
+        const { data, error: companyError } = await supabase
+          .from('companies')
+          .update({
+            subscription_seats: totalNewSeats,
+            subscription_price: newPrice,
+            admin_seats: seatChanges.adminSeats,
+            junior_seats: seatChanges.juniorSeats,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', company.id)
+          .select();
 
-      // Only update Stripe if they're on active monthly subscription
-      // Update Stripe if they're on active subscription (monthly or annual)
-        if (company.subscription_active && (company.subscription_type === 'monthly' || company.subscription_type === 'annual')) {
+        if (companyError) {
+          console.error('Database update failed:', companyError);
+          throw companyError;
+        }
+
+        // Update Stripe subscription for seat reduction
         const { data: { session } } = await supabase.auth.getSession();
         const response = await supabase.functions.invoke('update-subscription', {
           body: { 
             companyId: company.id,
             newSeatCount: totalNewSeats,
-            newPrice: newPrice
+            newPrice: newPrice,
+            isReduction: true // Flag to indicate this is a reduction
           },
           headers: {
             Authorization: `Bearer ${session?.access_token}`
@@ -233,12 +290,27 @@ export default function AccountManagement() {
 
         if (response.error) {
           console.error('Stripe update error:', response.error);
-          // Don't throw - database is already updated
           alert('Note: Seats updated in database but Stripe subscription update failed. Please contact support.');
         }
+
+        let alertMessage = `Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats`;
+        
+        if (company.subscription_type === 'monthly') {
+          alertMessage += `\n- New price: £${newPrice}/month\n\n* Your next monthly payment will reflect this change`;
+        } else if (company.subscription_type === 'annual') {
+          alertMessage += `\n\n* No refund will be issued for seat reductions. Your renewal will reflect the new seat count.`;
+        }
+        
+        alert(alertMessage);
+        await fetchAccountData();
       }
-      
-      await fetchAccountData();
+
+      // NO CHANGES - edge case
+      if (seatDifference === 0) {
+        console.log('No seat changes detected');
+        alert('No changes to save');
+      }
+
     } catch (error) {
       console.error('Error in handleSaveChanges:', error);
       alert(`Failed to update subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -331,38 +403,38 @@ export default function AccountManagement() {
   };
 
   const changeUserRole = async (memberId: string, newRole: 'admin' | 'junior') => {
-  // Check if there would still be at least one admin
-  if (newRole === 'junior') {
-    const adminCount = teamMembers.filter(m => m.role_type === 'admin' && m.id !== memberId && (m.is_active !== false)).length;
-    if (adminCount === 0) {
-      alert('Cannot change role: At least one active admin is required');
-      return;
+    // Check if there would still be at least one admin
+    if (newRole === 'junior') {
+      const adminCount = teamMembers.filter(m => m.role_type === 'admin' && m.id !== memberId && (m.is_active !== false)).length;
+      if (adminCount === 0) {
+        alert('Cannot change role: At least one active admin is required');
+        return;
+      }
     }
-  }
 
-  if (!confirm(`Are you sure you want to change this user to ${newRole}?`)) return;
+    if (!confirm(`Are you sure you want to change this user to ${newRole}?`)) return;
 
-  try {
-    // Update BOTH role_type and role fields
-    const roleValue = newRole === 'junior' ? 'junior_broker' : 'admin';
-    
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ 
-        role_type: newRole,
-        role: roleValue  // Added this line to update the role field as well
-      })
-      .eq('id', memberId);
+    try {
+      // Update BOTH role_type and role fields
+      const roleValue = newRole === 'junior' ? 'junior_broker' : 'admin';
+      
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ 
+          role_type: newRole,
+          role: roleValue  // Added this line to update the role field as well
+        })
+        .eq('id', memberId);
 
-    if (error) throw error;
-    
-    alert('Role updated successfully');
-    await fetchAccountData();
-  } catch (error) {
-    console.error('Error updating role:', error);
-    alert('Failed to update role');
-  }
-};
+      if (error) throw error;
+      
+      alert('Role updated successfully');
+      await fetchAccountData();
+    } catch (error) {
+      console.error('Error updating role:', error);
+      alert('Failed to update role');
+    }
+  };
 
   const sendPasswordReset = async (email: string, memberName: string) => {
     if (!confirm(`Send password reset email to ${memberName}?`)) return;
@@ -488,16 +560,9 @@ export default function AccountManagement() {
                   Current plan: <span className="text-white font-medium">
                     {company.subscription_type === 'annual' ? 'Annual' : 'Monthly'} Subscription
                   </span>
-                  {company.subscription_type === 'annual' && (
-                    <span className="text-gray-400 ml-2">
-                      (Seat changes will apply immediately)
-                    </span>
-                  )}
-                  {company.subscription_type === 'monthly' && (
-                    <span className="text-gray-400 ml-2">
-                      (Price changes will apply to your next payment)
-                    </span>
-                  )}
+                  <span className="text-gray-400 ml-2">
+                    (Seat additions require payment confirmation)
+                  </span>
                 </span>
               </div>
             </CardContent>
@@ -639,7 +704,9 @@ export default function AccountManagement() {
                     disabled={saving}
                     className="w-full mt-4 bg-purple-600 hover:bg-purple-700"
                   >
-                    {saving ? 'Updating...' : 'Update Subscription'}
+                    {saving ? 'Processing...' : 
+                     (totalNewSeats > company.currentTotalSeats && company.subscription_status === 'active') ? 
+                     'Proceed to Payment' : 'Update Subscription'}
                   </Button>
                 )}
               </div>
@@ -737,10 +804,7 @@ export default function AccountManagement() {
                     'If you cancel your trial, your account will be locked immediately and you will lose access to all features.'
                   ) : (
                     <>
-                      Once you cancel your subscription, your team will lose access when your current billing period ends.
-                      {company.subscription_type === 'annual' 
-                        ? ' Since you have an annual subscription, you will continue to have access until the end of your year.'
-                        : ' You will continue to have access until the end of the current month.'}
+                      Once you cancel your subscription, you'll continue to have access for 30 days to review your data and reconsider.
                     </>
                   )}
                 </p>

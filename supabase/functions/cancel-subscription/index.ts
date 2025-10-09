@@ -33,13 +33,13 @@ serve(async (req) => {
     )
 
     // Get request body
-    const { companyId, reason, feedback } = await req.json()
+    const { companyId, reason, feedback, isTrialCancellation = false } = await req.json()
     
     if (!companyId) {
       throw new Error('Company ID is required')
     }
 
-    console.log('Processing cancellation for company:', companyId)
+    console.log('Processing cancellation for company:', companyId, { isTrialCancellation })
 
     // Get company details including Stripe subscription ID
     const { data: company, error: companyError } = await supabase
@@ -52,11 +52,49 @@ serve(async (req) => {
       throw new Error('Company not found')
     }
 
+    // Handle trial cancellation differently
+    if (isTrialCancellation || company.subscription_status === 'trialing') {
+      console.log('Cancelling trial - immediate lock')
+      
+      // For trials, lock immediately
+      const { error: trialUpdateError } = await supabase
+        .from('companies')
+        .update({
+          subscription_status: 'cancelled',
+          subscription_active: false,
+          account_locked: true,
+          trial_ends_at: new Date().toISOString(), // End trial immediately
+          cancellation_reason: reason,
+          cancellation_feedback: feedback,
+          cancelled_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', companyId)
+
+      if (trialUpdateError) {
+        console.error('Trial cancellation error:', trialUpdateError)
+        throw new Error('Failed to cancel trial')
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'Trial cancelled - account locked immediately',
+          subscription_type: 'trial'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
+    // For paid subscriptions, handle with 30-day grace period
     if (!company.stripe_subscription_id) {
       throw new Error('No active subscription found')
     }
 
-    // Cancel the subscription in Stripe at period end (for both monthly and annual)
+    // Cancel the subscription in Stripe at period end
     const updatedSubscription = await stripe.subscriptions.update(
       company.stripe_subscription_id,
       {
@@ -73,25 +111,34 @@ serve(async (req) => {
       }
     )
 
-    // Calculate when access ends
-    const scheduledCancellationDate = updatedSubscription.current_period_end 
-      ? new Date(updatedSubscription.current_period_end * 1000).toISOString()
-      : null
+    // FIXED: Always set 30-day grace period regardless of subscription type
+    const now = new Date()
+    const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000))
+    const scheduledCancellationDate = thirtyDaysFromNow.toISOString()
 
-    // Update company record in database - subscription stays active until period ends
+    console.log('Setting 30-day grace period:', {
+      subscriptionType: company.subscription_type,
+      cancelledAt: now.toISOString(),
+      accessEndsAt: scheduledCancellationDate,
+      stripeOriginalEnd: updatedSubscription.current_period_end 
+        ? new Date(updatedSubscription.current_period_end * 1000).toISOString() 
+        : 'unknown'
+    })
+
+    // Update company record in database
     const { error: updateError } = await supabase
       .from('companies')
       .update({
-        subscription_status: 'canceling',  // Changed from 'cancelled'
-        cancel_at_period_end: true,  // New field - add to database
-        scheduled_cancellation_date: scheduledCancellationDate,  // New field - add to database
+        subscription_status: 'canceling',
+        cancel_at_period_end: true,
+        scheduled_cancellation_date: scheduledCancellationDate, // 30 days from now
         cancellation_reason: reason,
         cancellation_feedback: feedback,
-        cancelled_at: new Date().toISOString(),  // When they initiated cancellation
-        // Keep these as true/false until the period actually ends:
-        subscription_active: true,  // Stay active until period ends
-        account_locked: false,  // Don't lock until period ends
-        updated_at: new Date().toISOString()
+        cancelled_at: now.toISOString(),
+        // Keep active for the 30-day grace period
+        subscription_active: true,
+        account_locked: false,
+        updated_at: now.toISOString()
       })
       .eq('id', companyId)
 
@@ -105,8 +152,8 @@ serve(async (req) => {
     
     for (const admin of admins) {
       try {
-        // Call your existing email function or send directly
         console.log(`Would send cancellation email to ${admin.email}`)
+        // Email should mention 30-day grace period
         // You can create a separate cancellation-email function or handle it here
       } catch (emailError) {
         console.error('Failed to send cancellation email:', emailError)
@@ -117,8 +164,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'Subscription scheduled for cancellation',
+        message: 'Subscription cancelled - 30 day grace period activated',
         cancellation_date: scheduledCancellationDate,
+        days_remaining: 30,
         subscription_id: updatedSubscription.id,
         subscription_type: company.subscription_type
       }),

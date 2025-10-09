@@ -71,12 +71,122 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const pricePerMonth = session.metadata?.price_per_month;
         const seatCountNum = parseInt(seatCount || '0');
         const discountPercentage = seatCountNum >= 30 ? 20 : seatCountNum >= 15 ? 10 : 0;
+        
+        // Check if this is a seat update payment
+        const isSeatUpdate = session.metadata?.seat_update === 'true';
+        const newSeatCount = session.metadata?.new_seat_count;
+        const subscriptionId = session.metadata?.subscription_id;
 
         if (!companyId) {
           console.error('No company ID in session metadata');
           break;
         }
 
+        // HANDLE SEAT UPDATE PAYMENT
+        if (isSeatUpdate && subscriptionId && newSeatCount) {
+          console.log('Processing seat update payment for subscription:', subscriptionId);
+          
+          try {
+            // Get the pending seat allocation from database
+            const { data: company } = await supabase
+              .from('companies')
+              .select('pending_admin_seats, pending_junior_seats, subscription_type')
+              .eq('id', companyId)
+              .single();
+
+            if (!company) {
+              console.error('Company not found');
+              break;
+            }
+
+            // Update the subscription quantity in Stripe (no proration since payment already taken)
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            
+            // Determine pricing tier for new seat count
+            const newSeatCountNum = parseInt(newSeatCount);
+            let pricePerSeat = 30;
+            if (newSeatCountNum <= 14) pricePerSeat = 30;
+            else if (newSeatCountNum <= 29) pricePerSeat = 27;
+            else pricePerSeat = 24;
+
+            // Determine product ID based on subscription type
+            let productId = '';
+            if (company.subscription_type === 'annual') {
+              productId = newSeatCountNum <= 14 ? 'prod_TCLns1si1ulZ4p' : 
+                         newSeatCountNum <= 29 ? 'prod_TCLoT9ndmjiSkW' : 
+                         'prod_TCLqYrus5QQlKi';
+            } else {
+              productId = newSeatCountNum <= 14 ? 'prod_T8XJnL61gY927i' : 
+                         newSeatCountNum <= 29 ? 'prod_T8XMTp9qKMSyVh' : 
+                         'prod_T8XNn9mRSDskk7';
+            }
+
+            // Calculate price with VAT
+            let priceWithVatPence;
+            let recurringInterval;
+            
+            if (company.subscription_type === 'annual') {
+              const annualPricePerSeat = pricePerSeat * 12 * 0.9; // 10% discount
+              const vatAmount = Math.round(annualPricePerSeat * 100 * 0.2);
+              priceWithVatPence = Math.round(annualPricePerSeat * 100) + vatAmount;
+              recurringInterval = { interval: 'year' as const };
+            } else {
+              const pricePerSeatPence = pricePerSeat * 100;
+              const vatAmount = Math.round(pricePerSeatPence * 0.2);
+              priceWithVatPence = pricePerSeatPence + vatAmount;
+              recurringInterval = { interval: 'month' as const };
+            }
+
+            // Create new price
+            const newPrice = await stripe.prices.create({
+              currency: 'gbp',
+              unit_amount: priceWithVatPence,
+              recurring: recurringInterval,
+              product: productId,
+            });
+
+            // Update subscription with new quantity (no proration since already paid)
+            await stripe.subscriptions.update(subscriptionId, {
+              items: [{
+                id: subscription.items.data[0].id,
+                price: newPrice.id,
+                quantity: newSeatCountNum
+              }],
+              proration_behavior: 'none', // Don't charge again
+              metadata: {
+                seat_count: newSeatCount,
+                last_seat_update: new Date().toISOString()
+              }
+            });
+
+            // Calculate new monthly price
+            const newMonthlyPrice = newSeatCountNum * pricePerSeat;
+
+            // Update database with new seats and clear pending changes
+            await supabase
+              .from('companies')
+              .update({
+                subscription_seats: newSeatCountNum,
+                admin_seats: company.pending_admin_seats || parseInt(adminSeats || '0'),
+                junior_seats: company.pending_junior_seats || parseInt(juniorSeats || '0'),
+                subscription_price: newMonthlyPrice,
+                price_per_month: newMonthlyPrice,
+                discount_percentage: newSeatCountNum >= 30 ? 20 : newSeatCountNum >= 15 ? 10 : 0,
+                pending_seat_change: null,
+                pending_admin_seats: null,
+                pending_junior_seats: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', companyId);
+
+            console.log(`Seat update completed: ${newSeatCount} seats activated`);
+          } catch (error) {
+            console.error('Error processing seat update:', error);
+          }
+          break; // Exit early for seat updates
+        }
+
+        // HANDLE NEW SUBSCRIPTION CHECKOUT (existing logic)
         // If subscription exists, fetch it to get actual details including quantity
         let actualSeatCount = seatCountNum;
         let actualPricePerMonth = parseFloat(pricePerMonth || '0');
@@ -117,13 +227,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             admin_seats: parseInt(adminSeats || '0'),
             junior_seats: parseInt(juniorSeats || '0'),
             subscription_price: actualPricePerMonth,
-            price_per_month: actualPricePerMonth, // Also update this field
+            price_per_month: actualPricePerMonth,
             discount_percentage: discountPercentage,
             stripe_subscription_id: (session.subscription as string) || session.id,
             subscription_started_at: new Date().toISOString(),
             trial_ends_at: new Date().toISOString(), // End trial immediately
-            account_locked: false, // Unlock account if it was locked
-            locked_at: null, // Clear lock timestamp
+            account_locked: false,
+            locked_at: null,
+            cancel_at_period_end: false, // Clear any pending cancellation
+            scheduled_cancellation_date: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', companyId);
@@ -161,7 +273,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           } catch (emailError) {
             console.error('Error calling subscription-activated function:', emailError);
-            // Don't throw - email failure shouldn't break the webhook
           }
         }
         break;
@@ -184,6 +295,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             subscription_status: subscription.status,
             updated_at: new Date().toISOString()
           };
+
+          // Check if subscription is set to cancel at period end
+          if (subscription.cancel_at_period_end) {
+            updateData.cancel_at_period_end = true;
+            updateData.scheduled_cancellation_date = subscription.cancel_at 
+              ? new Date(subscription.cancel_at * 1000).toISOString() 
+              : null;
+          } else {
+            updateData.cancel_at_period_end = false;
+            updateData.scheduled_cancellation_date = null;
+          }
 
           // If subscription has items, update seat count and price
           if (subscription.items && subscription.items.data.length > 0) {
@@ -218,22 +340,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         const { data: company } = await supabase
           .from('companies')
-          .select('id')
+          .select('id, scheduled_cancellation_date')
           .eq('stripe_subscription_id', subscription.id)
           .single();
 
         if (company) {
-          const now = new Date().toISOString();
+          const now = new Date();
+          const scheduledDate = company.scheduled_cancellation_date 
+            ? new Date(company.scheduled_cancellation_date) 
+            : now;
+          
+          // Only lock if we've passed the scheduled cancellation date
+          const shouldLock = scheduledDate <= now;
           
           await supabase
             .from('companies')
             .update({
-              subscription_active: false,        // Turn off access
-              subscription_status: 'cancelled',  // Final status
-              account_locked: true,              // Lock the account
-              locked_at: now,                    // When it was locked
-              cancel_at_period_end: false,      // Reset this flag
-              updated_at: now
+              subscription_active: false,
+              subscription_status: 'cancelled',
+              account_locked: shouldLock,
+              locked_at: shouldLock ? now.toISOString() : null,
+              cancel_at_period_end: false,
+              updated_at: now.toISOString()
             })
             .eq('id', company.id);
         }
@@ -256,7 +384,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .from('companies')
               .update({
                 subscription_status: 'active',
-                account_locked: false, // Ensure account is unlocked on successful payment
+                account_locked: false,
                 locked_at: null,
                 updated_at: new Date().toISOString()
               })

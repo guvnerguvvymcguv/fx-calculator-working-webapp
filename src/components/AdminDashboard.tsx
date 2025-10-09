@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const [companyData, setCompanyData] = useState<any>(null);
   const [userCalculationCounts, setUserCalculationCounts] = useState<Record<string, number>>({});
   const [calculationCountLoading, setCalculationCountLoading] = useState(false);
+  const [processingUpdate, setProcessingUpdate] = useState(false);
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -36,27 +37,126 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    // Check for checkout success
-    if (searchParams.get('checkout') === 'success') {
-      setShowSuccessMessage(true);
-      // Remove the parameter from URL after showing
-      setSearchParams({});
-      // Hide message after 10 seconds
-      setTimeout(() => setShowSuccessMessage(false), 10000);
+  // Check for checkout success
+  if (searchParams.get('checkout') === 'success') {
+    setShowSuccessMessage(true);
+    // Remove the parameter from URL after showing
+    setSearchParams({});
+    // Hide message after 10 seconds
+    setTimeout(() => setShowSuccessMessage(false), 10000);
+  }
+  
+  // Check for seat update success
+  if (searchParams.get('seat_update') === 'success') {
+    const newSeats = searchParams.get('seats');
+    if (newSeats) {
+      // Update the subscription seats in Stripe (payment already taken)
+      handleSeatUpdateSuccess(parseInt(newSeats));
     }
-  }, [searchParams, setSearchParams]);
+    setSearchParams({}); // Clear params
+  }
+}, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    fetchDashboardData();
-    checkSalesforceConnection();
-    fetchWeeklyExportSchedule();
-  }, [dateRange]);
+const handleSeatUpdateSuccess = async (newSeatCount: number) => {
+  setProcessingUpdate(true);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+      
+      setProcessingUpdate(false);
+    if (!profile?.company_id) return;
+    
+    // Get company data to find subscription ID
+    const { data: company } = await supabase
+      .from('companies')
+      .select('id, stripe_subscription_id')
+      .eq('id', profile.company_id)
+      .single();
+      
+    if (!company?.stripe_subscription_id) return;
+    
+    // Call update-subscription to update Stripe (payment already taken)
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await supabase.functions.invoke('update-subscription', {
+      body: {
+        companyId: company.id,
+        newSeatCount: newSeatCount,
+        newPrice: calculatePriceForSeats(newSeatCount),
+        skipPayment: true // Important: payment already taken
+      },
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`
+      }
+    });
+    
+    if (response.error) {
+      setProcessingUpdate(false);
+      console.error('Failed to update subscription:', response.error);
+      alert('Seat update processing. Please refresh the page.');
+    } else {
+      // Show success message
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 10000);
+      
+      // Refresh dashboard data
+      await fetchDashboardData();
+    }
+  } catch (error) {
+    console.error('Error handling seat update:', error);
+    alert('Seat update is being processed. Please refresh the page in a moment.');
+    setProcessingUpdate(false);
+  }
+};
 
-  useEffect(() => {
+const calculatePriceForSeats = (seats: number) => {
+  if (seats <= 14) return seats * 30;
+  if (seats <= 29) return seats * 27;
+  return seats * 24;
+};
+
+useEffect(() => {
+    const fetchCalculationCounts = async () => {
+      if (!showExportModal || teamMembers.length === 0) return;
+      
+      setCalculationCountLoading(true);
+      try {
+        const { start, end } = getExportDateRange();
+        
+        const counts: Record<string, number> = {};
+        
+        // Fetch calculations for each active team member for the selected period
+        for (const member of teamMembers) {
+          // Only count if member is active
+          if (member.is_active !== false) {
+            const { count } = await supabase
+              .from('activity_logs')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', member.id)
+              .gte('created_at', start.toISOString())
+              .lte('created_at', end.toISOString());
+            
+            counts[member.id] = count || 0;
+          }
+        }
+        
+        setUserCalculationCounts(counts);
+      } catch (error) {
+        console.error('Error fetching calculation counts:', error);
+      } finally {
+        setCalculationCountLoading(false);
+      }
+    };
+
     if (showExportModal && teamMembers.length > 0) {
       fetchCalculationCounts();
     }
-  }, [exportDateRange, customDateRange, showExportModal]);
+  }, [exportDateRange, customDateRange, showExportModal, teamMembers]);
 
   const checkSalesforceConnection = async () => {
     try {
@@ -141,36 +241,6 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error fetching export schedule:', error);
-    }
-  };
-
-  const fetchCalculationCounts = async () => {
-    setCalculationCountLoading(true);
-    try {
-      const { start, end } = getExportDateRange();
-      
-      const counts: Record<string, number> = {};
-      
-      // Fetch calculations for each active team member for the selected period
-      for (const member of teamMembers) {
-        // Only count if member is active
-        if (member.is_active !== false) {
-          const { count } = await supabase
-            .from('activity_logs')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', member.id)
-            .gte('created_at', start.toISOString())
-            .lte('created_at', end.toISOString());
-          
-          counts[member.id] = count || 0;
-        }
-      }
-      
-      setUserCalculationCounts(counts);
-    } catch (error) {
-      console.error('Error fetching calculation counts:', error);
-    } finally {
-      setCalculationCountLoading(false);
     }
   };
 
@@ -697,16 +767,30 @@ export default function AdminDashboard() {
         </div>
 
         {/* Success Message */}
-        {showSuccessMessage && (
-          <div className="mb-6 p-4 bg-green-900/50 border border-green-600 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Check className="h-5 w-5 text-green-400" />
-              <p className="text-green-300">
-                Payment successful! Your subscription is now active.
-              </p>
-            </div>
-          </div>
-        )}
+{showSuccessMessage && (
+  <div className="mb-6 p-4 bg-green-900/50 border border-green-600 rounded-lg">
+    <div className="flex items-center gap-2">
+      <Check className="h-5 w-5 text-green-400" />
+      <p className="text-green-300">
+        {searchParams.get('seat_update') === 'success' 
+          ? 'Seat update successful! Your subscription has been updated.'
+          : 'Payment successful! Your subscription is now active.'}
+      </p>
+    </div>
+  </div>
+)}
+
+{/* Processing Update Message */}
+{processingUpdate && (
+  <div className="mb-6 p-4 bg-blue-900/50 border border-blue-600 rounded-lg">
+    <div className="flex items-center gap-2">
+      <Clock className="h-5 w-5 text-blue-400 animate-spin" />
+      <p className="text-blue-300">
+        Processing seat update... This may take a few moments.
+      </p>
+    </div>
+  </div>
+)}
 
         {/* Cancellation Warning Banner */}
         {companyData?.cancel_at_period_end && (

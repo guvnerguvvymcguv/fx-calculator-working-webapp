@@ -129,6 +129,9 @@ export default function Checkout() {
   const totalSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
   const monthlyPrice = calculateMonthlyPrice(totalSeats);
   const pricePerSeat = calculatePricePerSeat(totalSeats);
+  
+  // Calculate annual price per seat (monthly price with 10% discount)
+  const annualPricePerSeat = pricePerSeat * 12 * 0.9;
 
   const calculatePrice = () => {
     let subtotal = monthlyPrice;
@@ -310,11 +313,21 @@ export default function Checkout() {
               </div>
               <div className="flex justify-between text-gray-400">
                 <span>Price per seat:</span>
-                <span>£{pricePerSeat}/month</span>
+                <span>
+                  {billingPeriod === 'monthly' 
+                    ? `£${pricePerSeat}/month`
+                    : `£${annualPricePerSeat.toFixed(0)}/year`
+                  }
+                </span>
               </div>
               <div className="flex justify-between text-white font-semibold">
-                <span>Monthly price:</span>
-                <span>£{monthlyPrice}</span>
+                <span>{billingPeriod === 'monthly' ? 'Monthly' : 'Annual'} price:</span>
+                <span>
+                  {billingPeriod === 'monthly' 
+                    ? `£${monthlyPrice}`
+                    : `£${(monthlyPrice * 12 * 0.9).toFixed(0)}`
+                  }
+                </span>
               </div>
               
               {/* Discount Tiers Info */}
@@ -323,15 +336,30 @@ export default function Checkout() {
                 <div className="space-y-1 text-sm">
                   <div className={`flex justify-between ${totalSeats <= 14 ? 'text-purple-300' : 'text-gray-500'}`}>
                     <span>1-14 seats:</span>
-                    <span>£30/seat/month</span>
+                    <span>
+                      {billingPeriod === 'monthly' 
+                        ? '£30/seat/month'
+                        : '£324/seat/year'
+                      }
+                    </span>
                   </div>
                   <div className={`flex justify-between ${totalSeats >= 15 && totalSeats <= 29 ? 'text-purple-300' : 'text-gray-500'}`}>
                     <span>15-29 seats:</span>
-                    <span>£27/seat/month (10% off)</span>
+                    <span>
+                      {billingPeriod === 'monthly' 
+                        ? '£27/seat/month (10% off)'
+                        : '£291/seat/year (10% off)'
+                      }
+                    </span>
                   </div>
                   <div className={`flex justify-between ${totalSeats >= 30 ? 'text-purple-300' : 'text-gray-500'}`}>
                     <span>30+ seats:</span>
-                    <span>£24/seat/month (20% off)</span>
+                    <span>
+                      {billingPeriod === 'monthly' 
+                        ? '£24/seat/month (20% off)'
+                        : '£259/seat/year (20% off)'
+                      }
+                    </span>
                   </div>
                 </div>
               </div>
@@ -379,7 +407,7 @@ export default function Checkout() {
                   <h3 className="text-white font-semibold text-lg">Annual</h3>
                   <p className="text-green-400 text-sm mt-1">Save 10%</p>
                   <p className="text-white text-2xl font-bold mt-3">
-                    £{((monthlyPrice * 12 * 0.9 * 1.2) / 12).toFixed(0)}/month
+                    £{Math.round(monthlyPrice * 0.9)}/month
                   </p>
                   <p className="text-gray-400 text-xs">Billed annually</p>
                 </div>
@@ -397,15 +425,24 @@ export default function Checkout() {
             <CardTitle className="text-white">Order Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex justify-between text-gray-400">
-              <span>{totalSeats} seats × {billingPeriod === 'monthly' ? '1 month' : '12 months'}</span>
-              <span>£{subtotal.toFixed(2)}</span>
-            </div>
-            {billingPeriod === 'annual' && (
-              <div className="flex justify-between text-green-400">
-                <span>Annual discount (10%)</span>
-                <span>-£{(monthlyPrice * 12 * 0.1).toFixed(2)}</span>
-              </div>
+            {billingPeriod === 'monthly' ? (
+              <>
+                <div className="flex justify-between text-gray-400">
+                  <span>{totalSeats} seats × 1 month</span>
+                  <span>£{subtotal.toFixed(2)}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between text-gray-400">
+                  <span>{totalSeats} seats × 12 months</span>
+                  <span>£{(monthlyPrice * 12).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-green-400">
+                  <span>Annual discount (10%)</span>
+                  <span>-£{(monthlyPrice * 12 * 0.1).toFixed(2)}</span>
+                </div>
+              </>
             )}
             <div className="flex justify-between text-gray-400">
               <span>VAT (20%)</span>
