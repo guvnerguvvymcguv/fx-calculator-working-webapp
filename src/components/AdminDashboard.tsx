@@ -144,15 +144,8 @@ useEffect(() => {
             counts[member.id] = count || 0;
           }
         }
-
-        useEffect(() => {
-    console.log('AdminDashboard mounted, calling fetchDashboardData');
-    fetchDashboardData();
-    checkSalesforceConnection();
-    fetchWeeklyExportSchedule();
-  }, [dateRange]);
         
-        setUserCalculationCounts(counts);
+setUserCalculationCounts(counts);
       } catch (error) {
         console.error('Error fetching calculation counts:', error);
       } finally {
@@ -164,6 +157,13 @@ useEffect(() => {
       fetchCalculationCounts();
     }
   }, [exportDateRange, customDateRange, showExportModal, teamMembers]);
+
+  useEffect(() => {
+    console.log('AdminDashboard mounted, calling fetchDashboardData');
+    fetchDashboardData();
+    checkSalesforceConnection();
+    fetchWeeklyExportSchedule();
+  }, [dateRange]);
 
   const checkSalesforceConnection = async () => {
     try {
