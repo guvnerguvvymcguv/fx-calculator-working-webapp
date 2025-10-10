@@ -169,21 +169,8 @@ export default function AccountManagement() {
       const newPrice = calculatePrice(totalNewSeats);
       const seatDifference = totalNewSeats - company.currentTotalSeats;
 
-      console.log('Attempting to save:', {
-        adminSeats: seatChanges.adminSeats,
-        juniorSeats: seatChanges.juniorSeats,
-        totalNewSeats,
-        newPrice,
-        seatDifference,
-        companyId: company.id,
-        subscriptionStatus: company.subscription_status,
-        isInTrial: company.isInTrial
-      });
-
       // TRIAL ACCOUNTS - Database only, no Stripe
       if (company.subscription_status === 'trialing') {
-        console.log('Trial account detected - updating database only');
-        
         const { error: companyError } = await supabase
           .from('companies')
           .update({
@@ -196,39 +183,18 @@ export default function AccountManagement() {
           .eq('id', company.id)
           .select();
 
-        if (companyError) {
-          console.error('Database update failed:', companyError);
-          throw companyError;
-        }
+        if (companyError) throw companyError;
 
         alert(`Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats\n- Price: £${newPrice}/month\n\n* Billing will start after your trial ends`);
         
         await fetchAccountData();
         setSaving(false);
-        return; // Exit early for trial accounts
+        return;
       }
 
-      // ACTIVE SUBSCRIPTIONS - Adding seats requires payment authentication
+      // ACTIVE SUBSCRIPTIONS - Adding seats requires payment
       if (company.subscription_status === 'active' && seatDifference > 0) {
-        console.log('Active subscription adding seats - payment required');
-        
-        // Update database with pending changes
-        const { error: companyError } = await supabase
-          .from('companies')
-          .update({
-            pending_seat_change: totalNewSeats,
-            pending_admin_seats: seatChanges.adminSeats,
-            pending_junior_seats: seatChanges.juniorSeats,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', company.id);
-
-        if (companyError) {
-          console.error('Database update failed:', companyError);
-          throw companyError;
-        }
-
-        // Create payment session for pro-rata charge
+        // Call the edge function to create payment session
         const { data, error } = await supabase.functions.invoke('create-seat-update-payment', {
           body: {
             companyId: company.id,
@@ -238,14 +204,8 @@ export default function AccountManagement() {
           }
         });
 
-        if (error) {
-          console.error('Payment session creation failed:', error);
-          throw error;
-        }
-
-        if (!data?.url) {
-          throw new Error('No payment URL received');
-        }
+        if (error) throw error;
+        if (!data?.url) throw new Error('No payment URL received');
 
         // Redirect to Stripe for payment
         window.location.href = data.url;
@@ -254,8 +214,6 @@ export default function AccountManagement() {
 
       // ACTIVE SUBSCRIPTIONS - Reducing seats (no payment required)
       if (company.subscription_status === 'active' && seatDifference < 0) {
-        console.log('Active subscription reducing seats - no payment required');
-        
         // Update database
         const { error: companyError } = await supabase
           .from('companies')
@@ -266,13 +224,9 @@ export default function AccountManagement() {
             junior_seats: seatChanges.juniorSeats,
             updated_at: new Date().toISOString()
           })
-          .eq('id', company.id)
-          .select();
+          .eq('id', company.id);
 
-        if (companyError) {
-          console.error('Database update failed:', companyError);
-          throw companyError;
-        }
+        if (companyError) throw companyError;
 
         // Update Stripe subscription for seat reduction
         const { data: { session } } = await supabase.auth.getSession();
@@ -281,7 +235,7 @@ export default function AccountManagement() {
             companyId: company.id,
             newSeatCount: totalNewSeats,
             newPrice: newPrice,
-            isReduction: true // Flag to indicate this is a reduction
+            isReduction: true
           },
           headers: {
             Authorization: `Bearer ${session?.access_token}`
@@ -305,9 +259,8 @@ export default function AccountManagement() {
         await fetchAccountData();
       }
 
-      // NO CHANGES - edge case
+      // NO CHANGES
       if (seatDifference === 0) {
-        console.log('No seat changes detected');
         alert('No changes to save');
       }
 
