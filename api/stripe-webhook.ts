@@ -83,109 +83,139 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // HANDLE SEAT UPDATE PAYMENT
-        if (isSeatUpdate && subscriptionId && newSeatCount) {
-          console.log('Processing seat update payment for subscription:', subscriptionId);
-          
-          try {
-            // Get the pending seat allocation from database
-            const { data: company } = await supabase
-              .from('companies')
-              .select('pending_admin_seats, pending_junior_seats, subscription_type')
-              .eq('id', companyId)
-              .single();
+if (isSeatUpdate && subscriptionId && newSeatCount) {
+  console.log('Processing seat update payment for subscription:', subscriptionId);
+  console.log('Full session metadata:', JSON.stringify(session.metadata, null, 2));
+  
+  try {
+    // Get seat allocation from session metadata (passed from create-seat-update-payment)
+    const sessionAdminSeats = parseInt(session.metadata?.admin_seats || '0');
+    const sessionJuniorSeats = parseInt(session.metadata?.junior_seats || '0');
+    
+    console.log('Extracted seat values from session:', {
+      adminSeats: sessionAdminSeats,
+      juniorSeats: sessionJuniorSeats,
+      total: sessionAdminSeats + sessionJuniorSeats,
+      expectedTotal: parseInt(newSeatCount)
+    });
+    
+    if (sessionAdminSeats === 0 && sessionJuniorSeats === 0) {
+      console.error('WARNING: No seat allocation found in session metadata!');
+    }
+    
+    // Get company subscription type
+    const { data: company } = await supabase
+      .from('companies')
+      .select('subscription_type')
+      .eq('id', companyId)
+      .single();
 
-            if (!company) {
-              console.error('Company not found');
-              break;
-            }
+    if (!company) {
+      console.error('Company not found');
+      break;
+    }
 
-            // Update the subscription quantity in Stripe (no proration since payment already taken)
-            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-            
-            // Determine pricing tier for new seat count
-            const newSeatCountNum = parseInt(newSeatCount);
-            let pricePerSeat = 30;
-            if (newSeatCountNum <= 14) pricePerSeat = 30;
-            else if (newSeatCountNum <= 29) pricePerSeat = 27;
-            else pricePerSeat = 24;
+    // Update the subscription quantity in Stripe (no proration since payment already taken)
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    
+    // Determine pricing tier for new seat count
+    const newSeatCountNum = parseInt(newSeatCount);
+    let pricePerSeat = 30;
+    if (newSeatCountNum <= 14) pricePerSeat = 30;
+    else if (newSeatCountNum <= 29) pricePerSeat = 27;
+    else pricePerSeat = 24;
 
-            // Determine product ID based on subscription type
-            let productId = '';
-            if (company.subscription_type === 'annual') {
-              productId = newSeatCountNum <= 14 ? 'prod_TCLns1si1ulZ4p' : 
-                         newSeatCountNum <= 29 ? 'prod_TCLoT9ndmjiSkW' : 
-                         'prod_TCLqYrus5QQlKi';
-            } else {
-              productId = newSeatCountNum <= 14 ? 'prod_T8XJnL61gY927i' : 
-                         newSeatCountNum <= 29 ? 'prod_T8XMTp9qKMSyVh' : 
-                         'prod_T8XNn9mRSDskk7';
-            }
+    // Determine product ID based on subscription type
+    let productId = '';
+    if (company.subscription_type === 'annual') {
+      productId = newSeatCountNum <= 14 ? 'prod_TCLns1si1ulZ4p' : 
+                 newSeatCountNum <= 29 ? 'prod_TCLoT9ndmjiSkW' : 
+                 'prod_TCLqYrus5QQlKi';
+    } else {
+      productId = newSeatCountNum <= 14 ? 'prod_T8XJnL61gY927i' : 
+                 newSeatCountNum <= 29 ? 'prod_T8XMTp9qKMSyVh' : 
+                 'prod_T8XNn9mRSDskk7';
+    }
 
-            // Calculate price with VAT
-            let priceWithVatPence;
-            let recurringInterval;
-            
-            if (company.subscription_type === 'annual') {
-              const annualPricePerSeat = pricePerSeat * 12 * 0.9; // 10% discount
-              const vatAmount = Math.round(annualPricePerSeat * 100 * 0.2);
-              priceWithVatPence = Math.round(annualPricePerSeat * 100) + vatAmount;
-              recurringInterval = { interval: 'year' as const };
-            } else {
-              const pricePerSeatPence = pricePerSeat * 100;
-              const vatAmount = Math.round(pricePerSeatPence * 0.2);
-              priceWithVatPence = pricePerSeatPence + vatAmount;
-              recurringInterval = { interval: 'month' as const };
-            }
+    // Calculate price with VAT
+    let priceWithVatPence;
+    let recurringInterval;
+    
+    if (company.subscription_type === 'annual') {
+      const annualPricePerSeat = pricePerSeat * 12 * 0.9; // 10% discount
+      const vatAmount = Math.round(annualPricePerSeat * 100 * 0.2);
+      priceWithVatPence = Math.round(annualPricePerSeat * 100) + vatAmount;
+      recurringInterval = { interval: 'year' as const };
+    } else {
+      const pricePerSeatPence = pricePerSeat * 100;
+      const vatAmount = Math.round(pricePerSeatPence * 0.2);
+      priceWithVatPence = pricePerSeatPence + vatAmount;
+      recurringInterval = { interval: 'month' as const };
+    }
 
-            // Create new price
-            const newPrice = await stripe.prices.create({
-              currency: 'gbp',
-              unit_amount: priceWithVatPence,
-              recurring: recurringInterval,
-              product: productId,
-            });
+    // Create new price
+    const newPrice = await stripe.prices.create({
+      currency: 'gbp',
+      unit_amount: priceWithVatPence,
+      recurring: recurringInterval,
+      product: productId,
+    });
 
-            // Update subscription with new quantity (no proration since already paid)
-            await stripe.subscriptions.update(subscriptionId, {
-              items: [{
-                id: subscription.items.data[0].id,
-                price: newPrice.id,
-                quantity: newSeatCountNum
-              }],
-              proration_behavior: 'none', // Don't charge again
-              metadata: {
-                seat_count: newSeatCount,
-                last_seat_update: new Date().toISOString()
-              }
-            });
+    // Update subscription with new quantity (no proration since already paid)
+    await stripe.subscriptions.update(subscriptionId, {
+      items: [{
+        id: subscription.items.data[0].id,
+        price: newPrice.id,
+        quantity: newSeatCountNum
+      }],
+      proration_behavior: 'none', // Don't charge again
+      metadata: {
+        seat_count: newSeatCount,
+        admin_seats: sessionAdminSeats.toString(),
+        junior_seats: sessionJuniorSeats.toString(),
+        last_seat_update: new Date().toISOString()
+      }
+    });
 
-            // Calculate new monthly price
-            const newMonthlyPrice = newSeatCountNum * pricePerSeat;
+    // Calculate new monthly price
+    const newMonthlyPrice = newSeatCountNum * pricePerSeat;
 
-            // Get seat allocation from session metadata (passed from create-seat-update-payment)
-            const sessionAdminSeats = parseInt(session.metadata?.admin_seats || '0');
-            const sessionJuniorSeats = parseInt(session.metadata?.junior_seats || '0');
+    console.log('About to update database with:', {
+      companyId,
+      subscription_seats: newSeatCountNum,
+      admin_seats: sessionAdminSeats,
+      junior_seats: sessionJuniorSeats,
+      subscription_price: newMonthlyPrice,
+      price_per_month: newMonthlyPrice
+    });
 
-            // Update database with new seats
-            await supabase
-              .from('companies')
-              .update({
-               subscription_seats: newSeatCountNum,
-               admin_seats: sessionAdminSeats,
-               junior_seats: sessionJuniorSeats,
-               subscription_price: newMonthlyPrice,
-               price_per_month: newMonthlyPrice,
-               discount_percentage: newSeatCountNum >= 30 ? 20 : newSeatCountNum >= 15 ? 10 : 0,
-               updated_at: new Date().toISOString()
-            })
-             .eq('id', companyId);
+    // Update database with new seats
+    const { data: updateResult, error: updateError } = await supabase
+      .from('companies')
+      .update({
+        subscription_seats: newSeatCountNum,
+        admin_seats: sessionAdminSeats,
+        junior_seats: sessionJuniorSeats,
+        subscription_price: newMonthlyPrice,
+        price_per_month: newMonthlyPrice,
+        discount_percentage: newSeatCountNum >= 30 ? 20 : newSeatCountNum >= 15 ? 10 : 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', companyId)
+      .select();
 
-            console.log(`Seat update completed: ${newSeatCount} seats activated`);
-          } catch (error) {
-            console.error('Error processing seat update:', error);
-          }
-          break; // Exit early for seat updates
-        }
+    if (updateError) {
+      console.error('Database update failed:', updateError);
+      throw updateError;
+    }
+
+    console.log('Database updated successfully:', updateResult);
+    console.log(`Seat update completed: ${newSeatCount} seats activated (${sessionAdminSeats} admin, ${sessionJuniorSeats} junior)`);
+  } catch (error) {
+    console.error('Error processing seat update:', error);
+  }
+  break; // Exit early for seat updates
+}
 
         // HANDLE NEW SUBSCRIPTION CHECKOUT (existing logic)
         // If subscription exists, fetch it to get actual details including quantity
