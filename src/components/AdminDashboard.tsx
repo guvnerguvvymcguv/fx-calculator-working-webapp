@@ -26,6 +26,7 @@ export default function AdminDashboard() {
   const [userCalculationCounts, setUserCalculationCounts] = useState<Record<string, number>>({});
   const [calculationCountLoading, setCalculationCountLoading] = useState(false);
   const [processingUpdate, setProcessingUpdate] = useState(false);
+  const [successMessageType, setSuccessMessageType] = useState<'checkout' | 'seat_update' | null>(null);
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -43,15 +44,23 @@ export default function AdminDashboard() {
     if (newSeats) {
       handleSeatUpdateSuccess(parseInt(newSeats));
     }
+    setSuccessMessageType('seat_update');
     setShowSuccessMessage(true);
     setSearchParams({});
-    setTimeout(() => setShowSuccessMessage(false), 10000);
+    setTimeout(() => {
+      setShowSuccessMessage(false);
+      setSuccessMessageType(null);
+    }, 10000);
   }
   // Check for initial checkout success (only if not a seat update)
   else if (searchParams.get('checkout') === 'success') {
+    setSuccessMessageType('checkout');
     setShowSuccessMessage(true);
     setSearchParams({});
-    setTimeout(() => setShowSuccessMessage(false), 10000);
+    setTimeout(() => {
+      setShowSuccessMessage(false);
+      setSuccessMessageType(null);
+    }, 10000);
   }
 }, [searchParams, setSearchParams]);
 
@@ -805,7 +814,7 @@ setUserCalculationCounts(counts);
     <div className="flex items-center gap-2">
       <Check className="h-5 w-5 text-green-400" />
       <p className="text-green-300">
-        {searchParams.get('seat_update') === 'success' 
+        {successMessageType === 'seat_update' 
           ? 'Your account has been updated successfully.'
           : 'Payment successful! Your subscription is now active.'}
       </p>
