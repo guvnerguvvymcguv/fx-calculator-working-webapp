@@ -37,23 +37,21 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-  // Check for checkout success
-  if (searchParams.get('checkout') === 'success') {
-    setShowSuccessMessage(true);
-    // Remove the parameter from URL after showing
-    setSearchParams({});
-    // Hide message after 10 seconds
-    setTimeout(() => setShowSuccessMessage(false), 10000);
-  }
-  
-  // Check for seat update success
+  // Check for seat update success FIRST (this takes priority)
   if (searchParams.get('seat_update') === 'success') {
     const newSeats = searchParams.get('seats');
     if (newSeats) {
-      // Update the subscription seats in Stripe (payment already taken)
       handleSeatUpdateSuccess(parseInt(newSeats));
     }
-    setSearchParams({}); // Clear params
+    setShowSuccessMessage(true);
+    setSearchParams({});
+    setTimeout(() => setShowSuccessMessage(false), 10000);
+  }
+  // Check for initial checkout success (only if not a seat update)
+  else if (searchParams.get('checkout') === 'success') {
+    setShowSuccessMessage(true);
+    setSearchParams({});
+    setTimeout(() => setShowSuccessMessage(false), 10000);
   }
 }, [searchParams, setSearchParams]);
 
@@ -808,7 +806,7 @@ setUserCalculationCounts(counts);
       <Check className="h-5 w-5 text-green-400" />
       <p className="text-green-300">
         {searchParams.get('seat_update') === 'success' 
-          ? 'Seat update successful! Your subscription has been updated.'
+          ? 'Your account has been updated successfully.'
           : 'Payment successful! Your subscription is now active.'}
       </p>
     </div>
