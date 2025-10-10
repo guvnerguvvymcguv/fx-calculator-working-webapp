@@ -291,16 +291,20 @@ serve(async (req) => {
               messageText += `CP ${calc.currency_pair} | YR ${calc.your_rate} | CR ${calc.competitor_rate} | `
               messageText += `CN ${calc.client_name || 'N/A'} | CD ${calc.comparison_date || date} | `
               messageText += `ATB £${calc.amount_to_buy || 0} | TPY ${calc.trades_per_year || 0} | PA ${calc.payment_amount || 0}\n`
+              
+              // Determine if this is a win or loss (same logic as Calculator and UserActivity)
+              const isAdvantage = calc.your_rate > calc.competitor_rate;
+              
               messageText += `Results\n`
               messageText += `PD ${calc.price_difference >= 0 ? '+' : ''}${calc.price_difference || 0} | `
-              messageText += `Pips ${calc.pips_difference || 0} | `
-              messageText += `❌ CWC £${calc.cost_with_competitor?.toFixed(2) || 0} | `
-              messageText += `✅ CWU £${calc.cost_with_us?.toFixed(2) || 0} | `
-              messageText += `✅ SVT £${calc.savings_per_trade?.toFixed(2) || 0} | `
-              messageText += `✅ AS £${calc.annual_savings?.toFixed(2) || 0} | `
-              messageText += `✅ PS ${calc.percentage_savings?.toFixed(2) || 0}%\n`
-            }
+              messageText += `Pips ${isAdvantage ? '✅' : '❌'} ${calc.pips_difference || 0} | `
+              messageText += `${isAdvantage ? '❌' : '✅'} CWC £${calc.cost_with_competitor?.toFixed(2) || 0} | `
+              messageText += `${isAdvantage ? '✅' : '❌'} CWU £${calc.cost_with_us?.toFixed(2) || 0} | `
+              messageText += `${isAdvantage ? '✅' : '❌'} SVT £${calc.savings_per_trade?.toFixed(2) || 0} | `
+              messageText += `${isAdvantage ? '✅' : '❌'} AS £${calc.annual_savings?.toFixed(2) || 0} | `
+              messageText += `${isAdvantage ? '✅' : '❌'} PS ${calc.percentage_savings?.toFixed(2) || 0}%\n`
           }
+        }
 
           // Truncate if too long for Salesforce (max 10,000 characters)
           if (messageText.length > 9900) {
