@@ -508,7 +508,7 @@ export default function UserActivity() {
   return (
     <div key={activity.id} className="border-b border-gray-700 py-4">
       {/* Row 1: Calc Details */}
-      <div className="grid grid-cols-7 gap-4 mb-2">
+      <div className="grid grid-cols-8 gap-4 mb-2">
         <div>
           <div className="text-xs text-gray-500 mb-1">Time & Date</div>
           <div className="text-sm text-white">
@@ -522,6 +522,12 @@ export default function UserActivity() {
           </div>
         </div>
         <div>
+<div>
+  <div className="text-xs text-gray-500 mb-1">Currency Pair</div>
+  <div className="text-sm text-white font-semibold">
+    {activity.currency_pair || 'N/A'}
+  </div>
+</div>
           <div className="text-xs text-gray-500 mb-1">Your Rate</div>
           <div className="text-sm text-gray-300">
             {yourRate.toFixed(4) || 'N/A'}
@@ -560,7 +566,7 @@ export default function UserActivity() {
       </div>
       
       {/* Row 2: Results - WITH WIN/LOSS CONDITIONAL COLORS */}
-      <div className="grid grid-cols-7 gap-4 pl-0 border-l-4 border-purple-500 ml-0 pl-2">
+      <div className="grid grid-cols-8 gap-4 pl-0 border-l-4 border-purple-500 ml-0 pl-2">
         <div>
           <div className="text-xs text-gray-500 mb-1">Price Diff</div>
           <div className="text-sm text-white font-semibold">
