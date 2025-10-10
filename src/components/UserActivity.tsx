@@ -522,12 +522,14 @@ export default function UserActivity() {
           </div>
         </div>
         <div>
-<div>
-  <div className="text-xs text-gray-500 mb-1">Currency Pair</div>
-  <div className="text-sm text-white font-semibold">
-    {activity.currency_pair || 'N/A'}
-  </div>
-</div>
+       </div>
+        <div>
+          <div className="text-xs text-gray-500 mb-1">Currency Pair</div>
+          <div className="text-sm text-white font-semibold">
+            {activity.currency_pair || 'N/A'}
+          </div>
+        </div>
+        <div>
           <div className="text-xs text-gray-500 mb-1">Your Rate</div>
           <div className="text-sm text-gray-300">
             {yourRate.toFixed(4) || 'N/A'}
