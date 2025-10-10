@@ -520,10 +520,6 @@ export default function UserActivity() {
               minute: '2-digit'
             })}
           </div>
-        </div>
-        <div>
-       </div>
-        <div>
           <div className="text-xs text-gray-500 mb-1">Currency Pair</div>
           <div className="text-sm text-white font-semibold">
             {activity.currency_pair || 'N/A'}
