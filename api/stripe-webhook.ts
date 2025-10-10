@@ -162,22 +162,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // Calculate new monthly price
             const newMonthlyPrice = newSeatCountNum * pricePerSeat;
 
-            // Update database with new seats and clear pending changes
+            // Get seat allocation from session metadata (passed from create-seat-update-payment)
+            const sessionAdminSeats = parseInt(session.metadata?.admin_seats || '0');
+            const sessionJuniorSeats = parseInt(session.metadata?.junior_seats || '0');
+
+            // Update database with new seats
             await supabase
               .from('companies')
               .update({
-                subscription_seats: newSeatCountNum,
-                admin_seats: company.pending_admin_seats || parseInt(adminSeats || '0'),
-                junior_seats: company.pending_junior_seats || parseInt(juniorSeats || '0'),
-                subscription_price: newMonthlyPrice,
-                price_per_month: newMonthlyPrice,
-                discount_percentage: newSeatCountNum >= 30 ? 20 : newSeatCountNum >= 15 ? 10 : 0,
-                pending_seat_change: null,
-                pending_admin_seats: null,
-                pending_junior_seats: null,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', companyId);
+               subscription_seats: newSeatCountNum,
+               admin_seats: sessionAdminSeats,
+               junior_seats: sessionJuniorSeats,
+               subscription_price: newMonthlyPrice,
+               price_per_month: newMonthlyPrice,
+               discount_percentage: newSeatCountNum >= 30 ? 20 : newSeatCountNum >= 15 ? 10 : 0,
+               updated_at: new Date().toISOString()
+            })
+             .eq('id', companyId);
 
             console.log(`Seat update completed: ${newSeatCount} seats activated`);
           } catch (error) {

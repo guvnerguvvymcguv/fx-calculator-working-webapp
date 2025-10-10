@@ -28,13 +28,15 @@ serve(async (req) => {
       }
     )
 
-    const { companyId, newSeatCount, currentSeatCount, subscriptionType } = await req.json()
+    const { companyId, newSeatCount, currentSeatCount, subscriptionType, adminSeats, juniorSeats } = await req.json()
     
     console.log('Seat update payment request:', {
       companyId,
       newSeatCount,
       currentSeatCount,
-      subscriptionType
+      subscriptionType,
+      adminSeats,
+      juniorSeats
     })
     
     // Get company and subscription details
@@ -137,14 +139,16 @@ serve(async (req) => {
         quantity: 1,
       }],
       metadata: {
-        company_id: companyId,
-        seat_update: 'true',
-        new_seat_count: newSeatCount.toString(),
-        old_seat_count: currentSeatCount.toString(),
-        subscription_id: company.stripe_subscription_id,
-        subscription_type: subscriptionType || company.subscription_type
-      }
-    })
+         company_id: companyId,
+         seat_update: 'true',
+         new_seat_count: newSeatCount.toString(),
+         old_seat_count: currentSeatCount.toString(),
+         subscription_id: company.stripe_subscription_id,
+         subscription_type: subscriptionType || company.subscription_type,
+         admin_seats: adminSeats.toString(),
+         junior_seats: juniorSeats.toString()
+       }
+      })
 
     console.log('Checkout session created:', session.id)
 

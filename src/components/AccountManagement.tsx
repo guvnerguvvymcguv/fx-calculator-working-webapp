@@ -200,7 +200,9 @@ export default function AccountManagement() {
             companyId: company.id,
             newSeatCount: totalNewSeats,
             currentSeatCount: company.currentTotalSeats,
-            subscriptionType: company.subscription_type
+            subscriptionType: company.subscription_type,
+            adminSeats: seatChanges.adminSeats,
+            juniorSeats: seatChanges.juniorSeats
           }
         });
 
