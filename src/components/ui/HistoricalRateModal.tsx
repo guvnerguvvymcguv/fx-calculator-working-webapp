@@ -97,11 +97,15 @@ export function HistoricalRateModal({
           .limit(1);
         
         if (latestData && latestData[0] && earliestData && earliestData[0]) {
-          setDataDateRange({
-            min: new Date(earliestData[0].timestamp),
-            max: new Date(latestData[0].timestamp)
-          });
-        }
+  // Enforce minimum date of October 1st, 2024
+  const earliestAvailable = new Date(earliestData[0].timestamp);
+  const minimumAllowedDate = new Date('2024-10-01');
+  
+  setDataDateRange({
+    min: earliestAvailable > minimumAllowedDate ? earliestAvailable : minimumAllowedDate,
+    max: new Date(latestData[0].timestamp)
+  });
+}
       } catch (err) {
         console.error('Error checking data range:', err);
       }
