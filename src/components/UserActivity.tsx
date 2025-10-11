@@ -510,6 +510,7 @@ export default function UserActivity() {
       {/* Row 1: Calc Details */}
       <div className="grid grid-cols-8 gap-4 mb-2">
         <div>
+          <div>
           <div className="text-xs text-gray-500 mb-1">Time & Date</div>
           <div className="text-sm text-white">
             {new Date(activity.created_at).toLocaleString('en-GB', {
@@ -520,12 +521,13 @@ export default function UserActivity() {
               minute: '2-digit'
             })}
           </div>
+        </div>
+        <div>
           <div className="text-xs text-gray-500 mb-1">Currency Pair</div>
           <div className="text-sm text-white font-semibold">
             {activity.currency_pair || 'N/A'}
           </div>
         </div>
-        <div>
           <div className="text-xs text-gray-500 mb-1">Your Rate</div>
           <div className="text-sm text-gray-300">
             {yourRate.toFixed(4) || 'N/A'}
