@@ -94,27 +94,57 @@ serve(async (req) => {
       throw new Error('No active subscription found')
     }
 
-    // Cancel the subscription in Stripe at period end
-    const updatedSubscription = await stripe.subscriptions.update(
-      company.stripe_subscription_id,
-      {
-        cancel_at_period_end: true,
-        cancellation_details: {
-          comment: feedback || reason || 'Customer requested cancellation',
-        },
-        metadata: {
-          cancelled_by: 'customer',
-          cancellation_reason: reason || 'not_specified',
-          cancellation_feedback: feedback || '',
-          cancelled_at: new Date().toISOString()
-        }
-      }
-    )
-
     // FIXED: Always set 30-day grace period regardless of subscription type
     const now = new Date()
     const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000))
     const scheduledCancellationDate = thirtyDaysFromNow.toISOString()
+
+    // For annual subscriptions, cancel immediately in Stripe but maintain 30-day access via app
+    // For monthly, use cancel_at_period_end (they've already paid for the month)
+let updatedSubscription;
+
+if (company.subscription_type === 'annual') {
+  // Cancel immediately - they won't get refund anyway
+  updatedSubscription = await stripe.subscriptions.cancel(
+    company.stripe_subscription_id,
+    {
+      cancellation_details: {
+        comment: feedback || reason || 'Customer requested cancellation - 30 day grace period in app',
+      }
+    }
+  );
+  
+  // Update metadata separately since cancel doesn't support it
+  await stripe.subscriptions.update(
+    company.stripe_subscription_id,
+    {
+      metadata: {
+        cancelled_by: 'customer',
+        cancellation_reason: reason || 'not_specified',
+        cancellation_feedback: feedback || '',
+        cancelled_at: new Date().toISOString(),
+        grace_period_ends: new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString()
+      }
+    }
+  );
+} else {
+  // For monthly, use cancel_at_period_end (they paid for this month)
+  updatedSubscription = await stripe.subscriptions.update(
+    company.stripe_subscription_id,
+    {
+      cancel_at_period_end: true,
+      cancellation_details: {
+        comment: feedback || reason || 'Customer requested cancellation',
+      },
+      metadata: {
+        cancelled_by: 'customer',
+        cancellation_reason: reason || 'not_specified',
+        cancellation_feedback: feedback || '',
+        cancelled_at: new Date().toISOString()
+      }
+    }
+  );
+}
 
     console.log('Setting 30-day grace period:', {
       subscriptionType: company.subscription_type,

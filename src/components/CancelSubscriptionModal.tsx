@@ -158,14 +158,14 @@ export default function CancelSubscriptionModal({
                     </>
                   ) : subscriptionType === 'annual' ? (
                     <>
-                      <li>• You'll keep access until your year ends</li>
+                      <li>• You'll keep access for 30 days</li>
                       <li>• No refunds for unused time</li>
                       <li>• Your data will be preserved</li>
                       <li>• You can reactivate anytime</li>
                     </>
                   ) : (
                     <>
-                      <li>• You'll keep access until the end of this month</li>
+                      <li>• You'll keep access for 30 days</li>
                       <li>• No more monthly charges</li>
                       <li>• Your data will be preserved</li>
                       <li>• You can reactivate anytime</li>
