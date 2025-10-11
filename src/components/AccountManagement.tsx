@@ -112,15 +112,26 @@ export default function AccountManagement() {
   };
 
   const calculatePrice = (totalSeats: number) => {
-    if (totalSeats <= 14) return totalSeats * 30;
-    if (totalSeats <= 29) return totalSeats * 27;
-    return totalSeats * 24;
+    const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+    const monthlyTotal = totalSeats * monthlyPricePerSeat;
+    
+    // If annual subscription, return annual price (monthly × 12 × 0.9 for 10% discount)
+    if (company?.subscription_type === 'annual') {
+      return monthlyTotal * 12 * 0.9;
+    }
+    
+    return monthlyTotal;
   };
 
   const getPricePerSeat = (totalSeats: number) => {
-    if (totalSeats <= 14) return 30;
-    if (totalSeats <= 29) return 27;
-    return 24;
+    const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+    
+    // If annual subscription, return annual price per seat (monthly × 12 × 0.9 for 10% discount)
+    if (company?.subscription_type === 'annual') {
+      return monthlyPricePerSeat * 12 * 0.9;
+    }
+    
+    return monthlyPricePerSeat;
   };
 
   const handleSeatChange = (type: 'admin' | 'junior', change: number) => {
@@ -598,34 +609,22 @@ export default function AccountManagement() {
               <div className="border-t border-gray-700 pt-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-gray-400">
-                    <span>Current seats:</span>
-                    <span>{company.currentTotalSeats} seats</span>
-                  </div>
-                  <div className="flex justify-between text-gray-400">
-                    <span>Remaining seats:</span>
-                    <span>{company.remainingSeats} seats</span>
+                    <span>Price per seat:</span>
+                    <span>£{pricePerSeat}/{company.subscription_type === 'annual' ? 'year' : 'month'}</span>
                   </div>
                   {isChangingSeats && (
-                    <div className="flex justify-between text-white">
-                      <span>New total:</span>
-                      <span className="font-medium">{totalNewSeats} seats</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-gray-400">
-                    <span>Price per seat:</span>
-                    <span>£{pricePerSeat}/month</span>
-                  </div>
-                  {isChangingSeats && company.subscription_type !== 'annual' && (
                     <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-700">
-                      <span className="text-white">Monthly price change:</span>
+                      <span className="text-white">
+                        {company.subscription_type === 'annual' ? 'Annual' : 'Monthly'} price change:
+                      </span>
                       <span className={`text-xl font-bold ${priceDifference > 0 ? 'text-yellow-400' : 'text-green-400'}`}>
-                        {priceDifference > 0 ? '+' : ''}£{Math.abs(priceDifference)}/month
+                        {priceDifference > 0 ? '+' : ''}£{Math.abs(priceDifference)}/{company.subscription_type === 'annual' ? 'year' : 'month'}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between text-xl font-bold text-white mt-2">
-                    <span>{isChangingSeats ? 'New' : 'Current'} monthly total:</span>
-                    <span>£{isChangingSeats ? newPrice : currentPrice}/month</span>
+                    <span>{isChangingSeats ? 'New' : 'Current'} {company.subscription_type === 'annual' ? 'annual' : 'monthly'} total:</span>
+                    <span>£{isChangingSeats ? newPrice : currentPrice}/{company.subscription_type === 'annual' ? 'year' : 'month'}</span>
                   </div>
                   {company?.isInTrial && (
                     <p className="text-purple-400 text-sm mt-2">
@@ -640,15 +639,15 @@ export default function AccountManagement() {
                   <div className="space-y-1 text-sm">
                     <div className={`flex justify-between ${totalNewSeats <= 14 ? 'text-purple-300' : 'text-gray-500'}`}>
                       <span>1-14 seats:</span>
-                      <span>£30/seat/month</span>
+                      <span>£{company.subscription_type === 'annual' ? '324' : '30'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'}</span>
                     </div>
                     <div className={`flex justify-between ${totalNewSeats >= 15 && totalNewSeats <= 29 ? 'text-purple-300' : 'text-gray-500'}`}>
                       <span>15-29 seats:</span>
-                      <span>£27/seat/month (10% off)</span>
+                      <span>£{company.subscription_type === 'annual' ? '291.60' : '27'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'} (10% off)</span>
                     </div>
                     <div className={`flex justify-between ${totalNewSeats >= 30 ? 'text-purple-300' : 'text-gray-500'}`}>
                       <span>30+ seats:</span>
-                      <span>£24/seat/month (20% off)</span>
+                      <span>£{company.subscription_type === 'annual' ? '259.20' : '24'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'} (20% off)</span>
                     </div>
                   </div>
                 </div>
