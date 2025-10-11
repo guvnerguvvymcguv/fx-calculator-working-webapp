@@ -216,14 +216,52 @@ serve(async (req) => {
         const weekStart = new Date();
         weekStart.setDate(weekStart.getDate() - 7);
         
-        // Get all calculations from activity_logs table
-        const { data: calculations, error: calcError } = await supabase
-          .from('activity_logs')
-          .select('*')
-          .eq('company_id', schedule.company_id)
-          .gte('created_at', weekStart.toISOString())
-          .lte('created_at', now.toISOString())
-          .order('created_at', { ascending: false });
+        // Get all calculations from activity_logs table - JUNIOR BROKERS ONLY
+// First, get all junior broker user IDs for this company
+const { data: juniorUsers, error: juniorError } = await supabase
+  .from('user_profiles')
+  .select('id')
+  .eq('company_id', schedule.company_id)
+  .eq('role_type', 'junior');  // Only junior brokers
+
+if (juniorError) {
+  console.error('Error fetching junior users:', juniorError);
+  continue;
+}
+
+const juniorUserIds = juniorUsers?.map(u => u.id) || [];
+
+if (juniorUserIds.length === 0) {
+  console.log(`No junior users found for company ${schedule.company_id}`);
+  
+  // Still post a message saying no calculations
+  const messageText = `📊 SpreadChecker Weekly Export - ${now.toLocaleDateString('en-GB')}\n\n` +
+    `Period: ${weekStart.toLocaleDateString('en-GB')} - ${now.toLocaleDateString('en-GB')}\n\n` +
+    `No junior brokers in this company.\n\n`;
+
+  await postToSalesforce(sfConnection, messageText, supabase);
+  console.log('Posted "no junior brokers" message to Salesforce');
+  
+  // Update last_run and continue
+  await supabase
+    .from('export_schedules')
+    .update({ 
+      last_run: now.toISOString(),
+      updated_at: now.toISOString()
+    })
+    .eq('id', schedule.id);
+  
+  continue;
+}
+
+// Now fetch calculations for junior brokers only
+const { data: calculations, error: calcError } = await supabase
+  .from('activity_logs')
+  .select('*')
+  .in('user_id', juniorUserIds)  // ✅ Only junior broker calculations
+  .gte('created_at', weekStart.toISOString())
+  .lte('created_at', now.toISOString())
+  .order('created_at', { ascending: false });
 
         if (calcError) {
           console.error('Error fetching calculations:', calcError);
