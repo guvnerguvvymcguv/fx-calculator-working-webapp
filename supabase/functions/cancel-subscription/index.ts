@@ -113,7 +113,21 @@ if (company.grace_period_used) {
 let updatedSubscription;
 
 if (company.subscription_type === 'annual') {
-  // Cancel immediately - they won't get refund anyway
+  // First update metadata BEFORE cancelling
+  await stripe.subscriptions.update(
+    company.stripe_subscription_id,
+    {
+      metadata: {
+        cancelled_by: 'customer',
+        cancellation_reason: reason || 'not_specified',
+        cancellation_feedback: feedback || '',
+        cancelled_at: now.toISOString(),
+        grace_period_ends: scheduledCancellationDate
+      }
+    }
+  );
+  
+  // Then cancel immediately - they won't get refund anyway
   updatedSubscription = await stripe.subscriptions.cancel(
     company.stripe_subscription_id,
     {
@@ -122,20 +136,7 @@ if (company.subscription_type === 'annual') {
       }
     }
   );
-  
-  // Update metadata separately since cancel doesn't support it
-  await stripe.subscriptions.update(
-    company.stripe_subscription_id,
-    {
-      metadata: {
-        cancelled_by: 'customer',
-        cancellation_reason: reason || 'not_specified',
-        cancellation_feedback: feedback || '',
-        cancelled_at: new Date().toISOString(),
-        grace_period_ends: new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString()
-      }
-    }
-  );
+
 } else {
   // For monthly, use cancel_at_period_end (they paid for this month)
   updatedSubscription = await stripe.subscriptions.update(
