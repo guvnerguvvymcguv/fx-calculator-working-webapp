@@ -510,7 +510,7 @@ export const HistoricalChart: React.FC<HistoricalChartProps> = ({
       {/* Pan mode indicator */}
       {panMode && (
         <div className={`absolute bottom-14 right-4 text-purple-300 ${isMobile ? 'text-xs' : 'text-sm'}`}>
-          Drag to pan â€¢ Click hand to exit
+          Drag to pan, click hand to exit
         </div>
       )}
     </div>
