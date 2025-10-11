@@ -72,7 +72,7 @@ export function HistoricalRateModal({
   
   // Dynamic date range from Supabase
   const [dataDateRange, setDataDateRange] = useState({
-    min: new Date('2024-09-30'),
+    min: new Date('2024-10-01'),
     max: new Date('2025-09-30')
   });
 
@@ -310,7 +310,7 @@ export function HistoricalRateModal({
               <span className="text-purple-400">💡</span>
               <span>
                 {showDatePicker 
-                  ? "Select a specific date and time to find the exact historical rate. Minute precision is attempted for all dates, with hourly fallback if unavailable."
+                  ? "Select a specific date and time to find the exact historical rate. Minute precision is available for all stated dates."
                   : "Use the Date/Time Search for specific rates, or hover over the chart to see historical rates and click on any point to select that rate for your calculation."
                 }
               </span>
