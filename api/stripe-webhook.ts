@@ -365,38 +365,45 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
       }
 
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        console.log('Subscription cancelled:', subscription.id);
-        
-        const { data: company } = await supabase
-          .from('companies')
-          .select('id, scheduled_cancellation_date')
-          .eq('stripe_subscription_id', subscription.id)
-          .single();
+  const subscription = event.data.object as Stripe.Subscription;
+  console.log('Subscription cancelled:', subscription.id);
+  
+  const { data: company } = await supabase
+    .from('companies')
+    .select('id, scheduled_cancellation_date')
+    .eq('stripe_subscription_id', subscription.id)
+    .single();
 
-        if (company) {
-          const now = new Date();
-          const scheduledDate = company.scheduled_cancellation_date 
-            ? new Date(company.scheduled_cancellation_date) 
-            : now;
-          
-          // Only lock if we've passed the scheduled cancellation date
-          const shouldLock = scheduledDate <= now;
-          
-          await supabase
-            .from('companies')
-            .update({
-              subscription_active: false,
-              subscription_status: 'cancelled',
-              account_locked: shouldLock,
-              locked_at: shouldLock ? now.toISOString() : null,
-              cancel_at_period_end: false,
-              updated_at: now.toISOString()
-            })
-            .eq('id', company.id);
-        }
-        break;
-      }
+  if (company) {
+    const now = new Date();
+    const scheduledDate = company.scheduled_cancellation_date 
+      ? new Date(company.scheduled_cancellation_date) 
+      : now;
+    
+    // Only lock if we've passed the scheduled cancellation date
+    const shouldLock = scheduledDate <= now;
+    
+    console.log('Subscription deleted webhook:', {
+      scheduledDate: scheduledDate.toISOString(),
+      now: now.toISOString(),
+      shouldLock,
+      gracePeriodRemaining: shouldLock ? 0 : Math.ceil((scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    });
+    
+    await supabase
+      .from('companies')
+      .update({
+        subscription_status: shouldLock ? 'cancelled' : 'canceling',  // ← Changed: Keep as 'canceling' during grace period
+        subscription_active: !shouldLock,  // ← Changed: Keep active during grace period
+        account_locked: shouldLock,
+        locked_at: shouldLock ? now.toISOString() : null,
+        cancel_at_period_end: false,
+        updated_at: now.toISOString()
+      })
+      .eq('id', company.id);
+  }
+  break;
+}
 
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;

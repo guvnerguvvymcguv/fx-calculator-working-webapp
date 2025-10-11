@@ -22,13 +22,13 @@ serve(async (req) => {
 
     const now = new Date().toISOString()
     
-    // Find companies with expired trials that aren't on active subscriptions
-    const { data: expiredCompanies, error: fetchError } = await supabase
-      .from('companies')
-      .select('id, name, trial_ends_at')
-      .lt('trial_ends_at', now)  // Trial has ended
-      .eq('subscription_active', false)  // Not on paid subscription
-      .eq('account_locked', false)  // Not already locked
+    // Find companies with expired trials OR expired grace periods
+const { data: expiredCompanies, error: fetchError } = await supabase
+  .from('companies')
+  .select('id, company_name, trial_ends_at, scheduled_cancellation_date')
+  .eq('account_locked', false)  // Not already locked
+  .or(`trial_ends_at.lt.${now},scheduled_cancellation_date.lt.${now}`)  // Trial ended OR grace period ended
+  .eq('subscription_active', false)  // Not on active subscription
 
     if (fetchError) {
       console.error('Error fetching expired trials:', fetchError)
@@ -63,10 +63,13 @@ serve(async (req) => {
       throw updateError
     }
 
-    console.log(`Successfully locked ${expiredCompanies.length} expired trial accounts:`)
-    expiredCompanies.forEach(company => {
-      console.log(`- ${company.name} (trial ended: ${company.trial_ends_at})`)
-    })
+    console.log(`Successfully locked ${expiredCompanies.length} expired accounts:`)
+expiredCompanies.forEach(company => {
+  const reason = company.trial_ends_at && new Date(company.trial_ends_at) < new Date(now) 
+    ? `trial ended: ${company.trial_ends_at}` 
+    : `grace period ended: ${company.scheduled_cancellation_date}`;
+  console.log(`- ${company.company_name} (${reason})`)
+})
 
     return new Response(
       JSON.stringify({ 
