@@ -328,15 +328,14 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
           };
 
           // Check if subscription is set to cancel at period end
-          if (subscription.cancel_at_period_end) {
-            updateData.cancel_at_period_end = true;
-            updateData.scheduled_cancellation_date = subscription.cancel_at 
-              ? new Date(subscription.cancel_at * 1000).toISOString() 
-              : null;
-          } else {
-            updateData.cancel_at_period_end = false;
-            updateData.scheduled_cancellation_date = null;
-          }
+        if (subscription.cancel_at_period_end) {
+          updateData.cancel_at_period_end = true;
+          // DO NOT overwrite scheduled_cancellation_date - it's already set correctly by cancel-subscription function
+          // The cancel-subscription function sets 30-day grace period for all paid subscriptions
+        } else {
+          updateData.cancel_at_period_end = false;
+          updateData.scheduled_cancellation_date = null;
+        }
 
           // If subscription has items, update seat count and price
           if (subscription.items && subscription.items.data.length > 0) {
