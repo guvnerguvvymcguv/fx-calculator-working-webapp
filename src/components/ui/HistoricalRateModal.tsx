@@ -141,7 +141,13 @@ export function HistoricalRateModal({
   // Check if a date is available for historical data
   const isDateAvailable = (year: number, month: number, day: number): boolean => {
     const checkDate = new Date(year, month, day);
-    return checkDate <= dataDateRange.max && checkDate >= dataDateRange.min;
+    
+    // Compare only the date parts, not the time
+    const checkDateOnly = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+    const minDateOnly = new Date(dataDateRange.min.getFullYear(), dataDateRange.min.getMonth(), dataDateRange.min.getDate());
+    const maxDateOnly = new Date(dataDateRange.max.getFullYear(), dataDateRange.max.getMonth(), dataDateRange.max.getDate());
+    
+    return checkDateOnly >= minDateOnly && checkDateOnly <= maxDateOnly;
   };
 
   // Handle date selection
