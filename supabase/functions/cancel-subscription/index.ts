@@ -94,11 +94,20 @@ serve(async (req) => {
       throw new Error('No active subscription found')
     }
 
-    // FIXED: Always set 30-day grace period regardless of subscription type
-    const now = new Date()
-    const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000))
-    const scheduledCancellationDate = thirtyDaysFromNow.toISOString()
+    // Check if they've already used their grace period
+const now = new Date()
+let scheduledCancellationDate;
 
+if (company.grace_period_used) {
+  // No grace period for repeat cancellations - lock immediately
+  scheduledCancellationDate = now.toISOString();
+  console.log('Grace period already used - immediate lock');
+} else {
+  // First cancellation - give 30 days grace period
+  const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+  scheduledCancellationDate = thirtyDaysFromNow.toISOString();
+  console.log('First cancellation - 30 day grace period');
+}
     // For annual subscriptions, cancel immediately in Stripe but maintain 30-day access via app
     // For monthly, use cancel_at_period_end (they've already paid for the month)
 let updatedSubscription;
@@ -162,6 +171,7 @@ if (company.subscription_type === 'annual') {
         subscription_status: 'canceling',
         cancel_at_period_end: true,
         scheduled_cancellation_date: scheduledCancellationDate, // 30 days from now
+        grace_period_used: true,
         cancellation_reason: reason,
         cancellation_feedback: feedback,
         cancelled_at: now.toISOString(),

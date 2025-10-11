@@ -416,6 +416,7 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
                 subscription_status: 'active',
                 account_locked: false,
                 locked_at: null,
+                grace_period_used: false,
                 updated_at: new Date().toISOString()
               })
               .eq('id', company.id);
