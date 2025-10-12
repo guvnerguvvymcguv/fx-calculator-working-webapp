@@ -151,18 +151,12 @@ export default function AccountManagement() {
   setReactivating(true);
   try {
     // Check if subscription is deleted (annual cancellations)
-    // Annual subscriptions are deleted immediately in Stripe, so can't be reactivated
-    // Instead, redirect to checkout to create new subscription
-    
     if (company.subscription_type === 'annual') {
-      // For annual subscriptions, create new checkout session with current seat allocation
-
-      // Calculate price per month (even for annual, we store monthly equivalent)
-     const totalSeats = company.currentTotalSeats;
-     const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
-     const pricePerMonth = totalSeats * monthlyPricePerSeat;
+      const totalSeats = company.currentTotalSeats;
+      const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+      const pricePerMonth = totalSeats * monthlyPricePerSeat;
   
-     const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
@@ -172,7 +166,7 @@ export default function AccountManagement() {
           juniorSeats: company.junior_seats || seatChanges.juniorSeats,
           billingPeriod: 'annual',
           pricePerMonth: pricePerMonth,
-          isReactivation: true  // Flag to indicate this is a reactivation
+          isReactivation: true
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
@@ -183,7 +177,6 @@ export default function AccountManagement() {
         throw new Error(response.error.message || 'Failed to create checkout session');
       }
 
-      // Redirect to Stripe Checkout
       if (response.data?.url) {
         window.location.href = response.data.url;
       } else {
@@ -192,59 +185,55 @@ export default function AccountManagement() {
       return;
     }
     
-    // For monthly subscriptions (not deleted), use reactivate function
-const { data: { session } } = await supabase.auth.getSession();
+    // For monthly subscriptions
+    const { data: { session } } = await supabase.auth.getSession();
 
-const response = await supabase.functions.invoke('reactivate-subscription', {
-  body: { companyId: company.id },
-  headers: {
-    Authorization: `Bearer ${session?.access_token}`
-  }
-});
-
-// Check if they need to pay (grace period already used)
-// The edge function returns error with requiresPayment flag when payment needed
-if (response.error || response.data?.requiresPayment) {
-  if (response.data?.requiresPayment) {
-    
-    // Calculate price per month
-    const totalSeats = response.data.seatCount || company.currentTotalSeats;
-    const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
-    const pricePerMonth = totalSeats * monthlyPricePerSeat;
-    
-    // Redirect to checkout for new subscription
-    const checkoutResponse = await supabase.functions.invoke('create-checkout-session', {
-      body: {
-        companyId: company.id,
-        seatCount: totalSeats,
-        adminSeats: response.data.adminSeats || company.admin_seats,
-        juniorSeats: response.data.juniorSeats || company.junior_seats,
-        billingPeriod: 'monthly',
-        pricePerMonth: pricePerMonth,
-        isReactivation: true
-      },
+    const response = await supabase.functions.invoke('reactivate-subscription', {
+      body: { companyId: company.id },
       headers: {
         Authorization: `Bearer ${session?.access_token}`
       }
     });
-    
-    if (checkoutResponse.error) {
-      throw new Error(checkoutResponse.error.message || 'Failed to create checkout session');
-    }
-    
-    if (checkoutResponse.data?.url) {
-      window.location.href = checkoutResponse.data.url;
-    } else {
-      throw new Error('No checkout URL received');
-    }
-    return;
-  }
-  
-  throw new Error(response.error.message || 'Failed to reactivate subscription');
-}
 
-alert('Subscription reactivated successfully!');
-await fetchAccountData();
+    // Check if they need to pay (grace period already used)
+    if (response.data?.requiresPayment) {
+      const totalSeats = response.data.seatCount || company.currentTotalSeats;
+      const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+      const pricePerMonth = totalSeats * monthlyPricePerSeat;
+      
+      const checkoutResponse = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          companyId: company.id,
+          seatCount: totalSeats,
+          adminSeats: response.data.adminSeats || company.admin_seats,
+          juniorSeats: response.data.juniorSeats || company.junior_seats,
+          billingPeriod: 'monthly',
+          pricePerMonth: pricePerMonth,
+          isReactivation: true
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+      
+      if (checkoutResponse.error) {
+        throw new Error(checkoutResponse.error.message || 'Failed to create checkout session');
+      }
+      
+      if (checkoutResponse.data?.url) {
+        window.location.href = checkoutResponse.data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+      return;
+    }
+    
+    if (response.error) {
+      throw new Error(response.error.message || 'Failed to reactivate subscription');
+    }
+
+    alert('Subscription reactivated successfully!');
+    await fetchAccountData();
 
   } catch (error) {
     console.error('Reactivation error:', error);
@@ -263,7 +252,6 @@ await fetchAccountData();
 
     // CANCELLED ANNUAL SUBSCRIPTIONS - Create new subscription via checkout
     if (company.cancel_at_period_end && company.subscription_type === 'annual') {
-      // Calculate price per month
       const monthlyPricePerSeat = totalNewSeats <= 14 ? 30 : totalNewSeats <= 29 ? 27 : 24;
       const pricePerMonth = totalNewSeats * monthlyPricePerSeat;
       
@@ -288,7 +276,6 @@ await fetchAccountData();
         throw new Error(response.error.message || 'Failed to create checkout session');
       }
 
-      // Redirect to Stripe Checkout
       if (response.data?.url) {
         window.location.href = response.data.url;
       } else {
@@ -299,110 +286,142 @@ await fetchAccountData();
       return;
     }
 
-      // TRIAL ACCOUNTS - Database only, no Stripe
-      if (company.subscription_status === 'trialing') {
-        const { error: companyError } = await supabase
-          .from('companies')
-          .update({
-            subscription_seats: totalNewSeats,
-            subscription_price: newPrice,
-            admin_seats: seatChanges.adminSeats,
-            junior_seats: seatChanges.juniorSeats,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', company.id)
-          .select();
+    // TRIAL ACCOUNTS - Database only, no Stripe
+    if (company.subscription_status === 'trialing') {
+      const { error: companyError } = await supabase
+        .from('companies')
+        .update({
+          subscription_seats: totalNewSeats,
+          subscription_price: newPrice,
+          admin_seats: seatChanges.adminSeats,
+          junior_seats: seatChanges.juniorSeats,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', company.id)
+        .select();
 
-        if (companyError) throw companyError;
+      if (companyError) throw companyError;
 
-        alert(`Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats\n- Price: £${newPrice}/month\n\n* Billing will start after your trial ends`);
-        
-        await fetchAccountData();
-        setSaving(false);
-        return;
-      }
-
-      // ACTIVE SUBSCRIPTIONS - Adding seats requires payment
-      if (company.subscription_status === 'active' && seatDifference > 0) {
-        // Call the edge function to create payment session
-        const { data, error } = await supabase.functions.invoke('create-seat-update-payment', {
-          body: {
-            companyId: company.id,
-            newSeatCount: totalNewSeats,
-            currentSeatCount: company.currentTotalSeats,
-            subscriptionType: company.subscription_type,
-            adminSeats: seatChanges.adminSeats,
-            juniorSeats: seatChanges.juniorSeats
-          }
-        });
-
-        if (error) throw error;
-        if (!data?.url) throw new Error('No payment URL received');
-
-        // Redirect to Stripe for payment
-        window.location.href = data.url;
-        return;
-      }
-
-      // ACTIVE SUBSCRIPTIONS - Reducing seats (no payment required)
-      if (company.subscription_status === 'active' && seatDifference < 0) {
-        // Update database
-        const { error: companyError } = await supabase
-          .from('companies')
-          .update({
-            subscription_seats: totalNewSeats,
-            subscription_price: newPrice,
-            admin_seats: seatChanges.adminSeats,
-            junior_seats: seatChanges.juniorSeats,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', company.id);
-
-        if (companyError) throw companyError;
-
-        // Update Stripe subscription for seat reduction
-        const { data: { session } } = await supabase.auth.getSession();
-        const response = await supabase.functions.invoke('update-subscription', {
-          body: { 
-            companyId: company.id,
-            newSeatCount: totalNewSeats,
-            newPrice: newPrice,
-            isReduction: true
-          },
-          headers: {
-            Authorization: `Bearer ${session?.access_token}`
-          }
-        });
-
-        if (response.error) {
-          console.error('Stripe update error:', response.error);
-          alert('Note: Seats updated in database but Stripe subscription update failed. Please contact support.');
-        }
-
-        let alertMessage = `Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats`;
-        
-        if (company.subscription_type === 'monthly') {
-          alertMessage += `\n- New price: £${newPrice}/month\n\n* Your next monthly payment will reflect this change`;
-        } else if (company.subscription_type === 'annual') {
-          alertMessage += `\n\n* No refund will be issued for seat reductions. Your renewal will reflect the new seat count.`;
-        }
-        
-        alert(alertMessage);
-        await fetchAccountData();
-      }
-
-      // NO CHANGES
-      if (seatDifference === 0) {
-        alert('No changes to save');
-      }
-
-    } catch (error) {
-      console.error('Error in handleSaveChanges:', error);
-      alert(`Failed to update subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
+      alert(`Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats\n- Price: £${newPrice}/month\n\n* Billing will start after your trial ends`);
+      
+      await fetchAccountData();
       setSaving(false);
+      return;
     }
-  };
+
+    // CANCELLED MONTHLY SUBSCRIPTIONS - Create new subscription via checkout
+    if (company.cancel_at_period_end && company.subscription_type === 'monthly' && company.grace_period_used) {
+      const monthlyPricePerSeat = totalNewSeats <= 14 ? 30 : totalNewSeats <= 29 ? 27 : 24;
+      const pricePerMonth = totalNewSeats * monthlyPricePerSeat;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          companyId: company.id,
+          seatCount: totalNewSeats,
+          adminSeats: seatChanges.adminSeats,
+          juniorSeats: seatChanges.juniorSeats,
+          billingPeriod: 'monthly',
+          pricePerMonth: pricePerMonth,
+          isReactivation: true
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to create checkout session');
+      }
+
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+      
+      setSaving(false);
+      return;
+    }
+
+    // ACTIVE SUBSCRIPTIONS - Adding seats requires payment
+    if (company.subscription_status === 'active' && seatDifference > 0) {
+      const { data, error } = await supabase.functions.invoke('create-seat-update-payment', {
+        body: {
+          companyId: company.id,
+          newSeatCount: totalNewSeats,
+          currentSeatCount: company.currentTotalSeats,
+          subscriptionType: company.subscription_type,
+          adminSeats: seatChanges.adminSeats,
+          juniorSeats: seatChanges.juniorSeats
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error('No payment URL received');
+
+      window.location.href = data.url;
+      return;
+    }
+
+    // ACTIVE SUBSCRIPTIONS - Reducing seats (no payment required)
+    if (company.subscription_status === 'active' && seatDifference < 0) {
+      const { error: companyError } = await supabase
+        .from('companies')
+        .update({
+          subscription_seats: totalNewSeats,
+          subscription_price: newPrice,
+          admin_seats: seatChanges.adminSeats,
+          junior_seats: seatChanges.juniorSeats,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', company.id);
+
+      if (companyError) throw companyError;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await supabase.functions.invoke('update-subscription', {
+        body: { 
+          companyId: company.id,
+          newSeatCount: totalNewSeats,
+          newPrice: newPrice,
+          isReduction: true
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        console.error('Stripe update error:', response.error);
+        alert('Note: Seats updated in database but Stripe subscription update failed. Please contact support.');
+      }
+
+      let alertMessage = `Successfully updated!\n\nNew allocation:\n- Admin seats: ${seatChanges.adminSeats}\n- Junior seats: ${seatChanges.juniorSeats}\n- Total: ${totalNewSeats} seats`;
+      
+      if (company.subscription_type === 'monthly') {
+        alertMessage += `\n- New price: £${newPrice}/month\n\n* Your next monthly payment will reflect this change`;
+      } else if (company.subscription_type === 'annual') {
+        alertMessage += `\n\n* No refund will be issued for seat reductions. Your renewal will reflect the new seat count.`;
+      }
+      
+      alert(alertMessage);
+      await fetchAccountData();
+    }
+
+    // NO CHANGES
+    if (seatDifference === 0) {
+      alert('No changes to save');
+    }
+
+  } catch (error) {
+    console.error('Error in handleSaveChanges:', error);
+    alert(`Failed to update subscription: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  } finally {
+    setSaving(false);
+  }
+};
 
   const removeMember = async (memberId: string) => {
     console.log('removeMember called with ID:', memberId);
