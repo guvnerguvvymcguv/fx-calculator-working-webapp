@@ -43,14 +43,34 @@ serve(async (req) => {
 
     // Get company details including Stripe subscription ID
     const { data: company, error: companyError } = await supabase
-      .from('companies')
-      .select('stripe_subscription_id, cancel_at_period_end, subscription_type')
-      .eq('id', companyId)
-      .single()
+     .from('companies')
+     .select('stripe_subscription_id, cancel_at_period_end, subscription_type, grace_period_used, subscription_seats, admin_seats, junior_seats, price_per_month')
+     .eq('id', companyId)
+     .single()
 
     if (companyError || !company) {
       throw new Error('Company not found')
     }
+
+    // If they've already used their grace period, require payment for reactivation
+if (company.grace_period_used) {
+  console.log('Grace period already used - payment required for reactivation')
+  return new Response(
+    JSON.stringify({ 
+      error: 'Grace period already used. Payment required to reactivate.',
+      requiresPayment: true,
+      seatCount: company.subscription_seats,
+      adminSeats: company.admin_seats,
+      juniorSeats: company.junior_seats,
+      pricePerMonth: company.price_per_month,
+      subscriptionType: company.subscription_type
+    }),
+    {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    }
+  )
+}
 
     if (!company.stripe_subscription_id) {
       throw new Error('No active subscription found')
@@ -88,17 +108,18 @@ serve(async (req) => {
 
     // Update company record in database to clear cancellation
     const { error: updateError } = await supabase
-      .from('companies')
-      .update({
-        subscription_status: 'active',
-        cancel_at_period_end: false,
-        scheduled_cancellation_date: null,
-        cancelled_at: null,
-        cancellation_reason: null,
-        cancellation_feedback: null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', companyId)
+  .from('companies')
+  .update({
+    subscription_status: 'active',
+    cancel_at_period_end: false,
+    scheduled_cancellation_date: null,
+    cancelled_at: null,
+    cancellation_reason: null,
+    cancellation_feedback: null,
+    grace_period_used: false,  // Reset for next cancellation
+    updated_at: new Date().toISOString()
+  })
+  .eq('id', companyId)
 
     if (updateError) {
       console.error('Database update error:', updateError)

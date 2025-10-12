@@ -193,21 +193,57 @@ export default function AccountManagement() {
     }
     
     // For monthly subscriptions (not deleted), use reactivate function
-    const { data: { session } } = await supabase.auth.getSession();
+const { data: { session } } = await supabase.auth.getSession();
+
+const response = await supabase.functions.invoke('reactivate-subscription', {
+  body: { companyId: company.id },
+  headers: {
+    Authorization: `Bearer ${session?.access_token}`
+  }
+});
+
+if (response.error) {
+  // Check if they need to pay (grace period already used)
+  if (response.data?.requiresPayment) {
+    // Calculate price per month
+    const totalSeats = response.data.seatCount || company.currentTotalSeats;
+    const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+    const pricePerMonth = totalSeats * monthlyPricePerSeat;
     
-    const response = await supabase.functions.invoke('reactivate-subscription', {
-      body: { companyId: company.id },
+    // Redirect to checkout for new subscription
+    const checkoutResponse = await supabase.functions.invoke('create-checkout-session', {
+      body: {
+        companyId: company.id,
+        seatCount: totalSeats,
+        adminSeats: response.data.adminSeats || company.admin_seats,
+        juniorSeats: response.data.juniorSeats || company.junior_seats,
+        billingPeriod: 'monthly',
+        pricePerMonth: pricePerMonth,
+        isReactivation: true
+      },
       headers: {
         Authorization: `Bearer ${session?.access_token}`
       }
     });
-
-    if (response.error) {
-      throw new Error(response.error.message || 'Failed to reactivate subscription');
+    
+    if (checkoutResponse.error) {
+      throw new Error(checkoutResponse.error.message || 'Failed to create checkout session');
     }
+    
+    if (checkoutResponse.data?.url) {
+      window.location.href = checkoutResponse.data.url;
+    } else {
+      throw new Error('No checkout URL received');
+    }
+    return;
+  }
+  
+  throw new Error(response.error.message || 'Failed to reactivate subscription');
+}
 
-    alert('Subscription reactivated successfully!');
-    await fetchAccountData();
+alert('Subscription reactivated successfully!');
+await fetchAccountData();
+
   } catch (error) {
     console.error('Reactivation error:', error);
     alert(error instanceof Error ? error.message : 'Failed to reactivate subscription');
