@@ -390,17 +390,25 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
       gracePeriodRemaining: shouldLock ? 0 : Math.ceil((scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
     });
     
-    await supabase
-      .from('companies')
-      .update({
-        subscription_status: shouldLock ? 'cancelled' : 'canceling',  // ← Changed: Keep as 'canceling' during grace period
-        subscription_active: !shouldLock,  // ← Changed: Keep active during grace period
-        account_locked: shouldLock,
-        locked_at: shouldLock ? now.toISOString() : null,
-        cancel_at_period_end: false,
-        updated_at: now.toISOString()
-      })
-      .eq('id', company.id);
+    // Build update object - preserve scheduled_cancellation_date
+const updateData: any = {
+  subscription_status: shouldLock ? 'cancelled' : 'canceling',
+  subscription_active: !shouldLock,
+  account_locked: shouldLock,
+  locked_at: shouldLock ? now.toISOString() : null,
+  cancel_at_period_end: false,
+  updated_at: now.toISOString()
+};
+
+// If not locking yet, keep the scheduled cancellation date
+if (!shouldLock && company.scheduled_cancellation_date) {
+  updateData.scheduled_cancellation_date = company.scheduled_cancellation_date;
+}
+
+await supabase
+  .from('companies')
+  .update(updateData)
+  .eq('id', company.id);
   }
   break;
 }
