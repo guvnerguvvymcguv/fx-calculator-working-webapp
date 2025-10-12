@@ -202,9 +202,11 @@ const response = await supabase.functions.invoke('reactivate-subscription', {
   }
 });
 
-if (response.error) {
-  // Check if they need to pay (grace period already used)
+// Check if they need to pay (grace period already used)
+// The edge function returns error with requiresPayment flag when payment needed
+if (response.error || response.data?.requiresPayment) {
   if (response.data?.requiresPayment) {
+    
     // Calculate price per month
     const totalSeats = response.data.seatCount || company.currentTotalSeats;
     const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
