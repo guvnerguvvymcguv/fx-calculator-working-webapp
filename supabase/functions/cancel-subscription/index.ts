@@ -97,19 +97,78 @@ serve(async (req) => {
     // Check if they've already used their grace period
 const now = new Date()
 let scheduledCancellationDate;
+let shouldLockImmediately = false;
 
-if (company.grace_period_used) {
-  // No grace period for repeat cancellations - lock immediately
+// Handle grace period logic
+if (company.grace_period_used && company.subscription_type === 'monthly') {
+  // Monthly second cancellation - lock immediately
   scheduledCancellationDate = now.toISOString();
-  console.log('Grace period already used - immediate lock');
+  shouldLockImmediately = true;
+  console.log('Monthly - Grace period already used - immediate lock');
+} else if (company.grace_period_used && company.subscription_type === 'annual') {
+  // Annual second cancellation - still give 30 days (they paid for the year)
+  const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+  scheduledCancellationDate = thirtyDaysFromNow.toISOString();
+  console.log('Annual - Grace period already used but giving 30 days (they paid for the year)');
 } else {
   // First cancellation - give 30 days grace period
   const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
   scheduledCancellationDate = thirtyDaysFromNow.toISOString();
   console.log('First cancellation - 30 day grace period');
 }
-    // For annual subscriptions, cancel immediately in Stripe but maintain 30-day access via app
-    // For monthly, use cancel_at_period_end (they've already paid for the month)
+
+// If monthly subscription with grace period used, lock immediately and cancel in Stripe
+if (shouldLockImmediately) {
+  console.log('Locking account immediately and cancelling Stripe subscription');
+  
+  // Update database to lock account
+  const { error: lockError } = await supabase
+    .from('companies')
+    .update({
+      subscription_status: 'cancelled',
+      subscription_active: false,
+      account_locked: true,
+      locked_at: now.toISOString(),
+      cancel_at_period_end: true,
+      scheduled_cancellation_date: scheduledCancellationDate,
+      grace_period_used: true,
+      cancellation_reason: reason,
+      cancellation_feedback: feedback,
+      cancelled_at: now.toISOString(),
+      updated_at: now.toISOString()
+    })
+    .eq('id', companyId)
+
+  if (lockError) {
+    console.error('Database lock error:', lockError)
+    throw new Error('Failed to lock account')
+  }
+
+  // Cancel subscription in Stripe immediately
+  await stripe.subscriptions.cancel(
+    company.stripe_subscription_id,
+    {
+      cancellation_details: {
+        comment: feedback || reason || 'Customer cancelled after using grace period',
+      }
+    }
+  )
+
+  return new Response(
+    JSON.stringify({ 
+      success: true,
+      message: 'Subscription cancelled - account locked immediately',
+      accountLocked: true,
+      subscription_type: company.subscription_type
+    }),
+    {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    }
+  )
+}
+
+// For annual subscriptions or first-time cancellations, handle with grace period
 let updatedSubscription;
 
 if (company.subscription_type === 'annual') {
@@ -138,7 +197,7 @@ if (company.subscription_type === 'annual') {
   );
 
 } else {
-  // For monthly, use cancel_at_period_end (they paid for this month)
+  // For monthly first cancellation, use cancel_at_period_end
   updatedSubscription = await stripe.subscriptions.update(
     company.stripe_subscription_id,
     {
@@ -156,37 +215,36 @@ if (company.subscription_type === 'annual') {
   );
 }
 
-    console.log('Setting 30-day grace period:', {
-      subscriptionType: company.subscription_type,
-      cancelledAt: now.toISOString(),
-      accessEndsAt: scheduledCancellationDate,
-      stripeOriginalEnd: updatedSubscription.current_period_end 
-        ? new Date(updatedSubscription.current_period_end * 1000).toISOString() 
-        : 'unknown'
-    })
+console.log('Setting grace period:', {
+  subscriptionType: company.subscription_type,
+  cancelledAt: now.toISOString(),
+  accessEndsAt: scheduledCancellationDate,
+  stripeOriginalEnd: updatedSubscription.current_period_end 
+    ? new Date(updatedSubscription.current_period_end * 1000).toISOString() 
+    : 'unknown'
+})
 
-    // Update company record in database
-    const { error: updateError } = await supabase
-      .from('companies')
-      .update({
-        subscription_status: 'canceling',
-        cancel_at_period_end: true,
-        scheduled_cancellation_date: scheduledCancellationDate, // 30 days from now
-        grace_period_used: true,
-        cancellation_reason: reason,
-        cancellation_feedback: feedback,
-        cancelled_at: now.toISOString(),
-        // Keep active for the 30-day grace period
-        subscription_active: true,
-        account_locked: false,
-        updated_at: now.toISOString()
-      })
-      .eq('id', companyId)
+// Update company record in database (for grace period cancellations)
+const { error: updateError } = await supabase
+  .from('companies')
+  .update({
+    subscription_status: 'canceling',
+    cancel_at_period_end: true,
+    scheduled_cancellation_date: scheduledCancellationDate,
+    grace_period_used: true,
+    cancellation_reason: reason,
+    cancellation_feedback: feedback,
+    cancelled_at: now.toISOString(),
+    subscription_active: true,
+    account_locked: false,
+    updated_at: now.toISOString()
+  })
+  .eq('id', companyId)
 
-    if (updateError) {
-      console.error('Database update error:', updateError)
-      throw new Error('Failed to update subscription status')
-    }
+  if (updateError) {  // ← ADD THIS CHECK
+  console.error('Database update error:', updateError)
+  throw new Error('Failed to update subscription status')
+}
 
     // Send cancellation confirmation email to all admins
     const admins = company.user_profiles.filter((u: any) => u.role_type === 'admin')
@@ -208,7 +266,7 @@ if (company.subscription_type === 'annual') {
         message: 'Subscription cancelled - 30 day grace period activated',
         cancellation_date: scheduledCancellationDate,
         days_remaining: 30,
-        subscription_id: updatedSubscription.id,
+        subscription_id: updatedSubscription?.id || 'unknown',
         subscription_type: company.subscription_type
       }),
       {
