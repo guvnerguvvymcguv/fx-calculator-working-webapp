@@ -156,7 +156,13 @@ export default function AccountManagement() {
     
     if (company.subscription_type === 'annual') {
       // For annual subscriptions, create new checkout session with current seat allocation
-      const { data: { session } } = await supabase.auth.getSession();
+
+      // Calculate price per month (even for annual, we store monthly equivalent)
+     const totalSeats = company.currentTotalSeats;
+     const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+     const pricePerMonth = totalSeats * monthlyPricePerSeat;
+  
+     const { data: { session } } = await supabase.auth.getSession();
       
       const response = await supabase.functions.invoke('create-checkout-session', {
         body: {
@@ -165,6 +171,7 @@ export default function AccountManagement() {
           adminSeats: company.admin_seats || seatChanges.adminSeats,
           juniorSeats: company.junior_seats || seatChanges.juniorSeats,
           billingPeriod: 'annual',
+          pricePerMonth: pricePerMonth,
           isReactivation: true  // Flag to indicate this is a reactivation
         },
         headers: {
@@ -210,11 +217,49 @@ export default function AccountManagement() {
 };
 
   const handleSaveChanges = async () => {
-    setSaving(true);
-    try {
-      const totalNewSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
-      const newPrice = calculatePrice(totalNewSeats);
-      const seatDifference = totalNewSeats - company.currentTotalSeats;
+  setSaving(true);
+  try {
+    const totalNewSeats = seatChanges.adminSeats + seatChanges.juniorSeats;
+    const newPrice = calculatePrice(totalNewSeats);
+    const seatDifference = totalNewSeats - company.currentTotalSeats;
+
+    // CANCELLED ANNUAL SUBSCRIPTIONS - Create new subscription via checkout
+    if (company.cancel_at_period_end && company.subscription_type === 'annual') {
+      // Calculate price per month
+      const monthlyPricePerSeat = totalNewSeats <= 14 ? 30 : totalNewSeats <= 29 ? 27 : 24;
+      const pricePerMonth = totalNewSeats * monthlyPricePerSeat;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          companyId: company.id,
+          seatCount: totalNewSeats,
+          adminSeats: seatChanges.adminSeats,
+          juniorSeats: seatChanges.juniorSeats,
+          billingPeriod: 'annual',
+          pricePerMonth: pricePerMonth,
+          isReactivation: true
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to create checkout session');
+      }
+
+      // Redirect to Stripe Checkout
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+      
+      setSaving(false);
+      return;
+    }
 
       // TRIAL ACCOUNTS - Database only, no Stripe
       if (company.subscription_status === 'trialing') {
