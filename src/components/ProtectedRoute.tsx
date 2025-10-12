@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 interface ProtectedRouteProps {
@@ -12,10 +12,11 @@ export default function ProtectedRoute({ children, adminOnly = false }: Protecte
   const [hasAccess, setHasAccess] = useState(false);
   const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
   const [isAccountLocked, setIsAccountLocked] = useState(false);
+  const location = useLocation();  // ← Add this
 
   useEffect(() => {
     checkAccess();
-  }, [adminOnly]);
+  }, [adminOnly, location.pathname]);  // ← Add location.pathname
 
   const checkAccess = async () => {
     try {
