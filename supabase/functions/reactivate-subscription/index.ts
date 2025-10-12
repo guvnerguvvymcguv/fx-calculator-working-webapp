@@ -57,17 +57,17 @@ if (company.grace_period_used) {
   console.log('Grace period already used - payment required for reactivation')
   return new Response(
     JSON.stringify({ 
-      error: 'Grace period already used. Payment required to reactivate.',
       requiresPayment: true,
       seatCount: company.subscription_seats,
       adminSeats: company.admin_seats,
       juniorSeats: company.junior_seats,
       pricePerMonth: company.price_per_month,
-      subscriptionType: company.subscription_type
+      subscriptionType: company.subscription_type,
+      message: 'Grace period already used. Payment required to reactivate.'
     }),
     {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 200,  // ← Changed from 400 to 200
     }
   )
 }
