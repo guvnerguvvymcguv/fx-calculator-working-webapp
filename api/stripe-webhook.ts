@@ -328,14 +328,18 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
           };
 
           // Check if subscription is set to cancel at period end
-        if (subscription.cancel_at_period_end) {
-          updateData.cancel_at_period_end = true;
-          // DO NOT overwrite scheduled_cancellation_date - it's already set correctly by cancel-subscription function
-          // The cancel-subscription function sets 30-day grace period for all paid subscriptions
-        } else {
-          updateData.cancel_at_period_end = false;
-          updateData.scheduled_cancellation_date = null;
-        }
+if (subscription.cancel_at_period_end) {
+  updateData.cancel_at_period_end = true;
+  // DO NOT overwrite scheduled_cancellation_date - it's already set by cancel-subscription function
+} else {
+  // Only clear cancellation data if subscription is actually active (not canceled)
+  if (subscription.status === 'active') {
+    updateData.cancel_at_period_end = false;
+    updateData.scheduled_cancellation_date = null;
+  }
+  // If subscription is canceled/incomplete/etc, don't touch these fields
+  // They were set by our cancel-subscription function
+}
 
           // If subscription has items, update seat count and price
           if (subscription.items && subscription.items.data.length > 0) {
@@ -396,13 +400,14 @@ const updateData: any = {
   subscription_active: !shouldLock,
   account_locked: shouldLock,
   locked_at: shouldLock ? now.toISOString() : null,
-  cancel_at_period_end: false,
+  // DON'T set cancel_at_period_end here - keep whatever cancel-subscription set
   updated_at: now.toISOString()
 };
 
-// If not locking yet, keep the scheduled cancellation date
+// Preserve scheduled_cancellation_date and cancel_at_period_end during grace period
 if (!shouldLock && company.scheduled_cancellation_date) {
   updateData.scheduled_cancellation_date = company.scheduled_cancellation_date;
+  updateData.cancel_at_period_end = true;  // ✅ Keep it true during grace period
 }
 
 await supabase
