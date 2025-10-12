@@ -148,30 +148,66 @@ export default function AccountManagement() {
   };
 
   const handleReactivateSubscription = async () => {
-    setReactivating(true);
-    try {
+  setReactivating(true);
+  try {
+    // Check if subscription is deleted (annual cancellations)
+    // Annual subscriptions are deleted immediately in Stripe, so can't be reactivated
+    // Instead, redirect to checkout to create new subscription
+    
+    if (company.subscription_type === 'annual') {
+      // For annual subscriptions, create new checkout session with current seat allocation
       const { data: { session } } = await supabase.auth.getSession();
       
-      const response = await supabase.functions.invoke('reactivate-subscription', {
-        body: { companyId: company.id },
+      const response = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          companyId: company.id,
+          seatCount: company.currentTotalSeats,
+          adminSeats: company.admin_seats || seatChanges.adminSeats,
+          juniorSeats: company.junior_seats || seatChanges.juniorSeats,
+          billingPeriod: 'annual',
+          isReactivation: true  // Flag to indicate this is a reactivation
+        },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
         }
       });
 
       if (response.error) {
-        throw new Error(response.error.message || 'Failed to reactivate subscription');
+        throw new Error(response.error.message || 'Failed to create checkout session');
       }
 
-      alert('Subscription reactivated successfully!');
-      await fetchAccountData();
-    } catch (error) {
-      console.error('Reactivation error:', error);
-      alert(error instanceof Error ? error.message : 'Failed to reactivate subscription');
-    } finally {
-      setReactivating(false);
+      // Redirect to Stripe Checkout
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+      return;
     }
-  };
+    
+    // For monthly subscriptions (not deleted), use reactivate function
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const response = await supabase.functions.invoke('reactivate-subscription', {
+      body: { companyId: company.id },
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`
+      }
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message || 'Failed to reactivate subscription');
+    }
+
+    alert('Subscription reactivated successfully!');
+    await fetchAccountData();
+  } catch (error) {
+    console.error('Reactivation error:', error);
+    alert(error instanceof Error ? error.message : 'Failed to reactivate subscription');
+  } finally {
+    setReactivating(false);
+  }
+};
 
   const handleSaveChanges = async () => {
     setSaving(true);
