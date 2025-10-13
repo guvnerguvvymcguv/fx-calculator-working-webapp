@@ -251,7 +251,7 @@ export default function AccountManagement() {
     const seatDifference = totalNewSeats - company.currentTotalSeats;
 
     // CANCELLED ANNUAL SUBSCRIPTIONS - Create new subscription via checkout
-    if (company.cancel_at_period_end && company.subscription_type === 'annual') {
+    if (company.cancel_at_period_end && company.subscription_type === 'annual' && company.grace_period_used) {
       const monthlyPricePerSeat = totalNewSeats <= 14 ? 30 : totalNewSeats <= 29 ? 27 : 24;
       const pricePerMonth = totalNewSeats * monthlyPricePerSeat;
       
@@ -285,6 +285,26 @@ export default function AccountManagement() {
       setSaving(false);
       return;
     }
+
+// CANCELLED ANNUAL SUBSCRIPTIONS (FIRST TIME - ADDING SEATS) - Pro-rata payment for extra seats only
+if (company.cancel_at_period_end && company.subscription_type === 'annual' && !company.grace_period_used && seatDifference > 0) {
+  const { data, error } = await supabase.functions.invoke('create-seat-update-payment', {
+    body: {
+      companyId: company.id,
+      newSeatCount: totalNewSeats,
+      currentSeatCount: company.currentTotalSeats,
+      subscriptionType: company.subscription_type,
+      adminSeats: seatChanges.adminSeats,
+      juniorSeats: seatChanges.juniorSeats
+    }
+  });
+
+  if (error) throw error;
+  if (!data?.url) throw new Error('No payment URL received');
+
+  window.location.href = data.url;
+  return;
+}
 
     // TRIAL ACCOUNTS - Database only, no Stripe
     if (company.subscription_status === 'trialing') {
