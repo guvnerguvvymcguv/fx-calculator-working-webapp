@@ -200,25 +200,31 @@ serve(async (req) => {
       });
 
       sessionConfig = {
-        customer: customerId,
-        payment_method_types: ['card'],
-        mode: 'subscription',
-        success_url: `${origin}/admin?checkout=success`,
-        cancel_url: `${origin}/checkout?canceled=true`,
-        metadata: {
-          company_id: companyId,
-          seat_count: seatCount.toString(),
-          admin_seats: (adminSeats || company.admin_seats || 0).toString(),
-          junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
-          billing_period: billingPeriod,
-          price_per_month: pricePerMonth.toString(),
-          user_id: user.id
-        },
-        line_items: [{
-          price: priceWithVat.id,
-          quantity: seatCount
-        }]
-      };
+  customer: customerId,
+  payment_method_types: ['card'],
+  mode: 'subscription',
+  payment_method_options: {
+    card: {
+      request_three_d_secure: 'any',  // ← ENFORCE 3D SECURE
+    },
+  },
+  success_url: `${origin}/admin?checkout=success`,
+  cancel_url: `${origin}/checkout?canceled=true`,
+  metadata: {
+    company_id: companyId,
+    seat_count: seatCount.toString(),
+    admin_seats: (adminSeats || company.admin_seats || 0).toString(),
+    junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
+    billing_period: billingPeriod,
+    price_per_month: pricePerMonth.toString(),
+    user_id: user.id
+  },
+  line_items: [{
+    price: priceWithVat.id,
+    quantity: seatCount
+  }]
+};
+
     } else {
       // For annual subscriptions, create a recurring subscription with annual interval
       const annualPricePerSeat = selectedTier.pricePerSeat * 12; // £360/year
@@ -238,25 +244,30 @@ serve(async (req) => {
       });
 
       sessionConfig = {
-        customer: customerId,
-        payment_method_types: ['card'],
-        mode: 'subscription',
-        success_url: `${origin}/admin?checkout=success`,
-        cancel_url: `${origin}/checkout?canceled=true`,
-        metadata: {
-          company_id: companyId,
-          seat_count: seatCount.toString(),
-          admin_seats: (adminSeats || company.admin_seats || 0).toString(),
-          junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
-          billing_period: billingPeriod,
-          price_per_month: pricePerMonth.toString(),
-          user_id: user.id
-        },
-        line_items: [{
-          price: annualPrice.id,
-          quantity: seatCount
-        }]
-      };
+  customer: customerId,
+  payment_method_types: ['card'],
+  mode: 'subscription',
+  payment_method_options: {
+    card: {
+      request_three_d_secure: 'any',  // ← ENFORCE 3D SECURE
+    },
+  },
+  success_url: `${origin}/admin?checkout=success`,
+  cancel_url: `${origin}/checkout?canceled=true`,
+  metadata: {
+    company_id: companyId,
+    seat_count: seatCount.toString(),
+    admin_seats: (adminSeats || company.admin_seats || 0).toString(),
+    junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
+    billing_period: billingPeriod,
+    price_per_month: pricePerMonth.toString(),
+    user_id: user.id
+  },
+  line_items: [{
+    price: annualPrice.id,
+    quantity: seatCount
+  }]
+};
     }
 
     try {
