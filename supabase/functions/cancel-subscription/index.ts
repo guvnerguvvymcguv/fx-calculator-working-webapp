@@ -99,7 +99,7 @@ const now = new Date()
 let scheduledCancellationDate;
 let shouldLockImmediately = false;
 
-// Handle grace period logic
+// Handle grace period logic based on subscription type
 if (company.grace_period_used && company.subscription_type === 'monthly') {
   // Monthly second cancellation - lock immediately
   scheduledCancellationDate = now.toISOString();
@@ -110,11 +110,16 @@ if (company.grace_period_used && company.subscription_type === 'monthly') {
   const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
   scheduledCancellationDate = thirtyDaysFromNow.toISOString();
   console.log('Annual - Grace period already used but giving 30 days (they paid for the year)');
+} else if (company.subscription_type === 'monthly') {
+  // Monthly first cancellation - access until end of paid period (industry standard)
+  // They've already paid for this month, let them have it
+  // scheduledCancellationDate will be set from Stripe response below
+  console.log('Monthly - First cancellation - access until end of billing period');
 } else {
-  // First cancellation - give 30 days grace period
+  // Annual first cancellation - give 30 days grace period
   const thirtyDaysFromNow = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
   scheduledCancellationDate = thirtyDaysFromNow.toISOString();
-  console.log('First cancellation - 30 day grace period');
+  console.log('Annual - First cancellation - 30 day grace period');
 }
 
 // If monthly subscription with grace period used, lock immediately and cancel in Stripe
@@ -197,7 +202,7 @@ if (company.subscription_type === 'annual') {
   );
 
 } else {
-  // For monthly first cancellation, use cancel_at_period_end
+  // For monthly, use cancel_at_period_end (they've paid for this month)
   updatedSubscription = await stripe.subscriptions.update(
     company.stripe_subscription_id,
     {
@@ -213,13 +218,18 @@ if (company.subscription_type === 'annual') {
       }
     }
   );
+  
+  // For monthly, use the Stripe billing period end as the scheduled cancellation date
+  // This is when they've paid until - industry standard
+  scheduledCancellationDate = new Date(updatedSubscription.current_period_end * 1000).toISOString();
 }
 
-console.log('Setting grace period:', {
+console.log('Setting cancellation:', {
   subscriptionType: company.subscription_type,
   cancelledAt: now.toISOString(),
   accessEndsAt: scheduledCancellationDate,
-  stripeOriginalEnd: updatedSubscription.current_period_end 
+  gracePeriodUsed: company.grace_period_used,
+  stripePeriodEnd: updatedSubscription.current_period_end 
     ? new Date(updatedSubscription.current_period_end * 1000).toISOString() 
     : 'unknown'
 })
@@ -260,15 +270,20 @@ const { error: updateError } = await supabase
       }
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        message: 'Subscription cancelled - 30 day grace period activated',
-        cancellation_date: scheduledCancellationDate,
-        days_remaining: 30,
-        subscription_id: updatedSubscription?.id || 'unknown',
-        subscription_type: company.subscription_type
-      }),
+    const daysRemaining = Math.ceil((new Date(scheduledCancellationDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+return new Response(
+  JSON.stringify({ 
+    success: true,
+    message: company.subscription_type === 'monthly' 
+      ? 'Subscription cancelled - access until end of billing period'
+      : 'Subscription cancelled - 30 day grace period activated',
+    cancellation_date: scheduledCancellationDate,
+    days_remaining: daysRemaining,
+    subscription_id: updatedSubscription?.id || 'unknown',
+    subscription_type: company.subscription_type
+  }),
+  
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

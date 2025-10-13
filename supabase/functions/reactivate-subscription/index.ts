@@ -107,7 +107,7 @@ if (company.grace_period_used) {
     }
 
     // Update company record in database to clear cancellation
-    const { error: updateError } = await supabase
+const { error: updateError } = await supabase
   .from('companies')
   .update({
     subscription_status: 'active',
@@ -116,7 +116,8 @@ if (company.grace_period_used) {
     cancelled_at: null,
     cancellation_reason: null,
     cancellation_feedback: null,
-    grace_period_used: false,  // Reset for next cancellation
+    // DON'T reset grace_period_used - they've used their one free reactivation
+    // Next cancellation will check this flag and lock immediately
     updated_at: new Date().toISOString()
   })
   .eq('id', companyId)

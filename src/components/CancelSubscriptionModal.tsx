@@ -51,31 +51,42 @@ export default function CancelSubscriptionModal({
       const functionName = subscriptionType === 'trial' ? 'cancel-trial' : 'cancel-subscription';
       
       const response = await supabase.functions.invoke(functionName, {
-        body: { 
-          companyId,
-          reason,
-          feedback
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`
-        }
-      });
+  body: { 
+    companyId,
+    reason,
+    feedback
+  },
+  headers: {
+    Authorization: `Bearer ${session?.access_token}`
+  }
+});
 
-      if (response.error) {
-        throw new Error(response.error.message || `Failed to cancel ${subscriptionType === 'trial' ? 'trial' : 'subscription'}`);
-      }
+if (response.error) {
+  throw new Error(response.error.message || `Failed to cancel ${subscriptionType === 'trial' ? 'trial' : 'subscription'}`);
+}
 
-      // Show success message based on subscription type
-      if (subscriptionType === 'trial') {
-        alert('Your trial has been cancelled and your account has been locked.');
-      } else if (subscriptionType === 'annual') {
-        alert('Your subscription has been cancelled. You will continue to have access until the end of your billing period.');
-      } else {
-        alert('Your subscription has been cancelled. You will continue to have access until the end of the current month.');
-      }
+// Check if account was locked (second cancellation)
+if (response.data?.accountLocked) {
+  alert('Your subscription has been cancelled and your account has been locked immediately. You will need to subscribe again to regain access.');
+  onSuccess();
+  onClose();
+  return;
+}
 
-      onSuccess();
-      onClose();
+// Show success message based on subscription type
+if (subscriptionType === 'trial') {
+  alert('Your trial has been cancelled and your account has been locked.');
+} else if (subscriptionType === 'annual') {
+  alert('Your subscription has been cancelled. You will continue to have access until the end of your billing period.');
+} else {
+  // First monthly cancellation - show how many days they have
+  const daysRemaining = response.data?.days_remaining || 30;
+  alert(`Your subscription has been cancelled. You will continue to have access for ${daysRemaining} days.`);
+}
+
+onSuccess();
+onClose();
+
     } catch (error) {
       console.error('Cancellation error:', error);
       alert(error instanceof Error ? error.message : `Failed to cancel ${subscriptionType === 'trial' ? 'trial' : 'subscription'}`);
