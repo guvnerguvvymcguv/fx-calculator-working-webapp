@@ -77,7 +77,7 @@ if (response.data?.accountLocked) {
 if (subscriptionType === 'trial') {
   alert('Your trial has been cancelled and your account has been locked.');
 } else if (subscriptionType === 'annual') {
-  alert('Your subscription has been cancelled. You will continue to have access until the end of your billing period.');
+  alert('Your subscription has been cancelled and your account has been locked immediately. You will need to subscribe again to regain access.');
 } else {
   // First monthly cancellation - show how many days they have
   const daysRemaining = response.data?.days_remaining || 30;
@@ -168,12 +168,12 @@ onClose();
                       <li>• You can subscribe anytime to regain access</li>
                     </>
                   ) : subscriptionType === 'annual' ? (
-                    <>
-                      <li>• You'll keep access for 30 days</li>
-                      <li>• No refunds for unused time</li>
-                      <li>• Your data will be preserved</li>
-                      <li>• You can reactivate anytime</li>
-                    </>
+  <>
+    <li>• Your account will be locked immediately</li>
+    <li>• No refunds for unused time</li>
+    <li>• Your data will be preserved for 30 days</li>
+    <li>• You'll need to start a new subscription to regain access</li>
+  </>
                   ) : (
                     <>
                       <li>• You'll keep access for 30 days</li>
