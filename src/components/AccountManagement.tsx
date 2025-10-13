@@ -309,8 +309,8 @@ export default function AccountManagement() {
       return;
     }
 
-    // CANCELLED MONTHLY SUBSCRIPTIONS - Create new subscription via checkout
-    if (company.cancel_at_period_end && company.subscription_type === 'monthly' && company.grace_period_used) {
+    // CANCELLED MONTHLY SUBSCRIPTIONS (SECOND TIME) - Create new subscription via checkout
+    if (company.cancel_at_period_end && company.subscription_type === 'monthly' && company.grace_period_used && seatDifference > 0) {
       const monthlyPricePerSeat = totalNewSeats <= 14 ? 30 : totalNewSeats <= 29 ? 27 : 24;
       const pricePerMonth = totalNewSeats * monthlyPricePerSeat;
       
@@ -344,6 +344,26 @@ export default function AccountManagement() {
       setSaving(false);
       return;
     }
+
+    // CANCELLED MONTHLY SUBSCRIPTIONS (FIRST TIME - ADDING SEATS) - Pro-rata payment for extra seats only
+if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !company.grace_period_used && seatDifference > 0) {
+  const { data, error } = await supabase.functions.invoke('create-seat-update-payment', {
+    body: {
+      companyId: company.id,
+      newSeatCount: totalNewSeats,
+      currentSeatCount: company.currentTotalSeats,
+      subscriptionType: company.subscription_type,
+      adminSeats: seatChanges.adminSeats,
+      juniorSeats: seatChanges.juniorSeats
+    }
+  });
+
+  if (error) throw error;
+  if (!data?.url) throw new Error('No payment URL received');
+
+  window.location.href = data.url;
+  return;
+}
 
     // ACTIVE SUBSCRIPTIONS - Adding seats requires payment
     if (company.subscription_status === 'active' && seatDifference > 0) {

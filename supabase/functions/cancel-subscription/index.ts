@@ -241,7 +241,7 @@ const { error: updateError } = await supabase
     subscription_status: 'canceling',
     cancel_at_period_end: true,
     scheduled_cancellation_date: scheduledCancellationDate,
-    grace_period_used: true,
+    // DON'T set grace_period_used here - only set it when they REACTIVATE
     cancellation_reason: reason,
     cancellation_feedback: feedback,
     cancelled_at: now.toISOString(),
@@ -283,7 +283,7 @@ return new Response(
     subscription_id: updatedSubscription?.id || 'unknown',
     subscription_type: company.subscription_type
   }),
-  
+
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

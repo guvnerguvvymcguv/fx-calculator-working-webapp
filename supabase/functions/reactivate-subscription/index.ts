@@ -106,8 +106,7 @@ if (company.grace_period_used) {
       throw new Error('Failed to reactivate subscription with payment provider')
     }
 
-    // Update company record in database to clear cancellation
-const { error: updateError } = await supabase
+   const { error: updateError } = await supabase
   .from('companies')
   .update({
     subscription_status: 'active',
@@ -116,8 +115,7 @@ const { error: updateError } = await supabase
     cancelled_at: null,
     cancellation_reason: null,
     cancellation_feedback: null,
-    // DON'T reset grace_period_used - they've used their one free reactivation
-    // Next cancellation will check this flag and lock immediately
+    grace_period_used: true,  // ← SET TO TRUE WHEN THEY REACTIVATE (they've used their free pass)
     updated_at: new Date().toISOString()
   })
   .eq('id', companyId)
