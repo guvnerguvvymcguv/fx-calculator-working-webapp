@@ -120,35 +120,39 @@ serve(async (req) => {
       proRataAmount = 100 // Minimum £1
     }
 
-    // Create checkout session for the pro-rata payment
-    const session = await stripe.checkout.sessions.create({
-      customer: company.stripe_customer_id,
-      payment_method_types: ['card'],
-      mode: 'payment',
-      success_url: `${req.headers.get('origin')}/admin?seat_update=success&seats=${newSeatCount}`,
-      cancel_url: `${req.headers.get('origin')}/admin/account`,
-      line_items: [{
-        price_data: {
-          currency: 'gbp',
-          product_data: {
-            name: `Additional ${seatDifference} seat${seatDifference !== 1 ? 's' : ''} - Pro-rata charge`,
-            description: periodDescription,
-          },
-          unit_amount: proRataAmount,
-        },
-        quantity: 1,
-      }],
-      metadata: {
-         company_id: companyId,
-         seat_update: 'true',
-         new_seat_count: newSeatCount.toString(),
-         old_seat_count: currentSeatCount.toString(),
-         subscription_id: company.stripe_subscription_id,
-         subscription_type: subscriptionType || company.subscription_type,
-         admin_seats: adminSeats.toString(),
-         junior_seats: juniorSeats.toString()
-       }
-      })
+const session = await stripe.checkout.sessions.create({
+  customer: company.stripe_customer_id,
+  payment_method_types: ['card'],
+  mode: 'payment',
+  success_url: `${req.headers.get('origin')}/admin?seat_update=success&seats=${newSeatCount}`,
+  cancel_url: `${req.headers.get('origin')}/admin/account`,
+  line_items: [{
+    price_data: {
+      currency: 'gbp',
+      product_data: {
+        name: `Additional ${seatDifference} seat${seatDifference !== 1 ? 's' : ''} - Pro-rata charge`,
+        description: periodDescription,
+      },
+      unit_amount: proRataAmount,
+    },
+    quantity: 1,
+  }],
+  payment_method_options: {
+    card: {
+      request_three_d_secure: 'any',  // ← ENFORCE 3D SECURE
+    },
+  },
+  metadata: {
+     company_id: companyId,
+     seat_update: 'true',
+     new_seat_count: newSeatCount.toString(),
+     old_seat_count: currentSeatCount.toString(),
+     subscription_id: company.stripe_subscription_id,
+     subscription_type: subscriptionType || company.subscription_type,
+     admin_seats: adminSeats.toString(),
+     junior_seats: juniorSeats.toString()
+   }
+  })
 
     console.log('Checkout session created:', session.id)
 
