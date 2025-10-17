@@ -32,6 +32,8 @@ export default function CalculatorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
+  const [findingCompanies, setFindingCompanies] = useState(false);
+  const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
@@ -208,6 +210,46 @@ export default function CalculatorPage() {
       alert('Error signing out. Please try again.');
     } else {
       navigate('/login');
+    }
+  };
+
+  const handleFindSimilarCompanies = async () => {
+    if (!calculator.competitorName) {
+      alert('Please enter a client name first');
+      return;
+    }
+
+    setFindingCompanies(true);
+    setSimilarCompanies([]);
+
+    try {
+      const profile = await getUserProfile(currentUser.id);
+      
+      const response = await fetch('/api/find-similar-companies', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          companyName: calculator.competitorName,
+          userId: currentUser.id,
+          companyId: profile?.company_id
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to find similar companies');
+      }
+
+      setSimilarCompanies(data.similarCompanies || []);
+      
+    } catch (error) {
+      console.error('Error finding similar companies:', error);
+      alert(error instanceof Error ? error.message : 'Failed to find similar companies. Please try again.');
+    } finally {
+      setFindingCompanies(false);
     }
   };
 
@@ -471,63 +513,121 @@ export default function CalculatorPage() {
 
               {/* Results Display */}
               {calculator.results && (
-                <div className="p-6 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg border border-purple-400/30">
-                  <h3 className="text-lg font-semibold text-purple-200 mb-4 flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Calculation Results
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-300">Price Difference</p>
-                      <p className="text-xl font-bold text-purple-100">
-                        {calculator.results.isAdvantage ? '+' : '-'}{calculator.results.priceDifference}
-                      </p>
-                    </div>
+                <>
+                  <div className="p-6 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg border border-purple-400/30">
+                    <h3 className="text-lg font-semibold text-purple-200 mb-4 flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Calculation Results
+                    </h3>
                     
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-300">Pips</p>
-                      <p className="text-xl font-bold text-purple-100">
-                        {calculator.results.pipsAdvantage} pips
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-300">Cost With Competitor</p>
-                      <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-red-400' : 'text-green-400'}`}>
-                        {(parseFloat(calculator.tradeAmount) / parseFloat(calculator.competitorRate)).toFixed(2)}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-300">Cost With Us</p>
-                      <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
-                        {(parseFloat(calculator.tradeAmount) / (parseFloat(calculator.yourRate) + (calculator.selectedPips / 10000))).toFixed(2)}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-300">Savings Per Trade</p>
-                      <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
-                        {calculator.results.savingsPerTrade}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-300">Annual Savings</p>
-                      <p className={`text-2xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
-                        {calculator.results.annualSavings}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <p className="text-sm text-purple-300">Percentage Savings</p>
-                      <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
-                        {calculator.results.percentageSavings}%
-                      </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <p className="text-sm text-purple-300">Price Difference</p>
+                        <p className="text-xl font-bold text-purple-100">
+                          {calculator.results.isAdvantage ? '+' : '-'}{calculator.results.priceDifference}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm text-purple-300">Pips</p>
+                        <p className="text-xl font-bold text-purple-100">
+                          {calculator.results.pipsAdvantage} pips
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm text-purple-300">Cost With Competitor</p>
+                        <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-red-400' : 'text-green-400'}`}>
+                          {(parseFloat(calculator.tradeAmount) / parseFloat(calculator.competitorRate)).toFixed(2)}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm text-purple-300">Cost With Us</p>
+                        <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
+                          {(parseFloat(calculator.tradeAmount) / (parseFloat(calculator.yourRate) + (calculator.selectedPips / 10000))).toFixed(2)}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm text-purple-300">Savings Per Trade</p>
+                        <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
+                          {calculator.results.savingsPerTrade}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm text-purple-300">Annual Savings</p>
+                        <p className={`text-2xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
+                          {calculator.results.annualSavings}
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <p className="text-sm text-purple-300">Percentage Savings</p>
+                        <p className={`text-xl font-bold ${calculator.results.isAdvantage ? 'text-green-400' : 'text-red-400'}`}>
+                          {calculator.results.percentageSavings}%
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+
+                  {/* Find Similar Companies Button */}
+                  {calculator.competitorName && (
+                    <Button 
+                      onClick={handleFindSimilarCompanies}
+                      disabled={findingCompanies}
+                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-blue-400/60 transition-all duration-200"
+                    >
+                      {findingCompanies ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                          Finding Similar Companies...
+                        </>
+                      ) : (
+                        <>
+                          <TrendingUp className="mr-2 h-5 w-5" />
+                          Find Similar Companies to {calculator.competitorName}
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {/* Similar Companies Results */}
+                  {similarCompanies.length > 0 && (
+                    <div className="p-6 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-400/30">
+                      <h3 className="text-lg font-semibold text-purple-200 mb-4 flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Similar Companies ({similarCompanies.length} found)
+                      </h3>
+                      
+                      <div className="space-y-3">
+                        {similarCompanies.map((company, index) => (
+                          <div key={index} className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-purple-100 mb-1">{company.name}</h4>
+                                <p className="text-sm text-purple-300 mb-2">{company.industry}</p>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                  <span className="px-2 py-1 bg-purple-600/30 rounded text-purple-200">
+                                    📍 {company.location}
+                                  </span>
+                                  <span className="px-2 py-1 bg-blue-600/30 rounded text-blue-200">
+                                    {company.size}
+                                  </span>
+                                  <span className="px-2 py-1 bg-green-600/30 rounded text-green-200">
+                                    {(company.confidence_score * 100).toFixed(0)}% match
+                                  </span>
+                                </div>
+                                <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Reset Button */}
