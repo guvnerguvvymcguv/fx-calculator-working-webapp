@@ -253,7 +253,7 @@ setUserCalculationCounts(counts);
         .select('*')
         .eq('company_id', profile.company_id)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
       
       console.log('Schedule fetch result:', { schedule, error });
         
