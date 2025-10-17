@@ -312,15 +312,18 @@ setUserCalculationCounts(counts);
 
       if (weeklyExportSchedule) {
         // Update existing schedule
-        const { error } = await supabase
+        console.log('Updating existing schedule:', weeklyExportSchedule.id);
+        const { data, error } = await supabase
           .from('export_schedules')
           .update({
             day_of_week: parseInt(scheduleDay),
             hour: parseInt(scheduleHour),
             updated_at: new Date().toISOString()
           })
-          .eq('id', weeklyExportSchedule.id);
+          .eq('id', weeklyExportSchedule.id)
+          .select();
         
+        console.log('Update result:', { data, error });
         if (error) {
           console.error('Update error:', error);
           alert('Failed to update schedule: ' + error.message);
@@ -328,7 +331,8 @@ setUserCalculationCounts(counts);
         }
       } else {
         // Create new schedule
-        const { error } = await supabase
+        console.log('Creating new schedule for company:', profile.company_id);
+        const { data, error } = await supabase
           .from('export_schedules')
           .insert({
             company_id: profile.company_id,
@@ -336,8 +340,10 @@ setUserCalculationCounts(counts);
             hour: parseInt(scheduleHour),
             is_active: true,
             export_type: 'salesforce_chatter'
-          });
+          })
+          .select();
         
+        console.log('Insert result:', { data, error });
         if (error) {
           console.error('Insert error:', error);
           alert('Failed to create schedule: ' + error.message);
