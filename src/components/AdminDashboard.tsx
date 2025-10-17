@@ -231,7 +231,10 @@ setUserCalculationCounts(counts);
   const fetchWeeklyExportSchedule = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('No user found in fetchWeeklyExportSchedule');
+        return;
+      }
       
       const { data: profile } = await supabase
         .from('user_profiles')
@@ -239,19 +242,29 @@ setUserCalculationCounts(counts);
         .eq('id', user.id)
         .single();
         
-      if (!profile?.company_id) return;
+      if (!profile?.company_id) {
+        console.log('No company_id found in fetchWeeklyExportSchedule');
+        return;
+      }
       
-      const { data: schedule } = await supabase
+      console.log('Fetching schedule for company:', profile.company_id);
+      const { data: schedule, error } = await supabase
         .from('export_schedules')
         .select('*')
         .eq('company_id', profile.company_id)
         .eq('is_active', true)
         .single();
+      
+      console.log('Schedule fetch result:', { schedule, error });
         
       if (schedule) {
+        console.log('Setting schedule:', schedule);
         setWeeklyExportSchedule(schedule);
         setScheduleDay(schedule.day_of_week.toString());
         setScheduleHour(schedule.hour.toString());
+      } else {
+        console.log('No active schedule found, clearing state');
+        setWeeklyExportSchedule(null);
       }
     } catch (error) {
       console.error('Error fetching export schedule:', error);
@@ -333,8 +346,10 @@ setUserCalculationCounts(counts);
       }
       
       console.log('Schedule saved successfully');
-      setEditingSchedule(false);
+      // Force re-fetch the schedule
       await fetchWeeklyExportSchedule();
+      // Only exit edit mode after schedule is fetched
+      setEditingSchedule(false);
     } catch (error) {
       console.error('Error saving export schedule:', error);
       alert('Failed to save export schedule');
