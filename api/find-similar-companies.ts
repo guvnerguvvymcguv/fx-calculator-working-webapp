@@ -132,8 +132,10 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
       throw new Error('Companies House API key not configured');
     }
 
-    // Companies House search endpoint
-    const searchUrl = `https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(companyName)}&items_per_page=1`;
+    // Companies House search endpoint - using correct URL structure
+    const searchUrl = `https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(companyName)}&items_per_page=5`;
+    
+    console.log('Searching Companies House:', searchUrl);
     
     const response = await fetch(searchUrl, {
       headers: {
@@ -141,21 +143,29 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
       }
     });
 
+    console.log('Companies House search status:', response.status);
+
     if (!response.ok) {
-      console.error('Companies House API error:', response.status);
+      const errorText = await response.text();
+      console.error('Companies House API error:', response.status, errorText);
       return null;
     }
 
     const data = await response.json();
+    console.log('Companies House search results:', data);
     
     if (!data.items || data.items.length === 0) {
+      console.log('No companies found for:', companyName);
       return null;
     }
 
     const company = data.items[0];
+    console.log('Top result:', company.company_name, company.company_number);
 
     // Get detailed company info including SIC codes
     const detailUrl = `https://api.company-information.service.gov.uk/company/${company.company_number}`;
+    console.log('Fetching company details:', detailUrl);
+    
     const detailResponse = await fetch(detailUrl, {
       headers: {
         'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
@@ -163,14 +173,17 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
     });
 
     if (!detailResponse.ok) {
+      console.log('Could not fetch details, using basic info');
       return company;
     }
 
     const detailData = await detailResponse.json();
+    console.log('Company details:', detailData);
     
     return {
       ...company,
-      sic_codes: detailData.sic_codes || []
+      sic_codes: detailData.sic_codes || [],
+      registered_office_address: detailData.registered_office_address || company.registered_office_address
     };
 
   } catch (error) {
@@ -188,12 +201,18 @@ async function findSimilarCompanies(
     const apiKey = process.env.COMPANIES_HOUSE_API_KEY;
     
     if (!apiKey || sicCodes.length === 0) {
+      console.log('No API key or SIC codes available');
       return [];
     }
 
-    // Search by primary SIC code
+    // Search by primary SIC code - Companies House uses SIC code descriptions
     const primarySicCode = sicCodes[0];
-    const searchUrl = `https://api.company-information.service.gov.uk/search/companies?q=${primarySicCode}&items_per_page=20`;
+    console.log('Searching for companies with SIC code:', primarySicCode);
+    
+    // Try searching by SIC code number directly
+    const searchUrl = `https://api.company-information.service.gov.uk/advanced-search/companies?sic_codes=${primarySicCode}&size=50`;
+    
+    console.log('Advanced search URL:', searchUrl);
     
     const response = await fetch(searchUrl, {
       headers: {
@@ -201,11 +220,33 @@ async function findSimilarCompanies(
       }
     });
 
+    console.log('Advanced search status:', response.status);
+
     if (!response.ok) {
-      return [];
+      console.log('Advanced search failed, trying alternative method');
+      
+      // Fallback: search by industry keywords
+      const fallbackUrl = `https://api.company-information.service.gov.uk/search/companies?q=${primarySicCode}&items_per_page=50`;
+      console.log('Fallback search URL:', fallbackUrl);
+      
+      const fallbackResponse = await fetch(fallbackUrl, {
+        headers: {
+          'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
+        }
+      });
+      
+      if (!fallbackResponse.ok) {
+        console.error('Fallback search also failed:', fallbackResponse.status);
+        return [];
+      }
+      
+      const fallbackData = await fallbackResponse.json();
+      console.log('Fallback results count:', fallbackData.items?.length || 0);
+      return fallbackData.items || [];
     }
 
     const data = await response.json();
+    console.log('Advanced search results count:', data.items?.length || 0);
     
     return data.items || [];
 
@@ -225,15 +266,18 @@ async function rankCompaniesWithAI(
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     
     if (!anthropicApiKey) {
-      // Fallback: return basic list without AI ranking
-      return candidateCompanies.slice(0, 5).map((company, index) => ({
-        name: company.company_name,
-        industry: company.sic_codes?.join(', ') || 'Unknown',
+      // Fallback: return basic list without AI ranking but with actual company data
+      console.log('No Anthropic API key, using fallback ranking');
+      return candidateCompanies.slice(0, 8).map((company, index) => ({
+        name: company.company_name || 'Unknown',
+        industry: company.sic_codes?.join(', ') || 'Unknown industry',
         location: company.registered_office_address?.locality || 
-                  company.registered_office_address?.region || 'UK',
-        size: 'Similar',
-        reasoning: 'Same industry classification',
-        confidence_score: 0.7 - (index * 0.1)
+                  company.registered_office_address?.region || 
+                  company.address?.locality ||
+                  'UK',
+        size: company.company_type?.includes('private-limited') ? 'Small/Medium' : 'Similar',
+        reasoning: `Same industry sector as ${sourceCompanyName}`,
+        confidence_score: 0.7 - (index * 0.05)
       }));
     }
 
