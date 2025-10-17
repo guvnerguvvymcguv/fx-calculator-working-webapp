@@ -225,6 +225,12 @@ export default function CalculatorPage() {
     try {
       const profile = await getUserProfile(currentUser.id);
       
+      console.log('Calling find-similar-companies API with:', {
+        companyName: calculator.competitorName,
+        userId: currentUser.id,
+        companyId: profile?.company_id
+      });
+      
       const response = await fetch('/api/find-similar-companies', {
         method: 'POST',
         headers: {
@@ -238,16 +244,22 @@ export default function CalculatorPage() {
       });
 
       const data = await response.json();
+      console.log('API response:', data);
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to find similar companies');
+        throw new Error(data.error || data.details || 'Failed to find similar companies');
       }
 
-      setSimilarCompanies(data.similarCompanies || []);
+      if (data.similarCompanies && data.similarCompanies.length > 0) {
+        setSimilarCompanies(data.similarCompanies);
+      } else {
+        alert('No similar companies found. Try a different company name.');
+      }
       
     } catch (error) {
       console.error('Error finding similar companies:', error);
-      alert(error instanceof Error ? error.message : 'Failed to find similar companies. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to find similar companies. Please try again.';
+      alert(errorMessage);
     } finally {
       setFindingCompanies(false);
     }
