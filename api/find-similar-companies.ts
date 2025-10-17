@@ -273,7 +273,6 @@ async function rankCompaniesWithAI(
         industry: company.sic_codes?.join(', ') || 'Unknown industry',
         location: company.registered_office_address?.locality || 
                   company.registered_office_address?.region || 
-                  company.address?.locality ||
                   'UK',
         size: company.company_type?.includes('private-limited') ? 'Small/Medium' : 'Similar',
         reasoning: `Same industry sector as ${sourceCompanyName}`,
