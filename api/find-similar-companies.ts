@@ -181,8 +181,8 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
 
 // Find companies with similar SIC codes in the same region
 async function findSimilarCompanies(
-  sicCodes: string[], 
-  location: string
+  sicCodes: string[],
+  _location: string // Prefix with underscore to indicate intentionally unused
 ): Promise<CompanySearchResult[]> {
   try {
     const apiKey = process.env.COMPANIES_HOUSE_API_KEY;
