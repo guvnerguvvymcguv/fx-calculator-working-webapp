@@ -333,8 +333,8 @@ setUserCalculationCounts(counts);
       }
       
       console.log('Schedule saved successfully');
-      await fetchWeeklyExportSchedule();
       setEditingSchedule(false);
+      await fetchWeeklyExportSchedule();
     } catch (error) {
       console.error('Error saving export schedule:', error);
       alert('Failed to save export schedule');
