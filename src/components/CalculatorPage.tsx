@@ -345,6 +345,15 @@ export default function CalculatorPage() {
                 Home
               </Button>
 
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate('/leads')}
+                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                My Leads
+              </Button>
+
               {userRole === 'admin' && (
                 <Button 
                   variant="ghost" 

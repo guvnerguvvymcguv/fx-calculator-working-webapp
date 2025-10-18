@@ -7,6 +7,7 @@ import { supabase } from './lib/supabase';
 import LandingPage from './components/LandingPage.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import CalculatorPage from './components/CalculatorPage.tsx';
+import LeadsPage from './components/LeadsPage.tsx'; // NEW: Leads management page
 import PricingPage from './components/PricingPage.tsx';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import CompanySignup from './components/CompanySignup';
@@ -107,6 +108,16 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <CalculatorPage />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* NEW: Leads Management Page */}
+        <Route 
+          path="/leads" 
+          element={
+            <ProtectedRoute>
+              <LeadsPage />
             </ProtectedRoute>
           } 
         />
