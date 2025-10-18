@@ -86,9 +86,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                      sourceCompanyData.company_type?.includes('public') || false;
     const companyAge = sourceCompanyData.date_of_creation ? 
                        new Date().getFullYear() - new Date(sourceCompanyData.date_of_creation).getFullYear() : 0;
+    
+    // Get account type from source company (if available)
+    const accountType = (sourceCompanyData as any).accounts?.last_accounts?.type;
+    console.log('Source company account type:', accountType);
 
     // Step 3: Search for companies with same SIC codes and similar characteristics
-    const similarCompaniesRaw = await findSimilarCompanies(sicCodes, location, isPublic, companyAge);
+    const similarCompaniesRaw = await findSimilarCompanies(sicCodes, location, isPublic, companyAge, accountType);
 
     console.log('Raw companies found:', similarCompaniesRaw.length);
     console.log('First 3 raw companies:', similarCompaniesRaw.slice(0, 3).map(c => c.company_name));
@@ -248,7 +252,8 @@ async function findSimilarCompanies(
   sicCodes: string[],
   _location: string,
   isPublicCompany: boolean,
-  sourceCompanyAge: number
+  sourceCompanyAge: number,
+  sourceAccountType?: string
 ): Promise<CompanySearchResult[]> {
   try {
     const apiKey = process.env.COMPANIES_HOUSE_API_KEY;
@@ -261,7 +266,7 @@ async function findSimilarCompanies(
     // Search by primary SIC code - Companies House uses SIC code descriptions
     const primarySicCode = sicCodes[0];
     console.log('Searching for companies with SIC code:', primarySicCode);
-    console.log('Source company characteristics:', { isPublicCompany, sourceCompanyAge });
+    console.log('Source company characteristics:', { isPublicCompany, sourceCompanyAge, sourceAccountType });
     
     // Try searching by SIC code number directly - filter for active companies only
     const searchUrl = `https://api.company-information.service.gov.uk/advanced-search/companies?sic_codes=${primarySicCode}&company_status=active&size=100`;
@@ -298,7 +303,7 @@ async function findSimilarCompanies(
       console.log('Fallback results count before filtering:', fallbackData.items?.length || 0);
       
       // Filter results by size
-      const filtered = filterBySize(fallbackData.items || [], isPublicCompany, sourceCompanyAge);
+      const filtered = await filterBySize(fallbackData.items || [], isPublicCompany, sourceCompanyAge, sourceAccountType, apiKey);
       console.log('Results after size filtering:', filtered.length);
       return filtered;
     }
@@ -307,7 +312,7 @@ async function findSimilarCompanies(
     console.log('Advanced search results count before filtering:', data.items?.length || 0);
     
     // Filter results by size
-    const filtered = filterBySize(data.items || [], isPublicCompany, sourceCompanyAge);
+    const filtered = await filterBySize(data.items || [], isPublicCompany, sourceCompanyAge, sourceAccountType, apiKey);
     console.log('Results after size filtering:', filtered.length);
     return filtered;
 
@@ -318,19 +323,22 @@ async function findSimilarCompanies(
 }
 
 // Filter companies by size indicators and exclude holding companies
-function filterBySize(
+async function filterBySize(
   companies: CompanySearchResult[],
   isPublicCompany: boolean,
-  sourceCompanyAge: number
-): CompanySearchResult[] {
-  console.log('Filtering', companies.length, 'companies. Source is public:', isPublicCompany, 'age:', sourceCompanyAge);
+  sourceCompanyAge: number,
+  sourceAccountType?: string,
+  apiKey?: string
+): Promise<CompanySearchResult[]> {
+  console.log('Filtering', companies.length, 'companies. Source is public:', isPublicCompany, 'age:', sourceCompanyAge, 'account type:', sourceAccountType);
   
   // Log first company to see what data we have
   if (companies.length > 0) {
     console.log('Sample company data:', JSON.stringify(companies[0], null, 2));
   }
   
-  const filtered = companies.filter(company => {
+  // First pass: filter out obviously unsuitable companies without API calls
+  const basicFiltered = companies.filter(company => {
     // Filter out dissolved companies
     if (company.company_status === 'dissolved' || company.company_status === 'liquidation') {
       console.log('Excluding (dissolved):', company.company_name);
@@ -359,13 +367,105 @@ function filterBySize(
       }
     }
 
-    // For now, just accept all active companies - we'll refine size filtering later
-    console.log('Accepting:', company.company_name);
+    console.log('Accepting (basic filter):', company.company_name);
     return true;
   });
   
-  console.log('After filtering:', filtered.length, 'companies remain');
-  return filtered;
+  console.log('After basic filtering:', basicFiltered.length, 'companies remain');
+  
+  // If no API key or source account type unknown, return basic filtered results
+  if (!apiKey || !sourceAccountType) {
+    console.log('Skipping account type filtering (no API key or source account type)');
+    return basicFiltered.slice(0, 20); // Limit to 20 for Claude
+  }
+  
+  // Second pass: fetch detailed account info for top 30 candidates (balance API calls vs accuracy)
+  console.log('Fetching detailed account info for top 30 candidates...');
+  const detailedFiltered: CompanySearchResult[] = [];
+  
+  for (const company of basicFiltered.slice(0, 30)) {
+    try {
+      const detailUrl = `https://api.company-information.service.gov.uk/company/${company.company_number}`;
+      const detailResponse = await fetch(detailUrl, {
+        headers: {
+          'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
+        }
+      });
+      
+      if (!detailResponse.ok) {
+        console.log('Could not fetch details for:', company.company_name);
+        continue;
+      }
+      
+      const detailData = await detailResponse.json();
+      const accountType = detailData.accounts?.last_accounts?.type;
+      
+      console.log('Company:', company.company_name, 'Account type:', accountType);
+      
+      // Filter by account type based on source company
+      const shouldInclude = shouldIncludeByAccountType(sourceAccountType, accountType, isPublicCompany, company.company_type);
+      
+      if (shouldInclude) {
+        console.log('Including:', company.company_name, 'Account type:', accountType);
+        detailedFiltered.push(company);
+      } else {
+        console.log('Excluding (size mismatch):', company.company_name, 'Account type:', accountType);
+      }
+      
+      // Stop if we have enough results
+      if (detailedFiltered.length >= 20) {
+        break;
+      }
+    } catch (error) {
+      console.error('Error fetching company details:', error);
+      continue;
+    }
+  }
+  
+  console.log('After account type filtering:', detailedFiltered.length, 'companies remain');
+  return detailedFiltered;
+}
+
+// Determine if a company should be included based on account types
+function shouldIncludeByAccountType(
+  sourceAccountType: string,
+  candidateAccountType: string | undefined,
+  sourceIsPublic: boolean,
+  candidateType?: string
+): boolean {
+  // If candidate has no account data, exclude (likely dormant or too new)
+  if (!candidateAccountType) {
+    return false;
+  }
+  
+  // Always exclude micro and small companies when source is group or full
+  if ((sourceAccountType === 'group' || sourceAccountType === 'full') && 
+      (candidateAccountType === 'micro' || candidateAccountType === 'small')) {
+    return false;
+  }
+  
+  // If source is public PLC with group accounts, prefer PLCs or companies with group accounts
+  if (sourceIsPublic && sourceAccountType === 'group') {
+    return candidateType === 'plc' || candidateAccountType === 'group';
+  }
+  
+  // If source has group accounts (has subsidiaries), only include group or full
+  if (sourceAccountType === 'group') {
+    return candidateAccountType === 'group' || candidateAccountType === 'full';
+  }
+  
+  // If source has full accounts, accept group or full
+  if (sourceAccountType === 'full') {
+    return candidateAccountType === 'group' || candidateAccountType === 'full';
+  }
+  
+  // If source is small, accept small or full (but not micro)
+  if (sourceAccountType === 'small') {
+    return candidateAccountType === 'small' || candidateAccountType === 'full';
+  }
+  
+  // Default: accept similar or larger account types
+  return true;
 }
 
 // Use AI to rank and filter companies based on similarity
