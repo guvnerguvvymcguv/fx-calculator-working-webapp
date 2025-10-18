@@ -249,7 +249,8 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
     return {
       ...activeCompany,
       sic_codes: detailData.sic_codes || [],
-      registered_office_address: detailData.registered_office_address || activeCompany.registered_office_address
+      registered_office_address: detailData.registered_office_address || activeCompany.registered_office_address,
+      accounts: detailData.accounts  // CRITICAL: Include accounts data for filtering
     };
 
   } catch (error) {
@@ -578,6 +579,8 @@ async function rankCompaniesWithAI(
         reasoning: `Same industry sector as ${sourceCompanyName}`
       }));
     }
+    
+    console.log('Using Claude API for ranking with key:', anthropicApiKey ? `${anthropicApiKey.substring(0, 10)}...` : 'undefined');
 
     // Use Claude to intelligently rank companies
     const prompt = `You are analyzing companies similar to "${sourceCompanyName}".
@@ -628,9 +631,12 @@ Be concise and return ONLY valid JSON.`;
       })
     });
 
+    console.log('Claude API response status:', response.status);
+
     if (!response.ok) {
-      console.error('Claude API error:', response.status);
-      throw new Error('AI ranking failed');
+      const errorBody = await response.text();
+      console.error('Claude API error:', response.status, errorBody);
+      throw new Error(`AI ranking failed with status ${response.status}`);
     }
 
     const data = await response.json();
