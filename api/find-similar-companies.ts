@@ -66,6 +66,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Step 2: Get industry codes and search for similar companies
     const sicCodes = sourceCompanyData.sic_codes || [];
+    
+    // Check if source company has valid SIC codes
+    const invalidSicCodes = ['70100', '70101', '64200', '64201', '64202', '64203', '64209', '74990', '99999', '82990'];
+    const hasValidSicCode = sicCodes.some(code => !invalidSicCodes.includes(code));
+    
+    if (!hasValidSicCode) {
+      return res.status(400).json({ 
+        error: 'Company not suitable for comparison',
+        details: 'This company has dormant/holding company classification and cannot be used to find similar operating businesses. Please try searching for the main operating company instead.'
+      });
+    }
     const location = sourceCompanyData.registered_office_address?.region || 
                      sourceCompanyData.registered_office_address?.locality || 
                      'UK';
