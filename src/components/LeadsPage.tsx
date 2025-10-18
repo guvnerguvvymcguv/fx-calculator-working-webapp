@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Switch } from './ui/switch';
 import { 
   Users, 
   Search, 
@@ -373,11 +372,18 @@ export default function LeadsPage() {
                             <span className="text-sm text-purple-300 whitespace-nowrap">
                               {lead.contacted ? 'Contacted' : 'Not Contacted'}
                             </span>
-                            <Switch
-                              checked={lead.contacted}
-                              onCheckedChange={() => handleToggleContacted(lead.id, lead.contacted)}
-                              className="data-[state=checked]:bg-purple-600"
-                            />
+                            <button
+                              onClick={() => handleToggleContacted(lead.id, lead.contacted)}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                                lead.contacted ? 'bg-purple-600' : 'bg-gray-600'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  lead.contacted ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
                           </div>
 
                           {/* Delete Button */}
