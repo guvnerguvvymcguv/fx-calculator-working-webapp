@@ -102,8 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       industry: company.industry,
       company_size: company.size,
       location: company.location,
-      reasoning: company.reasoning,
-      confidence_score: company.confidence_score
+      reasoning: company.reasoning
     }));
 
     if (companiesToInsert.length > 0) {
@@ -424,14 +423,13 @@ Be concise and return ONLY valid JSON.`;
   } catch (error) {
     console.error('Error ranking with AI:', error);
     // Fallback to basic ranking
-    return candidateCompanies.slice(0, 5).map((company, index) => ({
+    return candidateCompanies.slice(0, 5).map((company) => ({
       name: company.company_name,
       industry: company.sic_codes?.join(', ') || 'Unknown',
       location: company.registered_office_address?.locality || 
                 company.registered_office_address?.region || 'UK',
       size: 'Similar',
-      reasoning: 'Same industry classification',
-      confidence_score: 0.7 - (index * 0.1)
+      reasoning: 'Same industry classification'
     }));
   }
 }
