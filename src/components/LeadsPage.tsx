@@ -272,7 +272,11 @@ export default function LeadsPage() {
                       placeholder="Search for UK companies to add..."
                       value={companySearchTerm}
                       onChange={(e) => setCompanySearchTerm(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleCompanySearch()}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleCompanySearch();
+                        }
+                      }}
                       className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
                     />
                   </div>
