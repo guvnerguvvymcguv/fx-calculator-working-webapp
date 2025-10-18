@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { 
   Briefcase, 
   Search, 
-  Filter, 
   Trash2, 
   TrendingUp,
   Home,
@@ -18,7 +17,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getCurrentUser } from '../lib/auth';
-import { getUserLeads, updateLeadContactedStatus, deleteLead, getLeadStats, UserLead } from '../lib/userLeads';
+import { getUserLeads, updateLeadContactedStatus, deleteLead, getLeadStats } from '../lib/userLeads';
+import type { UserLead } from '../lib/userLeads';
 
 // Helper function to get user profile
 const getUserProfile = async (userId: string) => {
