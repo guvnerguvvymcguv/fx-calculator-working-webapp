@@ -280,6 +280,27 @@ export default function CalculatorPage() {
     }
   };
 
+  const handleAddLead = async (companyName: string) => {
+    try {
+      const result = await addOrUpdateLead({
+        userId: currentUser.id,
+        companyName: companyName,
+        source: 'similar_results',
+        contacted: false // Not contacted yet, just added from search
+      });
+
+      if (result.success) {
+        // Show success message
+        alert(result.message);
+      } else {
+        alert(result.message);
+      }
+    } catch (error) {
+      console.error('Error adding lead:', error);
+      alert('Failed to add company to your list');
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleCalculate();
@@ -652,7 +673,7 @@ export default function CalculatorPage() {
                       <div className="space-y-3">
                         {similarCompanies.map((company, index) => (
                           <div key={index} className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors">
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <h4 className="font-semibold text-purple-100 mb-1">{company.name}</h4>
                                 <p className="text-sm text-purple-300 mb-2">{company.industry}</p>
@@ -666,6 +687,13 @@ export default function CalculatorPage() {
                                 </div>
                                 <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
                               </div>
+                              <Button
+                                onClick={() => handleAddLead(company.name)}
+                                size="sm"
+                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                              >
+                                Add to List
+                              </Button>
                             </div>
                           </div>
                         ))}
