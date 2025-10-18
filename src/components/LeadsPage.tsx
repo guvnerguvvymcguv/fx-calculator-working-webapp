@@ -130,22 +130,21 @@ export default function LeadsPage() {
   };
 
   // NEW: Search for companies
-  const handleCompanySearch = async (query: string) => {
-    setCompanySearchTerm(query);
-    
-    if (query.length < 2) {
-      setCompanySearchResults([]);
+  const handleCompanySearch = async () => {
+    if (companySearchTerm.length < 2) {
       return;
     }
 
     setIsSearching(true);
+    setCompanySearchResults([]); // Clear previous results
+    
     try {
       // Call the same API we use in calculator
       const response = await fetch('/api/find-similar-companies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          companyName: query,
+          companyName: companySearchTerm,
           userId: currentUser.id
         })
       });
@@ -156,6 +155,7 @@ export default function LeadsPage() {
       }
     } catch (error) {
       console.error('Search error:', error);
+      alert('Failed to search companies. Please try again.');
     } finally {
       setIsSearching(false);
     }
@@ -256,6 +256,98 @@ export default function LeadsPage() {
 
       <div className="pt-32 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
+          {/* NEW: Company Search - MOVED TO TOP */}
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-8">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search className="h-5 w-5 text-purple-300" />
+                  <h3 className="text-lg font-semibold text-purple-100">Find New Companies</h3>
+                </div>
+                
+                {/* Search Bar + Button */}
+                <div className="flex gap-3">
+                  <div className="flex-1 max-w-2xl relative">
+                    <Input
+                      placeholder="Search for UK companies to add..."
+                      value={companySearchTerm}
+                      onChange={(e) => setCompanySearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleCompanySearch()}
+                      className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleCompanySearch}
+                    disabled={isSearching || companySearchTerm.length < 2}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 whitespace-nowrap"
+                  >
+                    {isSearching ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4 mr-2" />
+                        Search
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Search Results Dropdown */}
+                {companySearchResults.length > 0 && (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {companySearchResults.map((company, index) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-purple-100 mb-1">{company.name}</h4>
+                            <p className="text-sm text-purple-300 mb-2">{company.industry}</p>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <span className="px-2 py-1 bg-purple-600/30 rounded text-purple-200">
+                                📍 {company.location}
+                              </span>
+                              <span className="px-2 py-1 bg-blue-600/30 rounded text-blue-200">
+                                {company.size}
+                              </span>
+                            </div>
+                            {company.reasoning && (
+                              <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
+                            )}
+                          </div>
+                          
+                          {isCompanyInLeads(company.name) ? (
+                            <span className="px-4 py-2 bg-green-600/30 text-green-200 rounded-lg text-sm font-medium whitespace-nowrap">
+                              ✓ Already in list
+                            </span>
+                          ) : (
+                            <Button
+                              onClick={() => handleAddFromSearch(company.name)}
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                            >
+                              Add to List
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {companySearchTerm.length >= 2 && !isSearching && companySearchResults.length === 0 && (
+                  <p className="text-sm text-purple-300/60 text-center py-4">
+                    No companies found. Try a different search term.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent mb-2">
