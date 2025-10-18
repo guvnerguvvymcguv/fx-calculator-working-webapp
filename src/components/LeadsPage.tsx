@@ -183,8 +183,21 @@ export default function LeadsPage() {
 
   // NEW: Check if company already in leads
   const isCompanyInLeads = (companyName: string): boolean => {
-    const normalized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    return leads.some(lead => lead.normalized_name === normalized);
+    // Normalize the incoming company name using the same logic as normalizeCompanyName
+    const normalized = companyName
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, ' ') // Collapse whitespace
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .replace(/\b(ltd|limited|plc|group|holdings|co|inc)\b/g, '') // Remove common suffixes
+      .trim()
+      .replace(/\s+/g, ''); // Remove all spaces
+    
+    // Check against all leads (also remove spaces from their normalized names for comparison)
+    return leads.some(lead => {
+      const leadNormalized = lead.normalized_name?.replace(/\s+/g, '') || '';
+      return leadNormalized === normalized;
+    });
   };
 
   const handleSignOut = async () => {
