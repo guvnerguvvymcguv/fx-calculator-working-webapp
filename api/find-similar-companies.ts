@@ -235,6 +235,17 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
     const detailData = await detailResponse.json();
     console.log('Company details:', detailData);
     
+    // Check if this is a holding company - if so, try to find operating subsidiary
+    if (detailData.sic_codes?.includes('70100')) {
+      console.log('Found holding company, searching for operating subsidiary...');
+      const subsidiary = await findOperatingSubsidiary(detailData.company_name, apiKey);
+      if (subsidiary) {
+        console.log('Found operating subsidiary:', subsidiary.company_name);
+        return subsidiary;
+      }
+      // If no subsidiary found, the validation below will catch it
+    }
+    
     return {
       ...activeCompany,
       sic_codes: detailData.sic_codes || [],
@@ -243,6 +254,76 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
 
   } catch (error) {
     console.error('Error searching Companies House:', error);
+    return null;
+  }
+}
+
+// Try to find operating subsidiary when source is a holding company
+async function findOperatingSubsidiary(
+  holdingCompanyName: string,
+  apiKey: string
+): Promise<CompanySearchResult | null> {
+  try {
+    // Common patterns for subsidiaries
+    const searchTerms = [
+      `${holdingCompanyName} Limited`,
+      `${holdingCompanyName} Ltd`,
+      `${holdingCompanyName} Stores`,
+      `${holdingCompanyName} Retail`,
+      `${holdingCompanyName} Services`,
+      holdingCompanyName.replace(' PLC', ' Limited'),
+      holdingCompanyName.replace(' plc', ' Limited')
+    ];
+    
+    // Try each search term
+    for (const term of searchTerms) {
+      const searchUrl = `https://api.company-information.service.gov.uk/search/companies?q=${encodeURIComponent(term)}&items_per_page=5`;
+      
+      const response = await fetch(searchUrl, {
+        headers: {
+          'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
+        }
+      });
+      
+      if (!response.ok) continue;
+      
+      const data = await response.json();
+      
+      // Look for first active company that's NOT a holding company
+      for (const company of data.items || []) {
+        if (company.company_status !== 'active') continue;
+        
+        // Get details to check SIC code
+        const detailUrl = `https://api.company-information.service.gov.uk/company/${company.company_number}`;
+        const detailResponse = await fetch(detailUrl, {
+          headers: {
+            'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
+          }
+        });
+        
+        if (!detailResponse.ok) continue;
+        
+        const detailData = await detailResponse.json();
+        
+        // Check if this is NOT a holding company
+        const invalidSicCodes = ['70100', '70101', '64200', '64201', '64202', '64203', '64209', '74990', '99999', '82990'];
+        const hasOnlyInvalidSic = detailData.sic_codes?.every((code: string) => invalidSicCodes.includes(code));
+        
+        if (!hasOnlyInvalidSic && detailData.sic_codes?.length > 0) {
+          console.log('Found valid subsidiary:', company.company_name, 'SIC:', detailData.sic_codes);
+          return {
+            ...company,
+            sic_codes: detailData.sic_codes,
+            registered_office_address: detailData.registered_office_address
+          };
+        }
+      }
+    }
+    
+    console.log('No valid subsidiary found');
+    return null;
+  } catch (error) {
+    console.error('Error finding subsidiary:', error);
     return null;
   }
 }

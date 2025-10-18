@@ -430,9 +430,30 @@ export default function CalculatorPage() {
 
               {/* Client Name Input */}
               <div className="space-y-2">
-                <Label htmlFor="competitor-name" className="text-sm font-medium text-purple-200">
-                  Client Name
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="competitor-name" className="text-sm font-medium text-purple-200">
+                    Client Name
+                  </Label>
+                  <div className="group relative">
+                    <button
+                      type="button"
+                      className="text-purple-300 hover:text-purple-100 transition-colors"
+                      aria-label="Help"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                    <div className="absolute right-0 top-6 w-72 p-3 bg-gray-900 border border-purple-400/30 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <p className="text-xs text-purple-200 mb-2 font-semibold">💡 Search Tips:</p>
+                      <ul className="text-xs text-purple-300 space-y-1">
+                        <li>• For large retailers, try: "Tesco Stores", "Next Retail"</li>
+                        <li>• Use operating company names, not holding companies</li>
+                        <li>• Examples: "Sainsburys Supermarkets", "ASOS.COM LIMITED"</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
                 <Input
                   id="competitor-name"
                   type="text"
