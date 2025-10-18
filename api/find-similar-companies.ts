@@ -100,6 +100,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       similarCompaniesRaw
     );
 
+    // If no companies found, return helpful message
+    if (similarCompanies.length === 0) {
+      return res.status(200).json({
+        success: true,
+        sourceCompany: {
+          name: sourceCompanyData.company_name,
+          location: location,
+          industry: sicCodes.join(', ')
+        },
+        similarCompanies: [],
+        message: 'No similar active companies found. This could be because the industry is very specialized or most companies with this classification are dissolved.'
+      });
+    }
+
     // Step 5: Save search to database
     await supabase.from('company_searches').insert({
       company_id: companyId,
@@ -249,8 +263,8 @@ async function findSimilarCompanies(
     console.log('Searching for companies with SIC code:', primarySicCode);
     console.log('Source company characteristics:', { isPublicCompany, sourceCompanyAge });
     
-    // Try searching by SIC code number directly
-    const searchUrl = `https://api.company-information.service.gov.uk/advanced-search/companies?sic_codes=${primarySicCode}&size=100`;
+    // Try searching by SIC code number directly - filter for active companies only
+    const searchUrl = `https://api.company-information.service.gov.uk/advanced-search/companies?sic_codes=${primarySicCode}&company_status=active&size=100`;
     
     console.log('Advanced search URL:', searchUrl);
     
@@ -361,6 +375,12 @@ async function rankCompaniesWithAI(
   candidateCompanies: CompanySearchResult[]
 ): Promise<SimilarCompany[]> {
   try {
+    // If no candidates, return empty array immediately
+    if (candidateCompanies.length === 0) {
+      console.log('No candidate companies to rank');
+      return [];
+    }
+    
     const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
     
     if (!anthropicApiKey) {
@@ -447,7 +467,10 @@ Be concise and return ONLY valid JSON.`;
 
   } catch (error) {
     console.error('Error ranking with AI:', error);
-    // Fallback to basic ranking
+    // Fallback to basic ranking if we have candidates
+    if (candidateCompanies.length === 0) {
+      return [];
+    }
     return candidateCompanies.slice(0, 5).map((company) => ({
       name: company.company_name,
       industry: company.sic_codes?.join(', ') || 'Unknown',
