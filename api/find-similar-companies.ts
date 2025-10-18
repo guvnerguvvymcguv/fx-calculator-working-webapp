@@ -25,7 +25,6 @@ interface SimilarCompany {
   location: string;
   size: string;
   reasoning: string;
-  confidence_score: number;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -273,7 +272,7 @@ async function findSimilarCompanies(
   }
 }
 
-// Filter companies by size indicators
+// Filter companies by size indicators and exclude holding companies
 function filterBySize(
   companies: CompanySearchResult[],
   isPublicCompany: boolean,
@@ -285,6 +284,22 @@ function filterBySize(
     // Filter out dissolved companies
     if (company.company_status === 'dissolved' || company.company_status === 'liquidation') {
       return false;
+    }
+
+    // CRITICAL: Filter out holding companies and head offices - these aren't real operating businesses
+    const holdingCompanySicCodes = ['70100', '70101', '64200', '64201', '64202', '64203', '64209'];
+    const hasSicCodes = company.sic_codes && company.sic_codes.length > 0;
+    
+    if (hasSicCodes) {
+      // Check if ALL SIC codes are holding company codes (exclude if yes)
+      const allCodesAreHoldingCompany = company.sic_codes!.every(code => 
+        holdingCompanySicCodes.includes(code)
+      );
+      
+      if (allCodesAreHoldingCompany) {
+        console.log('Excluding holding company:', company.company_name);
+        return false;
+      }
     }
 
     // Calculate company age (default to 0 if unknown)
@@ -327,15 +342,15 @@ async function rankCompaniesWithAI(
     if (!anthropicApiKey) {
       // Fallback: return basic list without AI ranking but with actual company data
       console.log('No Anthropic API key, using fallback ranking');
-      return candidateCompanies.slice(0, 8).map((company, index) => ({
+      return candidateCompanies.slice(0, 8).map((company) => ({
         name: company.company_name || 'Unknown',
         industry: company.sic_codes?.join(', ') || 'Unknown industry',
         location: company.registered_office_address?.locality || 
                   company.registered_office_address?.region || 
                   'UK',
-        size: company.company_type?.includes('private-limited') ? 'Small/Medium' : 'Similar',
-        reasoning: `Same industry sector as ${sourceCompanyName}`,
-        confidence_score: 0.7 - (index * 0.05)
+        size: company.company_type?.includes('plc') || company.company_type?.includes('public') ? 'Large (Public)' : 
+              company.company_type?.includes('private-limited') ? 'Private' : 'Similar',
+        reasoning: `Same industry sector as ${sourceCompanyName}`
       }));
     }
 
@@ -363,8 +378,7 @@ Return ONLY a JSON array of objects with this exact structure:
     "industry": "Brief industry description",
     "location": "City/Region",
     "size": "Small/Medium/Large",
-    "reasoning": "One sentence why they're similar",
-    "confidence_score": 0.85
+    "reasoning": "One sentence why they're similar"
   }
 ]
 

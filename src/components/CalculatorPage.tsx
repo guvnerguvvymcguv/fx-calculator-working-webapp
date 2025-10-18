@@ -627,9 +627,6 @@ export default function CalculatorPage() {
                                   <span className="px-2 py-1 bg-blue-600/30 rounded text-blue-200">
                                     {company.size}
                                   </span>
-                                  <span className="px-2 py-1 bg-green-600/30 rounded text-green-200">
-                                    {(company.confidence_score * 100).toFixed(0)}% match
-                                  </span>
                                 </div>
                                 <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
                               </div>
@@ -644,7 +641,10 @@ export default function CalculatorPage() {
 
               {/* Reset Button */}
               <Button 
-                onClick={calculator.resetCalculator}
+                onClick={() => {
+                  calculator.resetCalculator();
+                  setSimilarCompanies([]);
+                }}
                 variant="outline"
                 className="w-full border-white/20 text-purple-200 hover:bg-white/10"
               >
