@@ -119,7 +119,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         location: location,
         industry: sicCodes.join(', ')
       },
-      similarCompanies: similarCompanies
+      similarCompanies: similarCompanies,
+      debug: {
+        rawCompaniesFound: similarCompaniesRaw.length,
+        afterFiltering: similarCompanies.length,
+        sicCodes: sicCodes,
+        isPublic: isPublic,
+        companyAge: companyAge
+      }
     });
 
   } catch (error) {
@@ -282,9 +289,15 @@ function filterBySize(
 ): CompanySearchResult[] {
   console.log('Filtering', companies.length, 'companies. Source is public:', isPublicCompany, 'age:', sourceCompanyAge);
   
+  // Log first company to see what data we have
+  if (companies.length > 0) {
+    console.log('Sample company data:', JSON.stringify(companies[0], null, 2));
+  }
+  
   const filtered = companies.filter(company => {
     // Filter out dissolved companies
     if (company.company_status === 'dissolved' || company.company_status === 'liquidation') {
+      console.log('Excluding (dissolved):', company.company_name);
       return false;
     }
 
@@ -299,32 +312,13 @@ function filterBySize(
       );
       
       if (allCodesAreHoldingCompany) {
-        console.log('Excluding holding company:', company.company_name);
+        console.log('Excluding holding company:', company.company_name, 'SIC:', company.sic_codes);
         return false;
       }
     }
 
-    // Calculate company age (default to 0 if unknown)
-    const companyAge = company.date_of_creation ? 
-                      new Date().getFullYear() - new Date(company.date_of_creation).getFullYear() : 0;
-
-    // More lenient filtering - focus on active, established companies
-    // Accept companies that are at least 3 years old (or unknown age)
-    if (companyAge > 0 && companyAge < 3) {
-      return false; // Too new
-    }
-
-    // If source company is public or very old (15+ years), prefer established companies
-    if (isPublicCompany || sourceCompanyAge >= 15) {
-      const isPublic = company.company_type?.includes('plc') || 
-                       company.company_type?.includes('public');
-      
-      // Accept public companies OR private companies 5+ years old (or unknown age)
-      if (!isPublic && companyAge > 0 && companyAge < 5) {
-        return false;
-      }
-    }
-
+    // For now, just accept all active companies - we'll refine size filtering later
+    console.log('Accepting:', company.company_name);
     return true;
   });
   
