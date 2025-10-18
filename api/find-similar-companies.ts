@@ -279,44 +279,40 @@ function filterBySize(
   isPublicCompany: boolean,
   sourceCompanyAge: number
 ): CompanySearchResult[] {
-  return companies.filter(company => {
+  console.log('Filtering', companies.length, 'companies. Source is public:', isPublicCompany, 'age:', sourceCompanyAge);
+  
+  const filtered = companies.filter(company => {
     // Filter out dissolved companies
     if (company.company_status === 'dissolved' || company.company_status === 'liquidation') {
       return false;
     }
 
-    // If source is public, prioritize public companies or larger private companies
-    if (isPublicCompany) {
+    // Calculate company age (default to 0 if unknown)
+    const companyAge = company.date_of_creation ? 
+                      new Date().getFullYear() - new Date(company.date_of_creation).getFullYear() : 0;
+
+    // More lenient filtering - focus on active, established companies
+    // Accept companies that are at least 3 years old (or unknown age)
+    if (companyAge > 0 && companyAge < 3) {
+      return false; // Too new
+    }
+
+    // If source company is public or very old (15+ years), prefer established companies
+    if (isPublicCompany || sourceCompanyAge >= 15) {
       const isPublic = company.company_type?.includes('plc') || 
                        company.company_type?.includes('public');
       
-      // Accept public companies, or private limited companies that are likely large
-      if (!isPublic && !company.company_type?.includes('private-limited-guarant')) {
-        // For private companies, only accept if they're well-established
-        const companyAge = company.date_of_creation ? 
-                          new Date().getFullYear() - new Date(company.date_of_creation).getFullYear() : 0;
-        
-        // Only include mature companies (10+ years) if source is public
-        if (companyAge < 10) {
-          return false;
-        }
-      }
-    } else {
-      // Source is private - filter out very small/new companies
-      const companyAge = company.date_of_creation ? 
-                        new Date().getFullYear() - new Date(company.date_of_creation).getFullYear() : 0;
-      
-      // Prefer companies within ±50% of source company age
-      const minAge = Math.max(3, sourceCompanyAge * 0.5);
-      const maxAge = sourceCompanyAge * 1.5;
-      
-      if (companyAge < minAge || companyAge > maxAge) {
+      // Accept public companies OR private companies 5+ years old (or unknown age)
+      if (!isPublic && companyAge > 0 && companyAge < 5) {
         return false;
       }
     }
 
     return true;
   });
+  
+  console.log('After filtering:', filtered.length, 'companies remain');
+  return filtered;
 }
 
 // Use AI to rank and filter companies based on similarity
