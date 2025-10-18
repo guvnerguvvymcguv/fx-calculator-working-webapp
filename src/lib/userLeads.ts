@@ -207,7 +207,7 @@ export async function getUserLeads(
       const searchNormalized = normalizeCompanyName(filters.searchTerm);
       leads = leads.filter(lead => 
         lead.normalized_name.includes(searchNormalized) ||
-        isSimilarCompany(filters.searchTerm, lead.custom_name)
+        isSimilarCompany(filters.searchTerm || '', lead.custom_name)
       );
     }
 
