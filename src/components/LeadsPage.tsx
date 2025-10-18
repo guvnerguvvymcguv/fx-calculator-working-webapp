@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabase';
 import { getCurrentUser } from '../lib/auth';
 import { getUserLeads, updateLeadContactedStatus, deleteLead, getLeadStats, addOrUpdateLead } from '../lib/userLeads';
 import type { UserLead } from '../lib/userLeads';
+import { CalculationHistoryModal } from './ui/CalculationHistoryModal';
 
 // Helper function to get user profile
 const getUserProfile = async (userId: string) => {
@@ -40,6 +41,7 @@ export default function LeadsPage() {
   const [companySearchTerm, setCompanySearchTerm] = useState(''); // NEW: Company search
   const [companySearchResults, setCompanySearchResults] = useState<any[]>([]); // NEW: Search results
   const [isSearching, setIsSearching] = useState(false); // NEW: Loading state
+  const [selectedLead, setSelectedLead] = useState<UserLead | null>(null); // NEW: For calculation history modal
   const [stats, setStats] = useState({
     total: 0,
     contacted: 0,
@@ -489,7 +491,10 @@ export default function LeadsPage() {
                         {/* Company Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-semibold text-purple-100 truncate">
+                            <h3 
+                              className="text-lg font-semibold text-purple-100 truncate cursor-pointer hover:text-purple-300 transition-colors"
+                              onClick={() => setSelectedLead(lead)}
+                            >
                               {lead.custom_name}
                             </h3>
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -561,6 +566,16 @@ export default function LeadsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Calculation History Modal */}
+      {selectedLead && (
+        <CalculationHistoryModal
+          isOpen={!!selectedLead}
+          onClose={() => setSelectedLead(null)}
+          companyName={selectedLead.custom_name}
+          normalizedName={selectedLead.normalized_name}
+        />
+      )}
     </div>
   );
 }
