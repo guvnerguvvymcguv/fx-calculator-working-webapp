@@ -16,6 +16,7 @@ interface CompanySearchResult {
   company_status?: string;
   company_type?: string;
   sic_codes?: string[];
+  date_of_creation?: string;
 }
 
 interface SimilarCompany {
@@ -69,9 +70,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const location = sourceCompanyData.registered_office_address?.region || 
                      sourceCompanyData.registered_office_address?.locality || 
                      'UK';
+    
+    // Determine company size indicators
+    const isPublic = sourceCompanyData.company_type?.includes('plc') || 
+                     sourceCompanyData.company_type?.includes('public');
+    const companyAge = sourceCompanyData.date_of_creation ? 
+                       new Date().getFullYear() - new Date(sourceCompanyData.date_of_creation).getFullYear() : 0;
 
-    // Step 3: Search for companies with same SIC codes
-    const similarCompaniesRaw = await findSimilarCompanies(sicCodes, location);
+    // Step 3: Search for companies with same SIC codes and similar characteristics
+    const similarCompaniesRaw = await findSimilarCompanies(sicCodes, location, isPublic, companyAge);
 
     // Step 4: Use AI to filter and rank the results
     const similarCompanies = await rankCompaniesWithAI(
@@ -195,7 +202,9 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
 // Find companies with similar SIC codes in the same region
 async function findSimilarCompanies(
   sicCodes: string[],
-  _location: string // Prefix with underscore to indicate intentionally unused
+  _location: string,
+  isPublicCompany: boolean,
+  sourceCompanyAge: number
 ): Promise<CompanySearchResult[]> {
   try {
     const apiKey = process.env.COMPANIES_HOUSE_API_KEY;
@@ -208,9 +217,10 @@ async function findSimilarCompanies(
     // Search by primary SIC code - Companies House uses SIC code descriptions
     const primarySicCode = sicCodes[0];
     console.log('Searching for companies with SIC code:', primarySicCode);
+    console.log('Source company characteristics:', { isPublicCompany, sourceCompanyAge });
     
     // Try searching by SIC code number directly
-    const searchUrl = `https://api.company-information.service.gov.uk/advanced-search/companies?sic_codes=${primarySicCode}&size=50`;
+    const searchUrl = `https://api.company-information.service.gov.uk/advanced-search/companies?sic_codes=${primarySicCode}&size=100`;
     
     console.log('Advanced search URL:', searchUrl);
     
@@ -226,7 +236,7 @@ async function findSimilarCompanies(
       console.log('Advanced search failed, trying alternative method');
       
       // Fallback: search by industry keywords
-      const fallbackUrl = `https://api.company-information.service.gov.uk/search/companies?q=${primarySicCode}&items_per_page=50`;
+      const fallbackUrl = `https://api.company-information.service.gov.uk/search/companies?q=${primarySicCode}&items_per_page=100`;
       console.log('Fallback search URL:', fallbackUrl);
       
       const fallbackResponse = await fetch(fallbackUrl, {
@@ -241,19 +251,72 @@ async function findSimilarCompanies(
       }
       
       const fallbackData = await fallbackResponse.json();
-      console.log('Fallback results count:', fallbackData.items?.length || 0);
-      return fallbackData.items || [];
+      console.log('Fallback results count before filtering:', fallbackData.items?.length || 0);
+      
+      // Filter results by size
+      const filtered = filterBySize(fallbackData.items || [], isPublicCompany, sourceCompanyAge);
+      console.log('Results after size filtering:', filtered.length);
+      return filtered;
     }
 
     const data = await response.json();
-    console.log('Advanced search results count:', data.items?.length || 0);
+    console.log('Advanced search results count before filtering:', data.items?.length || 0);
     
-    return data.items || [];
+    // Filter results by size
+    const filtered = filterBySize(data.items || [], isPublicCompany, sourceCompanyAge);
+    console.log('Results after size filtering:', filtered.length);
+    return filtered;
 
   } catch (error) {
     console.error('Error finding similar companies:', error);
     return [];
   }
+}
+
+// Filter companies by size indicators
+function filterBySize(
+  companies: CompanySearchResult[],
+  isPublicCompany: boolean,
+  sourceCompanyAge: number
+): CompanySearchResult[] {
+  return companies.filter(company => {
+    // Filter out dissolved companies
+    if (company.company_status === 'dissolved' || company.company_status === 'liquidation') {
+      return false;
+    }
+
+    // If source is public, prioritize public companies or larger private companies
+    if (isPublicCompany) {
+      const isPublic = company.company_type?.includes('plc') || 
+                       company.company_type?.includes('public');
+      
+      // Accept public companies, or private limited companies that are likely large
+      if (!isPublic && !company.company_type?.includes('private-limited-guarant')) {
+        // For private companies, only accept if they're well-established
+        const companyAge = company.date_of_creation ? 
+                          new Date().getFullYear() - new Date(company.date_of_creation).getFullYear() : 0;
+        
+        // Only include mature companies (10+ years) if source is public
+        if (companyAge < 10) {
+          return false;
+        }
+      }
+    } else {
+      // Source is private - filter out very small/new companies
+      const companyAge = company.date_of_creation ? 
+                        new Date().getFullYear() - new Date(company.date_of_creation).getFullYear() : 0;
+      
+      // Prefer companies within ±50% of source company age
+      const minAge = Math.max(3, sourceCompanyAge * 0.5);
+      const maxAge = sourceCompanyAge * 1.5;
+      
+      if (companyAge < minAge || companyAge > maxAge) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 }
 
 // Use AI to rank and filter companies based on similarity
