@@ -515,38 +515,43 @@ function shouldIncludeByAccountType(
   sourceIsPublic: boolean,
   candidateType?: string
 ): boolean {
-  // If candidate has no account data, exclude (likely dormant or too new)
-  if (!candidateAccountType) {
-    return false;
+  // If candidate has no account data, accept it (might be new/private)
+  if (!candidateAccountType || candidateAccountType === 'null' || candidateAccountType === 'undefined') {
+    return true; // Give them benefit of the doubt
   }
   
-  // Always exclude micro and small companies when source is group or full
+  // Always exclude micro-entity when source is group or full (definite size mismatch)
   if ((sourceAccountType === 'group' || sourceAccountType === 'full') && 
-      (candidateAccountType === 'micro' || candidateAccountType === 'small')) {
+      candidateAccountType === 'micro-entity') {
     return false;
   }
   
   // If source is public PLC with group accounts, prefer PLCs or companies with group accounts
   if (sourceIsPublic && sourceAccountType === 'group') {
-    return candidateType === 'plc' || candidateAccountType === 'group';
+    return candidateType === 'plc' || candidateAccountType === 'group' || candidateAccountType === 'full';
   }
   
-  // If source has group accounts (has subsidiaries), only include group or full
+  // If source has group accounts (has subsidiaries), be more lenient - accept group, full, or exemption types
   if (sourceAccountType === 'group') {
-    return candidateAccountType === 'group' || candidateAccountType === 'full';
+    return candidateAccountType === 'group' || 
+           candidateAccountType === 'full' || 
+           candidateAccountType.includes('exemption') || 
+           candidateAccountType.includes('abridged');
   }
   
-  // If source has full accounts, accept group or full
+  // If source has full accounts, accept most types except micro
   if (sourceAccountType === 'full') {
-    return candidateAccountType === 'group' || candidateAccountType === 'full';
+    return candidateAccountType !== 'micro-entity';
   }
   
   // If source is small, accept small or full (but not micro)
   if (sourceAccountType === 'small') {
-    return candidateAccountType === 'small' || candidateAccountType === 'full';
+    return candidateAccountType === 'small' || 
+           candidateAccountType === 'full' || 
+           candidateAccountType.includes('exemption');
   }
   
-  // Default: accept similar or larger account types
+  // Default: accept all
   return true;
 }
 
