@@ -15,6 +15,7 @@ import { HistoricalRateModal } from './ui/HistoricalRateModal';
 import { signOut, getCurrentUser } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { saveCalculation } from '../lib/calculations';
+import { addOrUpdateLead } from '../lib/userLeads'; // NEW: Import lead management
 
 // Helper function to get user profile
 const getUserProfile = async (userId: string) => {
@@ -153,6 +154,20 @@ export default function CalculatorPage() {
       
       if (success) {
         console.log('Calculation saved successfully');
+        
+        // NEW: Auto-save to user_leads (mark as contacted)
+        const leadResult = await addOrUpdateLead({
+          userId: currentUser.id,
+          companyName: calculator.competitorName,
+          source: 'calculator',
+          contacted: true // Mark as contacted since we did a calculation
+        });
+        
+        if (leadResult.success) {
+          console.log(leadResult.message); // "Added X to your list" or "Marked X as contacted"
+        } else {
+          console.error('Failed to save lead:', leadResult.message);
+        }
         
         // Log to activity_logs table with ALL fields needed for export
         const { error: logError } = await supabase
