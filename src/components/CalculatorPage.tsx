@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calculator, TrendingUp, DollarSign, History, Home, LayoutDashboard } from 'lucide-react';
+import { Calculator, TrendingUp, DollarSign, History, Home, LayoutDashboard, Users } from 'lucide-react';
 
 // Import our custom hooks and constants
 import { useFXCalculator } from '../hooks/useFXCalculator';
@@ -35,6 +35,7 @@ export default function CalculatorPage() {
   const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
   const [findingCompanies, setFindingCompanies] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
+  const [addedCompanies, setAddedCompanies] = useState<Set<string>>(new Set()); // NEW: Track added companies
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
@@ -290,6 +291,8 @@ export default function CalculatorPage() {
       });
 
       if (result.success) {
+        // Add to tracking set
+        setAddedCompanies(prev => new Set(prev).add(companyName.toLowerCase()));
         // Show success message
         alert(result.message);
       } else {
@@ -299,6 +302,11 @@ export default function CalculatorPage() {
       console.error('Error adding lead:', error);
       alert('Failed to add company to your list');
     }
+  };
+
+  // NEW: Check if company is already added
+  const isCompanyAdded = (companyName: string): boolean => {
+    return addedCompanies.has(companyName.toLowerCase());
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -350,7 +358,7 @@ export default function CalculatorPage() {
                 onClick={() => navigate('/leads')}
                 className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
               >
-                <DollarSign className="h-4 w-4 mr-2" />
+                <Users className="h-4 w-4 mr-2" />
                 My Leads
               </Button>
 
@@ -696,13 +704,19 @@ export default function CalculatorPage() {
                                 </div>
                                 <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
                               </div>
-                              <Button
-                                onClick={() => handleAddLead(company.name)}
-                                size="sm"
-                                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
-                              >
-                                Add to List
-                              </Button>
+                              {isCompanyAdded(company.name) ? (
+                                <span className="px-4 py-2 bg-green-600/30 text-green-200 rounded-lg text-sm font-medium whitespace-nowrap">
+                                  ✓ Added
+                                </span>
+                              ) : (
+                                <Button
+                                  onClick={() => handleAddLead(company.name)}
+                                  size="sm"
+                                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                  Add to List
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}

@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Switch } from './ui/switch';
 import { 
-  Briefcase, 
+  Users, 
   Search, 
   Trash2, 
   TrendingUp,
@@ -308,14 +308,14 @@ export default function LeadsPage() {
           <Card className="bg-white/10 backdrop-blur-md border-white/20">
             <CardHeader>
               <CardTitle className="text-purple-100 flex items-center gap-2">
-                <Briefcase className="h-5 w-5" />
+                <Users className="h-5 w-5" />
                 Companies ({filteredLeads.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {filteredLeads.length === 0 ? (
                 <div className="text-center py-12">
-                  <Briefcase className="h-12 w-12 text-purple-300 mx-auto mb-4 opacity-50" />
+                  <Users className="h-12 w-12 text-purple-300 mx-auto mb-4 opacity-50" />
                   <p className="text-purple-200 mb-2">No companies found</p>
                   <p className="text-purple-300/60 text-sm">
                     {searchTerm || filterStatus !== 'all' 
@@ -376,7 +376,7 @@ export default function LeadsPage() {
                             <Switch
                               checked={lead.contacted}
                               onCheckedChange={() => handleToggleContacted(lead.id, lead.contacted)}
-                              className={lead.contacted ? 'bg-green-500' : 'bg-gray-400'}
+                              className="data-[state=checked]:bg-purple-600"
                             />
                           </div>
 
