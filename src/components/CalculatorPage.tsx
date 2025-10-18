@@ -110,7 +110,6 @@ export default function CalculatorPage() {
             currency_pair: selectedPair,
             your_rate: parseFloat(calculator.yourRate),
             competitor_rate: competitorRateFloat,
-            client_name: calculator.competitorName,
             comparison_date: calculator.comparisonDate,
             trade_amount: tradeAmountFloat,
             trades_per_year: parseInt(calculator.tradesPerYear),
@@ -132,7 +131,6 @@ export default function CalculatorPage() {
             competitor_rate: competitorRateFloat.toFixed(4),
             trades_per_year: parseInt(calculator.tradesPerYear)
           },
-          client_name: calculator.competitorName,
           savings_amount: savingsPerTrade,
           created_at: new Date().toISOString()
         });
