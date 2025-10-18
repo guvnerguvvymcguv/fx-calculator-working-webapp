@@ -73,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     
     // Determine company size indicators
     const isPublic = sourceCompanyData.company_type?.includes('plc') || 
-                     sourceCompanyData.company_type?.includes('public');
+                     sourceCompanyData.company_type?.includes('public') || false;
     const companyAge = sourceCompanyData.date_of_creation ? 
                        new Date().getFullYear() - new Date(sourceCompanyData.date_of_creation).getFullYear() : 0;
 
