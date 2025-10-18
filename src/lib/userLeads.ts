@@ -9,7 +9,7 @@ import { normalizeCompanyName, isSimilarCompany } from './companyNameUtils';
 export interface UserLead {
   id: string;
   user_id: string;
-  company_id?: string;
+  companies_house_id?: string; // Links to companies_house_data table
   custom_name: string;
   normalized_name: string;
   company_number?: string;
