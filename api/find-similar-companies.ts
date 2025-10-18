@@ -175,10 +175,21 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
     }
 
     const company = data.items[0];
-    console.log('Top result:', company.company_name, company.company_number);
+    
+    // Skip dissolved companies in initial search results
+    let activeCompany = company;
+    if (company.company_status === 'dissolved' || company.company_status === 'liquidation') {
+      console.log('Top result is dissolved, looking for active company...');
+      // Find first active company in results
+      activeCompany = data.items.find((c: any) => 
+        c.company_status !== 'dissolved' && c.company_status !== 'liquidation'
+      ) || company; // Fallback to first if none active
+    }
+    
+    console.log('Top result:', activeCompany.company_name, activeCompany.company_number);
 
     // Get detailed company info including SIC codes
-    const detailUrl = `https://api.company-information.service.gov.uk/company/${company.company_number}`;
+    const detailUrl = `https://api.company-information.service.gov.uk/company/${activeCompany.company_number}`;
     console.log('Fetching company details:', detailUrl);
     
     const detailResponse = await fetch(detailUrl, {
@@ -189,16 +200,16 @@ async function searchCompaniesHouse(companyName: string): Promise<CompanySearchR
 
     if (!detailResponse.ok) {
       console.log('Could not fetch details, using basic info');
-      return company;
+      return activeCompany;
     }
 
     const detailData = await detailResponse.json();
     console.log('Company details:', detailData);
     
     return {
-      ...company,
+      ...activeCompany,
       sic_codes: detailData.sic_codes || [],
-      registered_office_address: detailData.registered_office_address || company.registered_office_address
+      registered_office_address: detailData.registered_office_address || activeCompany.registered_office_address
     };
 
   } catch (error) {
@@ -301,18 +312,24 @@ function filterBySize(
       return false;
     }
 
-    // CRITICAL: Filter out holding companies and head offices - these aren't real operating businesses
-    const holdingCompanySicCodes = ['70100', '70101', '64200', '64201', '64202', '64203', '64209'];
+    // CRITICAL: Filter out holding companies, head offices, and catch-all SIC codes
+    const invalidSicCodes = [
+      '70100', '70101',  // Head offices and holding companies  
+      '64200', '64201', '64202', '64203', '64209',  // Financial holding companies
+      '74990',  // Other professional activities (catch-all for defunct/misc companies)
+      '99999',  // Dormant companies
+      '82990'   // Other business support (often property/admin companies)
+    ];
     const hasSicCodes = company.sic_codes && company.sic_codes.length > 0;
     
     if (hasSicCodes) {
-      // Check if ALL SIC codes are holding company codes (exclude if yes)
-      const allCodesAreHoldingCompany = company.sic_codes!.every(code => 
-        holdingCompanySicCodes.includes(code)
+      // Check if ALL SIC codes are invalid (exclude if yes)
+      const allCodesAreInvalid = company.sic_codes!.every(code => 
+        invalidSicCodes.includes(code)
       );
       
-      if (allCodesAreHoldingCompany) {
-        console.log('Excluding holding company:', company.company_name, 'SIC:', company.sic_codes);
+      if (allCodesAreInvalid) {
+        console.log('Excluding invalid SIC company:', company.company_name, 'SIC:', company.sic_codes);
         return false;
       }
     }
