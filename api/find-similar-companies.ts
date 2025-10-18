@@ -79,6 +79,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Step 3: Search for companies with same SIC codes and similar characteristics
     const similarCompaniesRaw = await findSimilarCompanies(sicCodes, location, isPublic, companyAge);
 
+    console.log('Raw companies found:', similarCompaniesRaw.length);
+    console.log('First 3 raw companies:', similarCompaniesRaw.slice(0, 3).map(c => c.company_name));
+
     // Step 4: Use AI to filter and rank the results
     const similarCompanies = await rankCompaniesWithAI(
       companyName,
