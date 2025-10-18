@@ -37,6 +37,9 @@ export default function LeadsPage() {
   const [filteredLeads, setFilteredLeads] = useState<UserLead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'contacted' | 'not_contacted'>('all');
+  const [companySearchTerm, setCompanySearchTerm] = useState(''); // NEW: Company search
+  const [companySearchResults, setCompanySearchResults] = useState<any[]>([]); // NEW: Search results
+  const [isSearching, setIsSearching] = useState(false); // NEW: Loading state
   const [stats, setStats] = useState({
     total: 0,
     contacted: 0,
@@ -124,6 +127,63 @@ export default function LeadsPage() {
         await loadStats(currentUser.id);
       }
     }
+  };
+
+  // NEW: Search for companies
+  const handleCompanySearch = async (query: string) => {
+    setCompanySearchTerm(query);
+    
+    if (query.length < 2) {
+      setCompanySearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      // Call the same API we use in calculator
+      const response = await fetch('/api/find-similar-companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: query,
+          userId: currentUser.id
+        })
+      });
+
+      const data = await response.json();
+      if (data.similarCompanies) {
+        setCompanySearchResults(data.similarCompanies);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // NEW: Add company from search
+  const handleAddFromSearch = async (companyName: string) => {
+    const result = await addOrUpdateLead({
+      userId: currentUser.id,
+      companyName: companyName,
+      source: 'manual_search',
+      contacted: false
+    });
+
+    if (result.success) {
+      await loadLeads(currentUser.id);
+      await loadStats(currentUser.id);
+      setCompanySearchTerm('');
+      setCompanySearchResults([]);
+      alert(result.message);
+    }
+  };
+
+  // NEW: Check if company already in leads
+  const isCompanyInLeads = (companyName: string): boolean => {
+    return leads.some(lead => 
+      lead.normalized_name === companyName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
   };
 
   const handleSignOut = async () => {
@@ -253,6 +313,82 @@ export default function LeadsPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* NEW: Company Search */}
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-6">
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Search className="h-5 w-5 text-purple-300" />
+                  <h3 className="text-lg font-semibold text-purple-100">Find New Companies</h3>
+                </div>
+                
+                <div className="relative">
+                  <Input
+                    placeholder="Search for UK companies to add..."
+                    value={companySearchTerm}
+                    onChange={(e) => handleCompanySearch(e.target.value)}
+                    className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60 pr-10"
+                  />
+                  {isSearching && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Search Results Dropdown */}
+                {companySearchResults.length > 0 && (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {companySearchResults.map((company, index) => (
+                      <div
+                        key={index}
+                        className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-purple-100 mb-1">{company.name}</h4>
+                            <p className="text-sm text-purple-300 mb-2">{company.industry}</p>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <span className="px-2 py-1 bg-purple-600/30 rounded text-purple-200">
+                                📍 {company.location}
+                              </span>
+                              <span className="px-2 py-1 bg-blue-600/30 rounded text-blue-200">
+                                {company.size}
+                              </span>
+                            </div>
+                            {company.reasoning && (
+                              <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
+                            )}
+                          </div>
+                          
+                          {isCompanyInLeads(company.name) ? (
+                            <span className="px-4 py-2 bg-green-600/30 text-green-200 rounded-lg text-sm font-medium whitespace-nowrap">
+                              ✓ Already in list
+                            </span>
+                          ) : (
+                            <Button
+                              onClick={() => handleAddFromSearch(company.name)}
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                            >
+                              Add to List
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {companySearchTerm.length >= 2 && !isSearching && companySearchResults.length === 0 && (
+                  <p className="text-sm text-purple-300/60 text-center py-4">
+                    No companies found. Try a different search term.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Filters */}
           <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-6">
