@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getCurrentUser } from '../lib/auth';
-import { getUserLeads, updateLeadContactedStatus, deleteLead, getLeadStats } from '../lib/userLeads';
+import { getUserLeads, updateLeadContactedStatus, deleteLead, getLeadStats, addOrUpdateLead } from '../lib/userLeads';
 import type { UserLead } from '../lib/userLeads';
 
 // Helper function to get user profile
