@@ -98,11 +98,14 @@ export default function CalculatorPage() {
       const percentageSavings = (savingsPerTrade / costWithCompetitor) * 100;
       
       // Save complete calculation data to calculations table
+      const normalizedClientName = calculator.competitorName.toLowerCase().replace(/[^a-z0-9]/g, '');
       const { error: calcError } = await supabase
         .from('calculations')
         .insert({
           user_id: currentUser.id,
           company_id: profile?.company_id,
+          client_name: calculator.competitorName,
+          normalized_client_name: normalizedClientName, // NEW: Add normalized name
           calculation_data: {
             currency_pair: selectedPair,
             your_rate: parseFloat(calculator.yourRate),

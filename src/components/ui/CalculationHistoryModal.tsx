@@ -13,18 +13,22 @@ interface CalculationHistoryModalProps {
 interface Calculation {
   id: string;
   created_at: string;
-  calculation_data: {
-    currency_pair: string;
-    your_rate: number;
-    competitor_rate: number;
-    trade_amount: number;
-    trades_per_year: number;
-    pips_added: number;
-    savings_per_trade: number;
-    annual_savings: number;
-    percentage_savings: number;
-  };
-  savings_amount: number;
+  client_name: string;
+  currency_pair: string;
+  your_rate: number;
+  competitor_rate: number;
+  amount: number;
+  amount_to_buy: number;
+  trades_per_year: number;
+  payment_amount: number; // This is pips
+  pips_difference: number;
+  savings_per_trade: number;
+  annual_savings: number;
+  percentage_savings: number;
+  cost_with_competitor: number;
+  cost_with_us: number;
+  comparison_date: string;
+  price_difference: number;
 }
 
 export function CalculationHistoryModal({
@@ -45,10 +49,12 @@ export function CalculationHistoryModal({
   const loadCalculations = async () => {
     setIsLoading(true);
     try {
+      // Query activity_logs instead - this is what admins see
       const { data, error } = await supabase
-        .from('calculations')
+        .from('activity_logs')
         .select('*')
-        .eq('normalized_client_name', normalizedName)
+        .eq('action_type', 'calculation')
+        .ilike('client_name', companyName)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -124,7 +130,7 @@ export function CalculationHistoryModal({
                       </span>
                     </div>
                     <span className="px-3 py-1 bg-purple-600/30 text-purple-200 rounded-lg text-sm font-medium">
-                      {calc.calculation_data.currency_pair}
+                      {calc.currency_pair}
                     </span>
                   </div>
 
@@ -133,48 +139,48 @@ export function CalculationHistoryModal({
                     <div>
                       <p className="text-xs text-purple-300 mb-1">Your Rate</p>
                       <p className="text-lg font-semibold text-purple-100">
-                        {calc.calculation_data.your_rate?.toFixed(4) || 'N/A'}
+                        {calc.your_rate?.toFixed(4) || 'N/A'}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-xs text-purple-300 mb-1">Competitor Rate</p>
                       <p className="text-lg font-semibold text-purple-100">
-                        {calc.calculation_data.competitor_rate?.toFixed(4) || 'N/A'}
+                        {calc.competitor_rate?.toFixed(4) || 'N/A'}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-xs text-purple-300 mb-1">Trade Amount</p>
                       <p className="text-lg font-semibold text-purple-100">
-                        {calc.calculation_data.trade_amount?.toLocaleString() || 'N/A'}
+                        {calc.amount?.toLocaleString() || 'N/A'}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-xs text-purple-300 mb-1">Trades/Year</p>
                       <p className="text-lg font-semibold text-purple-100">
-                        {calc.calculation_data.trades_per_year || 'N/A'}
+                        {calc.trades_per_year || 'N/A'}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-xs text-purple-300 mb-1">Pips Added</p>
                       <p className="text-lg font-semibold text-purple-100">
-                        {calc.calculation_data.pips_added || 'N/A'}
+                        {calc.payment_amount || 'N/A'}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-xs text-purple-300 mb-1">Savings/Trade</p>
                       <p className="text-lg font-semibold text-green-400">
-                        £{calc.calculation_data.savings_per_trade?.toFixed(2) || calc.savings_amount?.toFixed(2) || 'N/A'}
+                        £{calc.savings_per_trade?.toFixed(2) || 'N/A'}
                       </p>
                     </div>
                   </div>
 
                   {/* Annual Savings - Highlighted */}
-                  {calc.calculation_data.annual_savings && (
+                  {calc.annual_savings && (
                     <div className="mt-4 pt-4 border-t border-white/10">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -183,11 +189,11 @@ export function CalculationHistoryModal({
                         </div>
                         <div className="text-right">
                           <p className="text-2xl font-bold text-green-400">
-                            £{calc.calculation_data.annual_savings.toFixed(2)}
+                            £{calc.annual_savings.toFixed(2)}
                           </p>
-                          {calc.calculation_data.percentage_savings && (
+                          {calc.percentage_savings && (
                             <p className="text-sm text-green-300">
-                              ({calc.calculation_data.percentage_savings.toFixed(2)}% saved)
+                              ({calc.percentage_savings.toFixed(2)}% saved)
                             </p>
                           )}
                         </div>

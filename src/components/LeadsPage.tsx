@@ -183,9 +183,8 @@ export default function LeadsPage() {
 
   // NEW: Check if company already in leads
   const isCompanyInLeads = (companyName: string): boolean => {
-    return leads.some(lead => 
-      lead.normalized_name === companyName.toLowerCase().replace(/[^a-z0-9]/g, '')
-    );
+    const normalized = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return leads.some(lead => lead.normalized_name === normalized);
   };
 
   const handleSignOut = async () => {
