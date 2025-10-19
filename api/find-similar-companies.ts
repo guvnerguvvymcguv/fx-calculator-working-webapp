@@ -148,7 +148,7 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const { companyName } = await req.json();
+    const { companyName, excludeCompanies = [] } = await req.json();
 
     console.log('Searching for companies similar to:', companyName);
 
@@ -253,14 +253,31 @@ export default async function handler(req: Request) {
         company,
         score: calculateSimilarityScore(sourceCompany, company),
       }))
-      .filter(({ score }) => score > 0.5) // Only keep good matches
-      .sort((a, b) => b.score - a.score) // Sort by score descending
-      .slice(0, 10); // Top 10
+      .filter(({ score }) => score > 0.8) // Only keep good matches (stricter threshold)
+      .sort((a, b) => b.score - a.score); // Sort by score descending
 
-    console.log(`After scoring: ${scoredCompanies.length} companies with score > 0.5`);
+    // Filter out excluded companies (for "Find More" functionality)
+    let filteredCompanies = scoredCompanies;
+    if (excludeCompanies.length > 0) {
+      const normalizedExclusions = excludeCompanies.map((name: string) => 
+        name.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+      );
+      
+      filteredCompanies = scoredCompanies.filter(({ company }) => {
+        const normalizedCompanyName = company.company_name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+        return !normalizedExclusions.includes(normalizedCompanyName);
+      });
+      
+      console.log(`After exclusion filter: ${filteredCompanies.length} companies (removed ${scoredCompanies.length - filteredCompanies.length})`);
+    }
+
+    // Take top 10 after filtering
+    filteredCompanies = filteredCompanies.slice(0, 10);
+
+    console.log(`After scoring: ${filteredCompanies.length} companies with score > 0.8`);
 
     // Step 4: Format results
-    const similarCompanies: SimilarCompany[] = scoredCompanies.map(({ company }) => {
+    const similarCompanies: SimilarCompany[] = filteredCompanies.map(({ company }) => {
       const primarySIC = company.sic_code1 || company.sic_code2 || '';
       const industry = getIndustryDescription(primarySIC);
       const size = getSizeDescription(company.accounts_category, company.num_mort_charges);

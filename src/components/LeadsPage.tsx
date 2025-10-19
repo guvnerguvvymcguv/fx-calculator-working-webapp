@@ -38,11 +38,13 @@ export default function LeadsPage() {
   const [filteredLeads, setFilteredLeads] = useState<UserLead[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'contacted' | 'not_contacted'>('all');
-  const [companySearchTerm, setCompanySearchTerm] = useState(''); // NEW: Company search
-  const [companySearchResults, setCompanySearchResults] = useState<any[]>([]); // NEW: Search results
-  const [isSearching, setIsSearching] = useState(false); // NEW: Loading state
+  const [companySearchTerm, setCompanySearchTerm] = useState(''); // Company search
+  const [companySearchResults, setCompanySearchResults] = useState<any[]>([]); // Search results
+  const [isSearching, setIsSearching] = useState(false); // Loading state
   const [addedCompanyNames, setAddedCompanyNames] = useState<Set<string>>(new Set()); // Track companies added in this session
-  const [selectedLead, setSelectedLead] = useState<UserLead | null>(null); // NEW: For calculation history modal
+  const [selectedLead, setSelectedLead] = useState<UserLead | null>(null); // For calculation history modal
+  const [shownCompanies, setShownCompanies] = useState<string[]>([]); // Track all companies shown in this session
+  const [hasSearched, setHasSearched] = useState(false); // Track if user has searched once
   const [stats, setStats] = useState({
     total: 0,
     contacted: 0,
@@ -132,14 +134,13 @@ export default function LeadsPage() {
     }
   };
 
-  // NEW: Search for companies
+  // Search for companies
   const handleCompanySearch = async () => {
     if (companySearchTerm.length < 2) {
       return;
     }
 
     setIsSearching(true);
-    setCompanySearchResults([]); // Clear previous results
     
     try {
       // Call the same API we use in calculator
@@ -148,13 +149,24 @@ export default function LeadsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           companyName: companySearchTerm,
-          userId: currentUser.id
+          userId: currentUser.id,
+          excludeCompanies: shownCompanies // Exclude companies already shown
         })
       });
 
       const data = await response.json();
-      if (data.similarCompanies) {
+      if (data.similarCompanies && data.similarCompanies.length > 0) {
         setCompanySearchResults(data.similarCompanies);
+        // Track all shown companies
+        const newShownCompanies = data.similarCompanies.map((c: any) => c.name);
+        setShownCompanies(prev => [...prev, ...newShownCompanies]);
+        setHasSearched(true);
+      } else {
+        if (hasSearched) {
+          alert('No more similar companies found. You\'ve seen all companies that match well enough!');
+        } else {
+          alert('No similar companies found. Try a different company name.');
+        }
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -164,7 +176,7 @@ export default function LeadsPage() {
     }
   };
 
-  // NEW: Add company from search
+  // Add company from search
   const handleAddFromSearch = async (companyName: string) => {
     const result = await addOrUpdateLead({
       userId: currentUser.id,
@@ -192,7 +204,7 @@ export default function LeadsPage() {
     }
   };
 
-  // NEW: Check if company already in leads
+  // Check if company already in leads
   const isCompanyInLeads = (companyName: string): boolean => {
     // Normalize the incoming company name using the same logic as normalizeCompanyName
     const normalized = companyName
@@ -337,7 +349,7 @@ export default function LeadsPage() {
                     ) : (
                       <>
                         <Search className="h-4 w-4 mr-2" />
-                        Search
+                        {hasSearched ? 'Find More' : 'Search'}
                       </>
                     )}
                   </Button>

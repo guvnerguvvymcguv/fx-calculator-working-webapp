@@ -35,7 +35,9 @@ export default function CalculatorPage() {
   const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
   const [findingCompanies, setFindingCompanies] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
-  const [addedCompanies, setAddedCompanies] = useState<Set<string>>(new Set()); // NEW: Track added companies
+  const [addedCompanies, setAddedCompanies] = useState<Set<string>>(new Set()); // Track added companies
+  const [shownCompanies, setShownCompanies] = useState<string[]>([]); // Track all companies shown in this session
+  const [hasSearched, setHasSearched] = useState(false); // Track if user has searched once
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
@@ -245,7 +247,8 @@ export default function CalculatorPage() {
       console.log('Calling find-similar-companies API with:', {
         companyName: calculator.competitorName,
         userId: currentUser.id,
-        companyId: profile?.company_id
+        companyId: profile?.company_id,
+        excludeCompanies: shownCompanies // Exclude companies already shown
       });
       
       const response = await fetch('/api/find-similar-companies', {
@@ -256,7 +259,8 @@ export default function CalculatorPage() {
         body: JSON.stringify({
           companyName: calculator.competitorName,
           userId: currentUser.id,
-          companyId: profile?.company_id
+          companyId: profile?.company_id,
+          excludeCompanies: shownCompanies // Pass exclusion list
         })
       });
 
@@ -269,8 +273,16 @@ export default function CalculatorPage() {
 
       if (data.similarCompanies && data.similarCompanies.length > 0) {
         setSimilarCompanies(data.similarCompanies);
+        // Track all shown companies
+        const newShownCompanies = data.similarCompanies.map((c: any) => c.name);
+        setShownCompanies(prev => [...prev, ...newShownCompanies]);
+        setHasSearched(true);
       } else {
-        alert('No similar companies found. Try a different company name.');
+        if (hasSearched) {
+          alert('No more similar companies found. You\'ve seen all companies that match well enough!');
+        } else {
+          alert('No similar companies found. Try a different company name.');
+        }
       }
       
     } catch (error) {
