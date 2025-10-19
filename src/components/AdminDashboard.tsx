@@ -255,27 +255,72 @@ setUserCalculationCounts(counts);
         return;
       }
       
-      console.log('Fetching schedule for company:', profile.company_id);
+      console.log('Fetching weekly schedule for company:', profile.company_id);
       const { data: schedule, error } = await supabase
         .from('export_schedules')
         .select('*')
         .eq('company_id', profile.company_id)
+        .eq('frequency', 'weekly')
         .eq('is_active', true)
         .maybeSingle();
       
-      console.log('Schedule fetch result:', { schedule, error });
+      console.log('Weekly schedule fetch result:', { schedule, error });
         
       if (schedule) {
-        console.log('Setting schedule:', schedule);
+        console.log('Setting weekly schedule:', schedule);
         setWeeklyExportSchedule(schedule);
         setScheduleDay(schedule.day_of_week.toString());
         setScheduleHour(schedule.hour.toString());
       } else {
-        console.log('No active schedule found, clearing state');
+        console.log('No active weekly schedule found, clearing state');
         setWeeklyExportSchedule(null);
       }
     } catch (error) {
-      console.error('Error fetching export schedule:', error);
+      console.error('Error fetching weekly export schedule:', error);
+    }
+  };
+
+  const fetchMonthlyExportSchedule = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('No user found in fetchMonthlyExportSchedule');
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.company_id) {
+        console.log('No company_id found in fetchMonthlyExportSchedule');
+        return;
+      }
+      
+      console.log('Fetching monthly schedule for company:', profile.company_id);
+      const { data: schedule, error } = await supabase
+        .from('export_schedules')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .eq('frequency', 'monthly')
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      console.log('Monthly schedule fetch result:', { schedule, error });
+        
+      if (schedule) {
+        console.log('Setting monthly schedule:', schedule);
+        setMonthlyExportSchedule(schedule);
+        setMonthlyScheduleDay(schedule.day_of_month?.toString() || '1');
+        setMonthlyScheduleHour(schedule.hour?.toString() || '9');
+      } else {
+        console.log('No active monthly schedule found, clearing state');
+        setMonthlyExportSchedule(null);
+      }
+    } catch (error) {
+      console.error('Error fetching monthly export schedule:', error);
     }
   };
 
@@ -320,7 +365,7 @@ setUserCalculationCounts(counts);
 
       if (weeklyExportSchedule) {
         // Update existing schedule
-        console.log('Updating existing schedule:', weeklyExportSchedule.id);
+        console.log('Updating existing weekly schedule:', weeklyExportSchedule.id);
         const { data, error } = await supabase
           .from('export_schedules')
           .update({
@@ -339,13 +384,14 @@ setUserCalculationCounts(counts);
         }
       } else {
         // Create new schedule
-        console.log('Creating new schedule for company:', profile.company_id);
+        console.log('Creating new weekly schedule for company:', profile.company_id);
         const { data, error } = await supabase
           .from('export_schedules')
           .insert({
             company_id: profile.company_id,
             day_of_week: parseInt(scheduleDay),
             hour: parseInt(scheduleHour),
+            frequency: 'weekly',
             is_active: true,
             export_type: 'salesforce_chatter'
           })
@@ -359,14 +405,82 @@ setUserCalculationCounts(counts);
         }
       }
       
-      console.log('Schedule saved successfully');
-      // Force re-fetch the schedule
+      console.log('Weekly schedule saved successfully');
       await fetchWeeklyExportSchedule();
-      // Only exit edit mode after schedule is fetched
       setEditingSchedule(false);
     } catch (error) {
-      console.error('Error saving export schedule:', error);
+      console.error('Error saving weekly export schedule:', error);
       alert('Failed to save export schedule');
+    }
+  };
+
+  const saveMonthlyExportSchedule = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('No user found');
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.company_id) {
+        console.error('No company_id found');
+        return;
+      }
+
+      if (monthlyExportSchedule) {
+        // Update existing schedule
+        console.log('Updating existing monthly schedule:', monthlyExportSchedule.id);
+        const { data, error } = await supabase
+          .from('export_schedules')
+          .update({
+            day_of_month: parseInt(monthlyScheduleDay),
+            hour: parseInt(monthlyScheduleHour),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', monthlyExportSchedule.id)
+          .select();
+        
+        console.log('Update result:', { data, error });
+        if (error) {
+          console.error('Update error:', error);
+          alert('Failed to update monthly schedule: ' + error.message);
+          return;
+        }
+      } else {
+        // Create new schedule
+        console.log('Creating new monthly schedule for company:', profile.company_id);
+        const { data, error } = await supabase
+          .from('export_schedules')
+          .insert({
+            company_id: profile.company_id,
+            day_of_month: parseInt(monthlyScheduleDay),
+            hour: parseInt(monthlyScheduleHour),
+            frequency: 'monthly',
+            is_active: true,
+            export_type: 'salesforce_chatter'
+          })
+          .select();
+        
+        console.log('Insert result:', { data, error });
+        if (error) {
+          console.error('Insert error:', error);
+          alert('Failed to create monthly schedule: ' + error.message);
+          return;
+        }
+      }
+      
+      console.log('Monthly schedule saved successfully');
+      await fetchMonthlyExportSchedule();
+      setEditingMonthlySchedule(false);
+    } catch (error) {
+      console.error('Error saving monthly export schedule:', error);
+      alert('Failed to save monthly export schedule');
     }
   };
 
@@ -382,7 +496,23 @@ setUserCalculationCounts(counts);
       setWeeklyExportSchedule(null);
       setEditingSchedule(false);
     } catch (error) {
-      console.error('Error disabling export schedule:', error);
+      console.error('Error disabling weekly export schedule:', error);
+    }
+  };
+
+  const disableMonthlyExport = async () => {
+    if (!monthlyExportSchedule) return;
+    
+    try {
+      await supabase
+        .from('export_schedules')
+        .update({ is_active: false })
+        .eq('id', monthlyExportSchedule.id);
+      
+      setMonthlyExportSchedule(null);
+      setEditingMonthlySchedule(false);
+    } catch (error) {
+      console.error('Error disabling monthly export schedule:', error);
     }
   };
 
@@ -1191,6 +1321,99 @@ setUserCalculationCounts(counts);
                         size="sm"
                         variant="outline"
                         onClick={disableWeeklyExport}
+                        className="border-red-600 text-red-400 hover:bg-red-900/20"
+                      >
+                        Disable
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Monthly Export Schedule */}
+        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Calendar className="h-5 w-5 text-purple-400" />
+                <span className="text-gray-300">Monthly Export:</span>
+                {!editingMonthlySchedule && monthlyExportSchedule ? (
+                  <>
+                    <span className="text-white font-medium">
+                      Active - Day {monthlyExportSchedule.day_of_month} at {monthlyExportSchedule.hour}:00
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingMonthlySchedule(true)}
+                      className="text-gray-400 hover:text-white"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                ) : !editingMonthlySchedule ? (
+                  <Button
+                    size="sm"
+                    onClick={() => setEditingMonthlySchedule(true)}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    Enable Monthly Export
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-400">Day</span>
+                    <select
+                      value={monthlyScheduleDay}
+                      onChange={(e) => setMonthlyScheduleDay(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                    >
+                      {Array.from({ length: 28 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-gray-400">at</span>
+                    <select
+                      value={monthlyScheduleHour}
+                      onChange={(e) => setMonthlyScheduleHour(e.target.value)}
+                      className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                    >
+                      {Array.from({ length: 24 }, (_, i) => (
+                        <option key={i} value={i}>
+                          {i.toString().padStart(2, '0')}:00
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      onClick={saveMonthlyExportSchedule}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingMonthlySchedule(false);
+                        if (monthlyExportSchedule) {
+                          setMonthlyScheduleDay(monthlyExportSchedule.day_of_month?.toString() || '1');
+                          setMonthlyScheduleHour(monthlyExportSchedule.hour?.toString() || '9');
+                        }
+                      }}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    >
+                      Cancel
+                    </Button>
+                    {monthlyExportSchedule && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={disableMonthlyExport}
                         className="border-red-600 text-red-400 hover:bg-red-900/20"
                       >
                         Disable
