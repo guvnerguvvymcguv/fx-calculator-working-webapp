@@ -41,6 +41,7 @@ export default function LeadsPage() {
   const [companySearchTerm, setCompanySearchTerm] = useState(''); // NEW: Company search
   const [companySearchResults, setCompanySearchResults] = useState<any[]>([]); // NEW: Search results
   const [isSearching, setIsSearching] = useState(false); // NEW: Loading state
+  const [addedCompanyNames, setAddedCompanyNames] = useState<Set<string>>(new Set()); // Track companies added in this session
   const [selectedLead, setSelectedLead] = useState<UserLead | null>(null); // NEW: For calculation history modal
   const [stats, setStats] = useState({
     total: 0,
@@ -173,10 +174,20 @@ export default function LeadsPage() {
     });
 
     if (result.success) {
+      // Add to session tracking
+      const normalized = companyName
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[^\w\s]/g, '')
+        .replace(/\b(ltd|limited|plc|group|holdings|co|inc)\b/g, '')
+        .trim()
+        .replace(/\s+/g, '');
+      
+      setAddedCompanyNames(prev => new Set([...prev, normalized]));
+      
       await loadLeads(currentUser.id);
       await loadStats(currentUser.id);
-      setCompanySearchTerm('');
-      setCompanySearchResults([]);
       alert(result.message);
     }
   };
@@ -193,11 +204,30 @@ export default function LeadsPage() {
       .trim()
       .replace(/\s+/g, ''); // Remove all spaces
     
-    // Check against all leads (also remove spaces from their normalized names for comparison)
-    return leads.some(lead => {
-      const leadNormalized = lead.normalized_name?.replace(/\s+/g, '') || '';
-      return leadNormalized === normalized;
+    console.log('Checking if company in leads:', {
+      original: companyName,
+      normalized: normalized,
+      leadsCount: leads.length,
+      addedThisSession: addedCompanyNames.has(normalized)
     });
+    
+    // Check if added in current session
+    if (addedCompanyNames.has(normalized)) {
+      console.log('Found in addedCompanyNames set');
+      return true;
+    }
+    
+    // Check against all leads (also remove spaces from their normalized names for comparison)
+    const found = leads.some(lead => {
+      const leadNormalized = lead.normalized_name?.replace(/\s+/g, '') || '';
+      const matches = leadNormalized === normalized;
+      if (matches) {
+        console.log('Found match in leads:', lead.custom_name, leadNormalized);
+      }
+      return matches;
+    });
+    
+    return found;
   };
 
   const handleSignOut = async () => {
