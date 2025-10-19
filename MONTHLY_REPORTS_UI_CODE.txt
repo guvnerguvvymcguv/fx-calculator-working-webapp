@@ -1,0 +1,189 @@
+// Monthly Reports Settings Component
+// Add this to AdminDashboard.tsx after the Team Members card
+
+// Add these handler functions near other handler functions in AdminDashboard:
+
+const handleToggleMonthlyReports = async () => {
+  setSavingReportSettings(true);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+      
+    if (!profile?.company_id) return;
+    
+    const { error } = await supabase
+      .from('companies')
+      .update({ monthly_reports_enabled: !monthlyReportsEnabled })
+      .eq('id', profile.company_id);
+      
+    if (error) throw error;
+    
+    setMonthlyReportsEnabled(!monthlyReportsEnabled);
+    alert(`Monthly reports ${!monthlyReportsEnabled ? 'enabled' : 'disabled'} successfully!`);
+  } catch (error) {
+    console.error('Error updating monthly reports setting:', error);
+    alert('Failed to update settings. Please try again.');
+  } finally {
+    setSavingReportSettings(false);
+  }
+};
+
+const handleTestReport = async () => {
+  if (!confirm('This will generate and send a test report for the previous month to all admins. Continue?')) {
+    return;
+  }
+  
+  setTestingReport(true);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const response = await supabase.functions.invoke('generate-monthly-report', {
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`
+      }
+    });
+    
+    if (response.error) throw response.error;
+    
+    alert('Test report sent successfully! Check your email.');
+  } catch (error) {
+    console.error('Error generating test report:', error);
+    alert('Failed to generate test report. Please try again.');
+  } finally {
+    setTestingReport(false);
+  }
+};
+
+// Add to the useEffect that loads company data:
+const loadMonthlyReportsSetting = async (companyId: string) => {
+  const { data: company } = await supabase
+    .from('companies')
+    .select('monthly_reports_enabled')
+    .eq('id', companyId)
+    .single();
+    
+  if (company) {
+    setMonthlyReportsEnabled(company.monthly_reports_enabled || false);
+  }
+};
+
+// Call loadMonthlyReportsSetting in fetchDashboardData function
+
+
+// Add this JSX after the Team Members card (before the closing </div></div>):
+
+        {/* Monthly Client Reports */}
+        <Card className="bg-gray-900/50 border-gray-800 mt-8">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FileText className="h-6 w-6 text-purple-400" />
+                <CardTitle className="text-xl text-white">Monthly Client Reports</CardTitle>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Description */}
+              <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                <Mail className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-white font-medium mb-1">Automated Client Intelligence Reports</p>
+                  <p className="text-sm text-gray-400">
+                    Receive a comprehensive PDF report on the 1st of every month with detailed insights about your clients' trading activity, 
+                    currency pair usage, average trade values, and savings performance.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle Section */}
+              <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg">
+                <div>
+                  <p className="text-white font-medium">Monthly Reports</p>
+                  <p className="text-sm text-gray-400">
+                    {monthlyReportsEnabled 
+                      ? 'Reports will be sent to all company admins on the 1st of each month'
+                      : 'Enable to receive monthly PDF reports via email'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={monthlyReportsEnabled}
+                      onChange={handleToggleMonthlyReports}
+                      disabled={savingReportSettings}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                  <span className={`text-sm font-medium ${monthlyReportsEnabled ? 'text-green-400' : 'text-gray-400'}`}>
+                    {monthlyReportsEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Report Details */}
+              {monthlyReportsEnabled && (
+                <div className="p-4 bg-purple-900/20 border border-purple-800/30 rounded-lg">
+                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-400" />
+                    Active - Next report scheduled
+                  </h4>
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Send Date:</span>
+                      <span className="text-white">1st of every month at 9:00 AM</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Recipients:</span>
+                      <span className="text-white">All company admins</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Report Period:</span>
+                      <span className="text-white">Previous month's activity</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Format:</span>
+                      <span className="text-white">PDF attachment via email</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Test Button */}
+              <div className="flex justify-end pt-4 border-t border-gray-700">
+                <Button
+                  onClick={handleTestReport}
+                  disabled={testingReport || !monthlyReportsEnabled}
+                  variant="outline"
+                  className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
+                >
+                  {testingReport ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2" />
+                      Generating Test Report...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Send Test Report
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {!monthlyReportsEnabled && (
+                <p className="text-xs text-gray-500 text-center">
+                  Enable monthly reports to test the feature
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>

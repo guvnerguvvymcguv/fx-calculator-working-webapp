@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check, AlertCircle, LogOut } from 'lucide-react';
+import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check, AlertCircle, LogOut, FileText, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function AdminDashboard() {
@@ -27,6 +27,9 @@ export default function AdminDashboard() {
   const [calculationCountLoading, setCalculationCountLoading] = useState(false);
   const [processingUpdate, setProcessingUpdate] = useState(false);
   const [successMessageType, setSuccessMessageType] = useState<'checkout' | 'seat_update' | null>(null);
+  const [monthlyReportsEnabled, setMonthlyReportsEnabled] = useState(false);
+  const [savingReportSettings, setSavingReportSettings] = useState(false);
+  const [testingReport, setTestingReport] = useState(false);
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
