@@ -18,9 +18,13 @@ export default function AdminDashboard() {
   const [exporting, setExporting] = useState(false);
   const [salesforceConnected, setSalesforceConnected] = useState(false);
   const [weeklyExportSchedule, setWeeklyExportSchedule] = useState<any>(null);
+  const [monthlyExportSchedule, setMonthlyExportSchedule] = useState<any>(null);
   const [editingSchedule, setEditingSchedule] = useState(false);
+  const [editingMonthlySchedule, setEditingMonthlySchedule] = useState(false);
   const [scheduleDay, setScheduleDay] = useState('1'); // Monday
   const [scheduleHour, setScheduleHour] = useState('9'); // 9 AM
+  const [monthlyScheduleDay, setMonthlyScheduleDay] = useState('1'); // 1st of month
+  const [monthlyScheduleHour, setMonthlyScheduleHour] = useState('9'); // 9 AM
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [companyData, setCompanyData] = useState<any>(null);
   const [userCalculationCounts, setUserCalculationCounts] = useState<Record<string, number>>({});
@@ -173,6 +177,7 @@ setUserCalculationCounts(counts);
     fetchDashboardData();
     checkSalesforceConnection();
     fetchWeeklyExportSchedule();
+    fetchMonthlyExportSchedule();
   }, [dateRange]);
 
   const checkSalesforceConnection = async () => {
@@ -997,7 +1002,7 @@ setUserCalculationCounts(counts);
         </Card>
 
         {/* Monthly Client Reports */}
-        <Card className="bg-gray-900/50 border-gray-800 mt-8">
+        <Card className="bg-gray-900/50 border-gray-800 mt-8 mb-8">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
