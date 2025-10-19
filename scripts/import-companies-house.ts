@@ -2,6 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
+import { config } from 'dotenv';
+
+// Load environment variables from .env.local
+config({ path: '.env.local' });
 
 // Supabase connection
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
@@ -124,15 +128,23 @@ function shouldImportCompany(row: CompanyRow): { import: boolean; reason?: strin
 async function insertBatch(batch: any[]) {
   if (batch.length === 0) return;
 
-  const { error } = await supabase
+  console.log(`🔄 Attempting to upsert batch of ${batch.length} companies...`);
+  
+  const { data, error } = await supabase
     .from('companies_house_data')
-    .insert(batch);
+    .upsert(batch, { 
+      onConflict: 'company_number',
+      ignoreDuplicates: false 
+    });
 
   if (error) {
-    console.error('❌ Batch insert error:', error.message);
+    console.error('❌ Batch upsert error:', error.message);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Sample row causing issue:', JSON.stringify(batch[0], null, 2));
     stats.errors += batch.length;
   } else {
     stats.imported += batch.length;
+    console.log(`✅ Successfully upserted ${batch.length} companies`);
   }
 }
 
@@ -218,7 +230,9 @@ async function importCompaniesHouseData(csvPath: string) {
       postcode: postcode || null,
       postcode_prefix: postcodePrefix || null,
       post_town: row['RegAddress.PostTown'] || null,
-      region: row['RegAddress.Country'] || null,
+      county: row['RegAddress.County'] || null,
+      country: row['RegAddress.Country'] || null,
+      address_line1: row['RegAddress.AddressLine1'] || null,
       date_of_creation: incorporationDate ? new Date(incorporationDate.split('/').reverse().join('-')).toISOString().split('T')[0] : null,
       company_age: companyAge,
       last_updated: new Date().toISOString(),
