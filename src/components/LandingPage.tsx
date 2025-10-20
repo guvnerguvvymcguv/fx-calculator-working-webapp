@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
-import { Play, X, Calendar, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, X, Calendar, Search, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 // Import our custom hooks and components
@@ -160,6 +160,121 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
 
       {/* Features Section */}
       <FeaturesGrid />
+
+      {/* Add-ons Section */}
+      <section className="py-20 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold mb-6 bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">
+              Supercharge Your Workflow
+            </h2>
+            <p className="text-xl text-purple-200/80">Optional add-ons to unlock even more power</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-8 mb-12">
+            {/* Company Finder Add-on */}
+            <div className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-8 hover:bg-white/10 transition-all duration-200">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                  <Search className="h-6 w-6 text-blue-400" />
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-purple-300">From</div>
+                  <div className="text-2xl font-bold text-white">£5<span className="text-sm text-purple-200">/seat/mo</span></div>
+                  <div className="text-xs text-purple-300">£3/seat annually</div>
+                </div>
+              </div>
+              
+              <h3 className="text-2xl font-bold text-purple-200 mb-3">Company Finder</h3>
+              <p className="text-purple-200/80 mb-6">
+                Find unlimited similar companies to expand your prospect list and never run out of leads.
+              </p>
+              
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Search by company name or location</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Find similar companies in the same industry</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Access full company details & contact info</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Build and manage your leads pipeline</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Client Data Tracking Add-on */}
+            <div className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-8 hover:bg-white/10 transition-all duration-200">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-purple-400" />
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-purple-300">From</div>
+                  <div className="text-2xl font-bold text-white">£5<span className="text-sm text-purple-200">/seat/mo</span></div>
+                  <div className="text-xs text-purple-300">£3/seat annually</div>
+                </div>
+              </div>
+              
+              <h3 className="text-2xl font-bold text-purple-200 mb-3">Client Data Tracking</h3>
+              <p className="text-purple-200/80 mb-6">
+                Receive monthly PDF reports with comprehensive analytics on your team's performance.
+              </p>
+              
+              <div className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Monthly PDF reports with key metrics</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Track total savings presented to clients</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Monitor team performance and trends</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
+                    <span className="text-green-400 text-xs">✓</span>
+                  </div>
+                  <span className="text-purple-200/90 text-sm">Historical data for year-over-year comparison</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Button 
+              onClick={handleSignUp}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-4 text-lg rounded-lg shadow-lg hover:shadow-purple-400/60 hover:shadow-[0_0_20px_rgba(147,51,234,0.6)] transition-all duration-200"
+            >
+              See Full Pricing
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Demo Section */}
       <section className="py-20 px-4">

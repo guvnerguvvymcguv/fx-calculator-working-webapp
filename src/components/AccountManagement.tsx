@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { ArrowLeft, Users, Plus, Minus, AlertCircle, Clock, Trash2, UserX, UserCheck, Mail, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Users, Plus, Minus, AlertCircle, Clock, Trash2, UserX, UserCheck, Mail, RefreshCw, TrendingUp } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import CancelSubscriptionModal from './CancelSubscriptionModal';
 
@@ -646,6 +646,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
   const handleDisableAddon = async (addonType: 'company_finder' | 'client_data') => {
     const addonName = addonType === 'company_finder' ? 'Company Finder' : 'Client Data Tracking';
     const seatCount = company?.subscription_seats || 1;
+    const currentState = addonType === 'company_finder' ? companyFinderEnabled : clientDataEnabled;
     
     // Calculate what they'll save next billing cycle
     let savingsMessage = '';
@@ -672,7 +673,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
         body: {
           companyId: company.id,
           addonType: addonType,
-          enabled: !currentState
+          enabled: false // We're always disabling when this function is called
         },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
@@ -685,9 +686,9 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
       // Update local state
       if (addonType === 'company_finder') {
-        setCompanyFinderEnabled(!currentState);
+        setCompanyFinderEnabled(false);
       } else {
-        setClientDataEnabled(!currentState);
+        setClientDataEnabled(false);
       }
 
       alert(`${addonName} disabled successfully! Your next billing cycle will reflect the reduced price.`);
@@ -695,7 +696,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
     } catch (error) {
       console.error('Error toggling add-on:', error);
-      alert(`Failed to ${action} ${addonName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to disable ${addonName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setTogglingAddon(null);
     }

@@ -229,7 +229,7 @@ export default function Checkout() {
     </div>;
   }
 
-  const { subtotal, vat, total } = calculatePrice();
+  const { vat, total } = calculatePrice();
 
   return (
     <div className="min-h-screen bg-[#10051A] p-8">
