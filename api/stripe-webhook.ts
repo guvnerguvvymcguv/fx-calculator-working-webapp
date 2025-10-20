@@ -88,11 +88,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         }
 
-        // HANDLE ADD-ON PURCHASE
-        if (isAddonPurchase && addonType) {
-          console.log('Processing add-on purchase:', { companyId, addonType });
+        // HANDLE ADD-ON PRORATED PAYMENT
+        const isAddonProration = session.metadata?.is_addon_proration === 'true';
+        const addonType = session.metadata?.addon_type;
+        const ongoingPriceId = session.metadata?.ongoing_price_id;
+        const addonSeatCount = parseInt(session.metadata?.seat_count || '0');
+        const addonSubscriptionId = session.metadata?.subscription_id;
+        const newMonthlyPrice = parseFloat(session.metadata?.new_monthly_price || '0');
+
+        if (isAddonProration && addonType && ongoingPriceId && addonSubscriptionId) {
+          console.log('Processing add-on prorated payment:', { 
+            companyId, 
+            addonType, 
+            ongoingPriceId,
+            seatCount: addonSeatCount,
+            newMonthlyPrice
+          });
           
           try {
+            // Add the subscription item for ongoing billing
+            const subscriptionItem = await stripe.subscriptionItems.create({
+              subscription: addonSubscriptionId,
+              price: ongoingPriceId,
+              quantity: addonSeatCount,
+              proration_behavior: 'none', // No proration - already paid
+            });
+
+            console.log('✅ Subscription item created:', subscriptionItem.id);
+
+            // Update database to enable add-on and update price
             const columnName = addonType === 'company_finder' 
               ? 'company_finder_enabled' 
               : 'client_data_enabled';
@@ -101,17 +125,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .from('companies')
               .update({
                 [columnName]: true,
+                subscription_price: newMonthlyPrice,
+                price_per_month: newMonthlyPrice,
                 updated_at: new Date().toISOString()
               })
               .eq('id', companyId);
             
             if (updateError) {
-              console.error('Failed to enable add-on:', updateError);
-            } else {
-              console.log(`✅ Add-on ${addonType} enabled for company ${companyId}`);
+              console.error('Failed to enable add-on in database:', updateError);
+              // Rollback: remove the subscription item
+              await stripe.subscriptionItems.del(subscriptionItem.id);
+              throw updateError;
             }
+
+            console.log(`✅ Add-on ${addonType} enabled for company ${companyId}, price updated to £${newMonthlyPrice}`);
           } catch (error) {
-            console.error('Error processing add-on purchase:', error);
+            console.error('Error processing add-on proration:', error);
           }
           break; // Exit early for add-on purchases
         }

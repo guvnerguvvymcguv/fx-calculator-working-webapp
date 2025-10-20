@@ -1,5 +1,5 @@
 // supabase/functions/create-addon-checkout/index.ts
-// Creates a Stripe Checkout session for adding an add-on to an existing subscription
+// Creates a Stripe Checkout session for prorated add-on payment, then adds subscription item
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -78,6 +78,29 @@ serve(async (req) => {
       throw new Error('No Stripe customer found')
     }
 
+    if (!company.stripe_subscription_id) {
+      throw new Error('No active subscription found')
+    }
+
+    // Fetch the subscription to get current period dates
+    const subscription = await stripe.subscriptions.retrieve(company.stripe_subscription_id)
+    
+    const currentPeriodStart = new Date(subscription.current_period_start * 1000)
+    const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+    const now = new Date()
+    
+    // Calculate days remaining in current period
+    const totalDaysInPeriod = Math.ceil((currentPeriodEnd.getTime() - currentPeriodStart.getTime()) / (1000 * 60 * 60 * 24))
+    const daysRemaining = Math.ceil((currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    
+    console.log('Proration calculation:', {
+      currentPeriodStart: currentPeriodStart.toISOString(),
+      currentPeriodEnd: currentPeriodEnd.toISOString(),
+      totalDaysInPeriod,
+      daysRemaining,
+      subscriptionType: company.subscription_type
+    })
+
     // Determine product ID
     const productId = addonType === 'company_finder' 
       ? ADDON_PRODUCTS.COMPANY_FINDER 
@@ -85,64 +108,87 @@ serve(async (req) => {
 
     // Calculate pricing PER SEAT based on subscription type
     const seatCount = company.subscription_seats || 1
-    const vatRate = 0.2
 
-    let addonPricePerSeatWithVatPence: number
+    let addonPricePerSeatExVat: number
+    let fullPeriodPriceExVat: number
     let recurringInterval: 'month' | 'year'
 
     if (company.subscription_type === 'annual') {
       // Annual: £3/seat/month = £36/seat/year with 10% discount = £32.40/seat/year
-      const addonPricePerSeat = 3
-      const annualPricePerSeat = addonPricePerSeat * 12 // £36/seat/year
-      const withDiscount = annualPricePerSeat * 0.9 // 10% annual discount = £32.40/seat/year
-      const withVat = withDiscount * 1.2 // 20% VAT = £38.88/seat/year
-      addonPricePerSeatWithVatPence = Math.round(withVat * 100) // Convert to pence
+      const addonPricePerSeatPerMonth = 3
+      const annualPricePerSeat = addonPricePerSeatPerMonth * 12 // £36/seat/year
+      addonPricePerSeatExVat = annualPricePerSeat * 0.9 // 10% annual discount = £32.40/seat/year
+      fullPeriodPriceExVat = addonPricePerSeatExVat * seatCount
       recurringInterval = 'year'
-      
-      console.log('Annual add-on pricing:', {
-        basePerSeat: addonPricePerSeat,
-        annualPerSeat: annualPricePerSeat,
-        withDiscount: withDiscount,
-        withVat: withVat,
-        pence: addonPricePerSeatWithVatPence,
-        seats: seatCount,
-        totalCharge: (addonPricePerSeatWithVatPence * seatCount) / 100
-      })
     } else {
-      // Monthly: £5/seat/month with VAT = £6/seat/month
-      const addonPricePerSeat = 5
-      const withVat = addonPricePerSeat * 1.2 // 20% VAT = £6/seat/month
-      addonPricePerSeatWithVatPence = Math.round(withVat * 100) // Convert to pence
+      // Monthly: £5/seat/month
+      addonPricePerSeatExVat = 5
+      fullPeriodPriceExVat = addonPricePerSeatExVat * seatCount
       recurringInterval = 'month'
-      
-      console.log('Monthly add-on pricing:', {
-        basePerSeat: addonPricePerSeat,
-        withVat: withVat,
-        pence: addonPricePerSeatWithVatPence,
-        seats: seatCount,
-        totalCharge: (addonPricePerSeatWithVatPence * seatCount) / 100
-      })
     }
 
-    // Create price for add-on (per seat)
-    const addonPrice = await stripe.prices.create({
+    // Calculate prorated amount for remainder of period (excluding VAT)
+    const proratedAmountExVat = (fullPeriodPriceExVat * daysRemaining) / totalDaysInPeriod
+    
+    // Add VAT (20%)
+    const proratedAmountWithVat = proratedAmountExVat * 1.2
+    const proratedAmountPence = Math.round(proratedAmountWithVat * 100)
+    
+    // Calculate ongoing price with VAT
+    const addonPricePerSeatWithVatPence = Math.round(addonPricePerSeatExVat * 1.2 * 100)
+
+    console.log('Pricing calculation:', {
+      addonPricePerSeatExVat,
+      fullPeriodPriceExVat,
+      proratedAmountExVat,
+      proratedAmountWithVat,
+      proratedAmountPence,
+      addonPricePerSeatWithVatPence,
+      seatCount
+    })
+
+    // Create price for ongoing billing (per seat with VAT)
+    const ongoingPrice = await stripe.prices.create({
       currency: 'gbp',
       unit_amount: addonPricePerSeatWithVatPence,
       recurring: { interval: recurringInterval },
       product: productId
     })
 
+    console.log('Created ongoing price:', ongoingPrice.id)
+
+    // Calculate new total monthly price for Supabase
+    // Base price per seat
+    const baseMonthlyPricePerSeat = company.subscription_seats <= 14 ? 30 : 
+                                     company.subscription_seats <= 29 ? 27 : 24
+    const baseMonthlyTotal = company.subscription_seats * baseMonthlyPricePerSeat
+    
+    // Add add-on price (monthly equivalent)
+    const addonMonthlyEquivalent = company.subscription_type === 'annual' 
+      ? (3 * 12 * 0.9) // £32.40/year = £2.70/month equivalent
+      : 5 // £5/month
+    
+    const newMonthlyTotal = baseMonthlyTotal + (addonMonthlyEquivalent * seatCount)
+
+    console.log('New subscription price calculation:', {
+      baseMonthlyTotal,
+      addonMonthlyEquivalent,
+      newMonthlyTotal
+    })
+
     // Get origin URL
     const origin = req.headers.get('origin') || 'https://spreadchecker.co.uk'
+    
+    const addonName = addonType === 'company_finder' ? 'Company Finder' : 'Client Data Tracking'
 
-    // Create checkout session for add-on
+    // Create checkout session for prorated payment
     const session = await stripe.checkout.sessions.create({
       customer: company.stripe_customer_id,
       payment_method_types: ['card'],
-      mode: 'subscription',
+      mode: 'payment',
       payment_method_options: {
         card: {
-          request_three_d_secure: 'any',
+          request_three_d_secure: 'any', // Enforce 3D Secure
         },
       },
       success_url: `${origin}/admin/account?addon_added=success`,
@@ -151,11 +197,22 @@ serve(async (req) => {
         company_id: companyId,
         addon_type: addonType,
         user_id: user.id,
-        is_addon_purchase: 'true'
+        is_addon_proration: 'true',
+        ongoing_price_id: ongoingPrice.id,
+        seat_count: seatCount.toString(),
+        subscription_id: company.stripe_subscription_id,
+        new_monthly_price: newMonthlyTotal.toString()
       },
       line_items: [{
-        price: addonPrice.id,
-        quantity: seatCount  // Charge per seat
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: `${addonName} - Prorated for ${daysRemaining} days`,
+            description: `${addonName} add-on for ${seatCount} seat${seatCount > 1 ? 's' : ''} (${daysRemaining} days remaining in current ${recurringInterval})`,
+          },
+          unit_amount: proratedAmountPence,
+        },
+        quantity: 1,
       }]
     })
 
@@ -163,12 +220,10 @@ serve(async (req) => {
       throw new Error('No checkout URL received from Stripe')
     }
 
-    console.log('Addon checkout session created:', session.id)
-    console.log('Total charge:', {
-      pricePerSeat: addonPricePerSeatWithVatPence / 100,
-      seats: seatCount,
-      total: (addonPricePerSeatWithVatPence * seatCount) / 100,
-      interval: recurringInterval
+    console.log('Checkout session created:', {
+      sessionId: session.id,
+      proratedCharge: proratedAmountPence / 100,
+      ongoingPriceId: ongoingPrice.id
     })
 
     return new Response(

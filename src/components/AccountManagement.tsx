@@ -22,9 +22,20 @@ export default function AccountManagement() {
   const [companyFinderEnabled, setCompanyFinderEnabled] = useState(false);
   const [clientDataEnabled, setClientDataEnabled] = useState(false);
   const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
+  const [showAddonSuccess, setShowAddonSuccess] = useState(false);
 
   useEffect(() => {
     fetchAccountData();
+    
+    // Check for add-on success parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('addon_added') === 'success') {
+      setShowAddonSuccess(true);
+      // Remove the parameter from URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Hide message after 5 seconds
+      setTimeout(() => setShowAddonSuccess(false), 5000);
+    }
   }, []);
 
   const fetchAccountData = async () => {
@@ -118,9 +129,23 @@ export default function AccountManagement() {
     }
   };
 
-  const calculatePrice = (totalSeats: number) => {
+  const calculatePrice = (totalSeats: number, includeAddons: boolean = true) => {
+    // Base subscription price
     const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
-    const monthlyTotal = totalSeats * monthlyPricePerSeat;
+    let monthlyTotal = totalSeats * monthlyPricePerSeat;
+    
+    // Add add-on pricing if enabled and requested
+    if (includeAddons) {
+      const addonPricePerSeat = company?.subscription_type === 'annual' ? (3 * 12 * 0.9) : 5; // £3/mo for annual (with discount), £5/mo for monthly
+      
+      if (companyFinderEnabled) {
+        monthlyTotal += totalSeats * addonPricePerSeat;
+      }
+      
+      if (clientDataEnabled) {
+        monthlyTotal += totalSeats * addonPricePerSeat;
+      }
+    }
     
     // If annual subscription, return annual price (monthly × 12 × 0.9 for 10% discount)
     if (company?.subscription_type === 'annual') {
@@ -614,8 +639,9 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
   };
 
   const handleUpgradeAddon = async (addonType: 'company_finder' | 'client_data') => {
-    // Redirect to Stripe Checkout for enabling add-on
     try {
+      setTogglingAddon(addonType);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await supabase.functions.invoke('create-addon-checkout', {
@@ -629,17 +655,20 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
       });
 
       if (response.error) {
-        throw new Error(response.error.message || 'Failed to create checkout session');
+        throw new Error(response.error.message || 'Failed to create checkout');
       }
 
+      // Redirect to Stripe Checkout
       if (response.data?.url) {
         window.location.href = response.data.url;
       } else {
         throw new Error('No checkout URL received');
       }
+      
     } catch (error) {
-      console.error('Error creating checkout:', error);
+      console.error('Error creating add-on checkout:', error);
       alert(`Failed to start checkout: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setTogglingAddon(null);
     }
   };
 
@@ -734,6 +763,20 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
             <p className="text-gray-400">Manage seats and subscription</p>
           </div>
         </div>
+
+        {/* Add-on Success Banner */}
+        {showAddonSuccess && (
+          <Card className="bg-green-900/20 border-green-600/30 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-green-400" />
+                <span className="text-green-300 font-medium">
+                  Add-on enabled successfully! Your subscription has been updated.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Pending Cancellation Banner */}
         {company?.cancel_at_period_end && (
