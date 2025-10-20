@@ -277,36 +277,6 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
   break; // Exit early for seat updates
 }
 
-        // HANDLE ADD-ON PURCHASE
-        if (isAddonPurchase && addonType) {
-          console.log('Processing add-on purchase:', addonType);
-          
-          try {
-            // Update database to enable the add-on
-            const updateField = addonType === 'company_finder' 
-              ? 'company_finder_enabled' 
-              : 'client_data_enabled';
-
-            const { error: updateError } = await supabase
-              .from('companies')
-              .update({
-                [updateField]: true,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', companyId);
-
-            if (updateError) {
-              console.error('Failed to enable add-on:', updateError);
-              throw updateError;
-            }
-
-            console.log(`Add-on ${addonType} enabled for company ${companyId}`);
-          } catch (error) {
-            console.error('Error processing add-on purchase:', error);
-          }
-          break; // Exit early for add-on purchases
-        }
-
         // HANDLE NEW SUBSCRIPTION CHECKOUT (existing logic)
         // If subscription exists, fetch it to get actual details including quantity
         let actualSeatCount = seatCountNum;
