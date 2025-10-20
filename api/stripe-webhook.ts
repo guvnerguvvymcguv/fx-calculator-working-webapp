@@ -79,16 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const newSeatCount = session.metadata?.new_seat_count;
         const subscriptionId = session.metadata?.subscription_id;
         
-        // Check if this is an add-on purchase
-        const isAddonPurchase = session.metadata?.is_addon_purchase === 'true';
-        const addonType = session.metadata?.addon_type;
-
-        if (!companyId) {
-          console.error('No company ID in session metadata');
-          break;
-        }
-
-        // HANDLE ADD-ON PRORATED PAYMENT
+        // Check if this is an add-on proration payment
         const isAddonProration = session.metadata?.is_addon_proration === 'true';
         const addonType = session.metadata?.addon_type;
         const ongoingPriceId = session.metadata?.ongoing_price_id;
@@ -96,6 +87,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const addonSubscriptionId = session.metadata?.subscription_id;
         const newMonthlyPrice = parseFloat(session.metadata?.new_monthly_price || '0');
 
+        if (!companyId) {
+          console.error('No company ID in session metadata');
+          break;
+        }
+
+        // HANDLE ADD-ON PRORATED PAYMENT
         if (isAddonProration && addonType && ongoingPriceId && addonSubscriptionId) {
           console.log('Processing add-on prorated payment:', { 
             companyId, 
