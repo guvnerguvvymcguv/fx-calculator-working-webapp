@@ -38,6 +38,9 @@ export default function CalculatorPage() {
   const [addedCompanies, setAddedCompanies] = useState<Set<string>>(new Set()); // Track added companies
   const [shownCompanies, setShownCompanies] = useState<string[]>([]); // Track all companies shown in this session
   const [hasSearched, setHasSearched] = useState(false); // Track if user has searched once
+  const [currentOffset, setCurrentOffset] = useState(0); // Track pagination offset
+  const [totalMatches, setTotalMatches] = useState(0); // Total number of matches found
+  const [hasMoreResults, setHasMoreResults] = useState(false); // Whether more results available
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
@@ -239,7 +242,7 @@ export default function CalculatorPage() {
     }
 
     setFindingCompanies(true);
-    setSimilarCompanies([]);
+    // Don't reset similarCompanies - we're appending for pagination
 
     try {
       const profile = await getUserProfile(currentUser.id);
@@ -260,7 +263,9 @@ export default function CalculatorPage() {
           companyName: calculator.competitorName,
           userId: currentUser.id,
           companyId: profile?.company_id,
-          excludeCompanies: shownCompanies // Pass exclusion list
+          excludeCompanies: shownCompanies, // Pass exclusion list
+          limit: 10,
+          offset: currentOffset // Pass pagination offset
         })
       });
 
@@ -272,11 +277,14 @@ export default function CalculatorPage() {
       }
 
       if (data.similarCompanies && data.similarCompanies.length > 0) {
-        setSimilarCompanies(data.similarCompanies);
+        setSimilarCompanies(prev => [...prev, ...data.similarCompanies]); // Append to existing results
         // Track all shown companies
         const newShownCompanies = data.similarCompanies.map((c: any) => c.name);
         setShownCompanies(prev => [...prev, ...newShownCompanies]);
         setHasSearched(true);
+        setTotalMatches(data.totalMatches || 0);
+        setHasMoreResults(data.hasMore || false);
+        setCurrentOffset(prev => prev + 10); // Increment offset for next page
       } else {
         if (hasSearched) {
           alert('No more similar companies found. You\'ve seen all companies that match well enough!');
@@ -697,7 +705,7 @@ export default function CalculatorPage() {
                     <div className="p-6 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-400/30">
                       <h3 className="text-lg font-semibold text-purple-200 mb-4 flex items-center gap-2">
                         <TrendingUp className="h-5 w-5" />
-                        Similar Companies ({similarCompanies.length} found)
+                        Similar Companies (Showing {similarCompanies.length} of {totalMatches})
                       </h3>
                       
                       <div className="space-y-3">
@@ -734,6 +742,26 @@ export default function CalculatorPage() {
                           </div>
                         ))}
                       </div>
+                      
+                      {/* Load More Button */}
+                      {hasMoreResults && (
+                        <Button
+                          onClick={handleFindSimilarCompanies}
+                          disabled={findingCompanies}
+                          className="w-full mt-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-2 rounded-lg transition-all duration-200"
+                        >
+                          {findingCompanies ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                              Loading More...
+                            </>
+                          ) : (
+                            <>
+                              Load More Companies ({totalMatches - similarCompanies.length} remaining)
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </>
@@ -744,6 +772,11 @@ export default function CalculatorPage() {
                 onClick={() => {
                   calculator.resetCalculator();
                   setSimilarCompanies([]);
+                  setShownCompanies([]);
+                  setHasSearched(false);
+                  setCurrentOffset(0);
+                  setTotalMatches(0);
+                  setHasMoreResults(false);
                 }}
                 variant="outline"
                 className="w-full border-white/20 text-purple-200 hover:bg-white/10"

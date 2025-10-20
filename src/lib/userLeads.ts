@@ -17,6 +17,7 @@ export interface UserLead {
   source: 'calculator' | 'manual_search' | 'similar_results';
   first_added_at: string;
   last_contacted_at?: string;
+  last_calculated_at?: string; // NEW: When was this company last used in a calculation
   updated_at: string;
   industry?: string;
   sic_codes?: string[];
@@ -173,6 +174,7 @@ export async function addOrUpdateLead(
 
 /**
  * Get all leads for a user with optional filtering
+ * Also fetches the last calculation date for each lead
  */
 export async function getUserLeads(
   userId: string,
@@ -211,7 +213,26 @@ export async function getUserLeads(
       );
     }
 
-    return { success: true, leads };
+    // Fetch last calculation date for each lead
+    const leadsWithCalculations = await Promise.all(
+      leads.map(async (lead) => {
+        // Query calculations table for most recent calculation for this company
+        const { data: calculations } = await supabase
+          .from('calculations')
+          .select('created_at')
+          .eq('user_id', userId)
+          .eq('normalized_client_name', lead.normalized_name)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        return {
+          ...lead,
+          last_calculated_at: calculations && calculations.length > 0 ? calculations[0].created_at : undefined
+        };
+      })
+    );
+
+    return { success: true, leads: leadsWithCalculations };
 
   } catch (error) {
     console.error('Error fetching leads:', error);

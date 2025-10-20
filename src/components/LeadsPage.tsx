@@ -45,6 +45,10 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<UserLead | null>(null); // For calculation history modal
   const [shownCompanies, setShownCompanies] = useState<string[]>([]); // Track all companies shown in this session
   const [hasSearched, setHasSearched] = useState(false); // Track if user has searched once
+  const [currentOffset, setCurrentOffset] = useState(0); // Track pagination offset
+  const [totalMatches, setTotalMatches] = useState(0); // Total number of matches found
+  const [hasMoreResults, setHasMoreResults] = useState(false); // Whether more results available
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set()); // Track selected leads for bulk actions
   const [stats, setStats] = useState({
     total: 0,
     contacted: 0,
@@ -62,6 +66,8 @@ export default function LeadsPage() {
   // Apply filters whenever search term, filter status, or leads change
   useEffect(() => {
     applyFilters();
+    // Clear selection when filters change
+    setSelectedLeads(new Set());
   }, [searchTerm, filterStatus, leads]);
 
   const checkAuth = async () => {
@@ -150,17 +156,22 @@ export default function LeadsPage() {
         body: JSON.stringify({
           companyName: companySearchTerm,
           userId: currentUser.id,
-          excludeCompanies: shownCompanies // Exclude companies already shown
+          excludeCompanies: shownCompanies, // Exclude companies already shown
+          limit: 10,
+          offset: currentOffset // Pass pagination offset
         })
       });
 
       const data = await response.json();
       if (data.similarCompanies && data.similarCompanies.length > 0) {
-        setCompanySearchResults(data.similarCompanies);
+        setCompanySearchResults(prev => [...prev, ...data.similarCompanies]); // Append to existing results
         // Track all shown companies
         const newShownCompanies = data.similarCompanies.map((c: any) => c.name);
         setShownCompanies(prev => [...prev, ...newShownCompanies]);
         setHasSearched(true);
+        setTotalMatches(data.totalMatches || 0);
+        setHasMoreResults(data.hasMore || false);
+        setCurrentOffset(prev => prev + 10); // Increment offset for next page
       } else {
         if (hasSearched) {
           alert('No more similar companies found. You\'ve seen all companies that match well enough!');
@@ -245,6 +256,84 @@ export default function LeadsPage() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate('/login');
+  };
+
+  // Bulk action handlers
+  const handleSelectAll = () => {
+    if (selectedLeads.size === filteredLeads.length) {
+      // Deselect all
+      setSelectedLeads(new Set());
+    } else {
+      // Select all filtered leads
+      const allIds = new Set(filteredLeads.map(lead => lead.id));
+      setSelectedLeads(allIds);
+    }
+  };
+
+  const handleToggleSelect = (leadId: string) => {
+    const newSelected = new Set(selectedLeads);
+    if (newSelected.has(leadId)) {
+      newSelected.delete(leadId);
+    } else {
+      newSelected.add(leadId);
+    }
+    setSelectedLeads(newSelected);
+  };
+
+  const handleBulkMarkContacted = async (contacted: boolean) => {
+    if (selectedLeads.size === 0) return;
+
+    const confirmMessage = contacted
+      ? `Mark ${selectedLeads.size} companies as contacted?`
+      : `Mark ${selectedLeads.size} companies as not contacted?`;
+
+    if (!confirm(confirmMessage)) return;
+
+    try {
+      // Update all selected leads
+      for (const leadId of selectedLeads) {
+        await updateLeadContactedStatus(leadId, contacted);
+      }
+
+      // Reload data
+      await loadLeads(currentUser.id);
+      await loadStats(currentUser.id);
+
+      // Clear selection
+      setSelectedLeads(new Set());
+
+      alert(`Successfully updated ${selectedLeads.size} companies`);
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      alert('Failed to update some companies. Please try again.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLeads.size === 0) return;
+
+    if (!confirm(`Delete ${selectedLeads.size} companies from your list? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      // Delete all selected leads
+      for (const leadId of selectedLeads) {
+        await deleteLead(leadId);
+      }
+
+      // Reload data
+      await loadLeads(currentUser.id);
+      await loadStats(currentUser.id);
+
+      // Clear selection
+      setSelectedLeads(new Set());
+
+      alert(`Successfully deleted ${selectedLeads.size} companies`);
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      alert('Failed to delete some companies. Please try again.');
+    }
   };
 
   if (isLoading) {
@@ -357,7 +446,11 @@ export default function LeadsPage() {
 
                 {/* Search Results Dropdown */}
                 {companySearchResults.length > 0 && (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <div className="space-y-4">
+                    <p className="text-sm text-purple-200 font-medium">
+                      Showing {companySearchResults.length} of {totalMatches} similar companies
+                    </p>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
                     {companySearchResults.map((company, index) => (
                       <div
                         key={index}
@@ -396,6 +489,27 @@ export default function LeadsPage() {
                         </div>
                       </div>
                     ))}
+                    </div>
+                    
+                    {/* Load More Button */}
+                    {hasMoreResults && (
+                      <Button
+                        onClick={handleCompanySearch}
+                        disabled={isSearching}
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-2 rounded-lg transition-all duration-200"
+                      >
+                        {isSearching ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                            Loading More...
+                          </>
+                        ) : (
+                          <>
+                            Load More Companies ({totalMatches - companySearchResults.length} remaining)
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 )}
 
@@ -515,10 +629,62 @@ export default function LeadsPage() {
             </CardContent>
           </Card>
 
+          {/* Bulk Actions Bar */}
+          {selectedLeads.size > 0 && (
+            <Card className="bg-purple-600/20 backdrop-blur-md border-purple-400/30 mb-6">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <span className="text-purple-100 font-semibold">
+                      {selectedLeads.size} {selectedLeads.size === 1 ? 'company' : 'companies'} selected
+                    </span>
+                    <Button
+                      onClick={() => setSelectedLeads(new Set())}
+                      variant="ghost"
+                      size="sm"
+                      className="text-purple-200 hover:text-white hover:bg-white/10"
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => handleBulkMarkContacted(true)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      Mark as Contacted
+                    </Button>
+                    <Button
+                      onClick={() => handleBulkMarkContacted(false)}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                    >
+                      Mark as Not Contacted
+                    </Button>
+                    <Button
+                      onClick={handleBulkDelete}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Selected
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Leads Table */}
           <Card className="bg-white/10 backdrop-blur-md border-white/20">
             <CardHeader>
               <CardTitle className="text-purple-100 flex items-center gap-2">
+                {/* Select All Checkbox */}
+                <input
+                  type="checkbox"
+                  checked={filteredLeads.length > 0 && selectedLeads.size === filteredLeads.length}
+                  onChange={handleSelectAll}
+                  className="h-4 w-4 rounded border-white/20 bg-white/10 text-purple-600 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+                />
                 <Users className="h-5 w-5" />
                 Companies ({filteredLeads.length})
               </CardTitle>
@@ -542,6 +708,14 @@ export default function LeadsPage() {
                       className="p-4 bg-white/5 rounded-lg border border-white/10 hover:border-white/20 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-4">
+                        {/* Checkbox */}
+                        <input
+                          type="checkbox"
+                          checked={selectedLeads.has(lead.id)}
+                          onChange={() => handleToggleSelect(lead.id)}
+                          className="h-4 w-4 rounded border-white/20 bg-white/10 text-purple-600 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer flex-shrink-0"
+                        />
+                        
                         {/* Company Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-2">
@@ -577,6 +751,12 @@ export default function LeadsPage() {
                               <Calendar className="h-3 w-3" />
                               Added {new Date(lead.first_added_at).toLocaleDateString()}
                             </span>
+                            {lead.last_calculated_at && (
+                              <span className="flex items-center gap-1 text-blue-300">
+                                <TrendingUp className="h-3 w-3" />
+                                Last calculated {new Date(lead.last_calculated_at).toLocaleDateString()}
+                              </span>
+                            )}
                           </div>
                         </div>
 

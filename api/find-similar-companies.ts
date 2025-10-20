@@ -148,7 +148,7 @@ export default async function handler(req: Request) {
   }
 
   try {
-    const { companyName, excludeCompanies = [] } = await req.json();
+    const { companyName, excludeCompanies = [], limit = 10, offset = 0 } = await req.json();
 
     console.log('Searching for companies similar to:', companyName);
 
@@ -271,8 +271,11 @@ export default async function handler(req: Request) {
       console.log(`After exclusion filter: ${filteredCompanies.length} companies (removed ${scoredCompanies.length - filteredCompanies.length})`);
     }
 
-    // Take top 10 after filtering
-    filteredCompanies = filteredCompanies.slice(0, 10);
+    // Store total count before pagination
+    const totalMatches = filteredCompanies.length;
+
+    // Apply pagination
+    filteredCompanies = filteredCompanies.slice(offset, offset + limit);
 
     console.log(`After scoring: ${filteredCompanies.length} companies with score > 0.8`);
 
@@ -310,11 +313,15 @@ export default async function handler(req: Request) {
     return new Response(
       JSON.stringify({ 
         similarCompanies,
+        totalMatches,
+        hasMore: (offset + limit) < totalMatches,
         debug: {
           sourceCompany: sourceCompany.company_name,
           sicCodes: sicCodes,
           candidatesFound: candidateCompanies.length,
           afterScoring: scoredCompanies.length,
+          offset,
+          limit,
         }
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
