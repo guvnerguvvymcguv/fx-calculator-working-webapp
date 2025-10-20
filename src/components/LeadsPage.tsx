@@ -549,7 +549,7 @@ export default function LeadsPage() {
                 )}
               </div>
             </CardContent>
-          </Card>
+          </Card>)}
 
           {/* Page Header */}
           <div className="mb-8">
