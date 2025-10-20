@@ -83,35 +83,51 @@ serve(async (req) => {
       ? ADDON_PRODUCTS.COMPANY_FINDER 
       : ADDON_PRODUCTS.CLIENT_DATA
 
-    // Calculate pricing based on subscription type and seat count
+    // Calculate pricing PER SEAT based on subscription type
     const seatCount = company.subscription_seats || 1
     const vatRate = 0.2
 
-    let addonPriceWithVatPence: number
+    let addonPricePerSeatWithVatPence: number
     let recurringInterval: 'month' | 'year'
 
     if (company.subscription_type === 'annual') {
-      // Annual: £3/seat/month = £36/seat/year with 10% discount
+      // Annual: £3/seat/month = £36/seat/year with 10% discount = £32.40/seat/year
       const addonPricePerSeat = 3
       const annualPricePerSeat = addonPricePerSeat * 12 // £36/seat/year
-      const subtotal = annualPricePerSeat * seatCount
-      const withDiscount = subtotal * 0.9 // 10% annual discount
-      const withVat = withDiscount * 1.2 // 20% VAT
-      addonPriceWithVatPence = Math.round(withVat * 100)
+      const withDiscount = annualPricePerSeat * 0.9 // 10% annual discount = £32.40/seat/year
+      const withVat = withDiscount * 1.2 // 20% VAT = £38.88/seat/year
+      addonPricePerSeatWithVatPence = Math.round(withVat * 100) // Convert to pence
       recurringInterval = 'year'
+      
+      console.log('Annual add-on pricing:', {
+        basePerSeat: addonPricePerSeat,
+        annualPerSeat: annualPricePerSeat,
+        withDiscount: withDiscount,
+        withVat: withVat,
+        pence: addonPricePerSeatWithVatPence,
+        seats: seatCount,
+        totalCharge: (addonPricePerSeatWithVatPence * seatCount) / 100
+      })
     } else {
-      // Monthly: £5/seat/month
+      // Monthly: £5/seat/month with VAT = £6/seat/month
       const addonPricePerSeat = 5
-      const subtotal = addonPricePerSeat * seatCount
-      const withVat = subtotal * 1.2 // 20% VAT
-      addonPriceWithVatPence = Math.round(withVat * 100)
+      const withVat = addonPricePerSeat * 1.2 // 20% VAT = £6/seat/month
+      addonPricePerSeatWithVatPence = Math.round(withVat * 100) // Convert to pence
       recurringInterval = 'month'
+      
+      console.log('Monthly add-on pricing:', {
+        basePerSeat: addonPricePerSeat,
+        withVat: withVat,
+        pence: addonPricePerSeatWithVatPence,
+        seats: seatCount,
+        totalCharge: (addonPricePerSeatWithVatPence * seatCount) / 100
+      })
     }
 
-    // Create price for add-on
+    // Create price for add-on (per seat)
     const addonPrice = await stripe.prices.create({
       currency: 'gbp',
-      unit_amount: addonPriceWithVatPence,
+      unit_amount: addonPricePerSeatWithVatPence,
       recurring: { interval: recurringInterval },
       product: productId
     })
@@ -139,7 +155,7 @@ serve(async (req) => {
       },
       line_items: [{
         price: addonPrice.id,
-        quantity: 1
+        quantity: seatCount  // Charge per seat
       }]
     })
 
@@ -148,6 +164,12 @@ serve(async (req) => {
     }
 
     console.log('Addon checkout session created:', session.id)
+    console.log('Total charge:', {
+      pricePerSeat: addonPricePerSeatWithVatPence / 100,
+      seats: seatCount,
+      total: (addonPricePerSeatWithVatPence * seatCount) / 100,
+      interval: recurringInterval
+    })
 
     return new Response(
       JSON.stringify({ 

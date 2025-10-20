@@ -88,6 +88,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         }
 
+        // HANDLE ADD-ON PURCHASE
+        if (isAddonPurchase && addonType) {
+          console.log('Processing add-on purchase:', { companyId, addonType });
+          
+          try {
+            const columnName = addonType === 'company_finder' 
+              ? 'company_finder_enabled' 
+              : 'client_data_enabled';
+            
+            const { error: updateError } = await supabase
+              .from('companies')
+              .update({
+                [columnName]: true,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', companyId);
+            
+            if (updateError) {
+              console.error('Failed to enable add-on:', updateError);
+            } else {
+              console.log(`✅ Add-on ${addonType} enabled for company ${companyId}`);
+            }
+          } catch (error) {
+            console.error('Error processing add-on purchase:', error);
+          }
+          break; // Exit early for add-on purchases
+        }
+
         // HANDLE SEAT UPDATE PAYMENT
 if (isSeatUpdate && subscriptionId && newSeatCount) {
   console.log('Processing seat update payment for subscription:', subscriptionId);
