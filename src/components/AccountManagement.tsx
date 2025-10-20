@@ -646,7 +646,6 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
   const handleDisableAddon = async (addonType: 'company_finder' | 'client_data') => {
     const addonName = addonType === 'company_finder' ? 'Company Finder' : 'Client Data Tracking';
     const seatCount = company?.subscription_seats || 1;
-    const currentState = addonType === 'company_finder' ? companyFinderEnabled : clientDataEnabled;
     
     // Calculate what they'll save next billing cycle
     let savingsMessage = '';
