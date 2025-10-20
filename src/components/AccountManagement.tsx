@@ -19,6 +19,9 @@ export default function AccountManagement() {
     adminSeats: 0,
     juniorSeats: 0
   });
+  const [companyFinderEnabled, setCompanyFinderEnabled] = useState(false);
+  const [clientDataEnabled, setClientDataEnabled] = useState(false);
+  const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAccountData();
@@ -96,6 +99,10 @@ export default function AccountManagement() {
         daysLeftInTrial,
         trialEndsAt
       });
+      
+      // Set add-on states
+      setCompanyFinderEnabled(companyData?.company_finder_enabled || false);
+      setClientDataEnabled(companyData?.client_data_enabled || false);
       
       // Initialize seat changes to current allocation
       setSeatChanges({
@@ -606,6 +613,94 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
     return Math.max(0, Math.ceil(diffInMs / (1000 * 60 * 60 * 24)));
   };
 
+  const handleUpgradeAddon = async (addonType: 'company_finder' | 'client_data') => {
+    // Redirect to Stripe Checkout for enabling add-on
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('create-addon-checkout', {
+        body: {
+          companyId: company.id,
+          addonType: addonType
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to create checkout session');
+      }
+
+      if (response.data?.url) {
+        window.location.href = response.data.url;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Error creating checkout:', error);
+      alert(`Failed to start checkout: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const handleDisableAddon = async (addonType: 'company_finder' | 'client_data') => {
+    const addonName = addonType === 'company_finder' ? 'Company Finder' : 'Client Data Tracking';
+    const seatCount = company?.subscription_seats || 1;
+    
+    // Calculate what they'll save next billing cycle
+    let savingsMessage = '';
+    if (company?.subscription_type === 'annual') {
+      const pricePerSeat = 3;
+      const annualTotal = pricePerSeat * seatCount * 12 * 0.9 * 1.2;
+      savingsMessage = `£${annualTotal.toFixed(2)}/year`;
+    } else {
+      const pricePerSeat = 5;
+      const monthlyTotal = pricePerSeat * seatCount * 1.2;
+      savingsMessage = `£${monthlyTotal.toFixed(2)}/month`;
+    }
+    
+    if (!confirm(`Are you sure you want to disable ${addonName}?\n\nYou will lose access immediately.\nYour next billing cycle will be reduced by ${savingsMessage}.\n\nNo refund will be issued for the current period.`)) {
+      return;
+    }
+
+    setTogglingAddon(addonType);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('manage-addon', {
+        body: {
+          companyId: company.id,
+          addonType: addonType,
+          enabled: !currentState
+        },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to update add-on');
+      }
+
+      // Update local state
+      if (addonType === 'company_finder') {
+        setCompanyFinderEnabled(!currentState);
+      } else {
+        setClientDataEnabled(!currentState);
+      }
+
+      alert(`${addonName} disabled successfully! Your next billing cycle will reflect the reduced price.`);
+      await fetchAccountData();
+
+    } catch (error) {
+      console.error('Error toggling add-on:', error);
+      alert(`Failed to ${action} ${addonName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setTogglingAddon(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#10051A] flex items-center justify-center">
@@ -845,6 +940,110 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
             </div>
           </CardContent>
         </Card>
+
+        {/* Add-ons Management */}
+        {!company?.isInTrial && company?.subscription_status === 'active' && (
+          <Card className="bg-gray-900/50 border-gray-800 mb-6">
+            <CardHeader>
+              <CardTitle className="text-xl text-white flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-purple-400" />
+                Add-ons
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Company Finder Add-on */}
+                <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-white font-semibold">Company Finder</h3>
+                      {company?.subscription_type === 'annual' && (
+                        <span className="px-2 py-0.5 bg-green-600/30 text-green-300 text-xs rounded font-medium">
+                          Included FREE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      Unlimited AI-powered company search to expand your pipeline
+                    </p>
+                    <p className="text-purple-400 text-xs mt-1">
+                      {company?.subscription_type === 'annual' 
+                        ? `£3/seat/month (£${((3 * (company?.subscription_seats || 1) * 12 * 0.9 * 1.2)).toFixed(2)}/year with VAT)`
+                        : `£5/seat/month (£${((5 * (company?.subscription_seats || 1) * 1.2)).toFixed(2)}/month with VAT)`
+                      }
+                    </p>
+                  </div>
+                  {!companyFinderEnabled ? (
+                    <Button
+                      onClick={() => handleUpgradeAddon('company_finder')}
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      Upgrade Now
+                    </Button>
+                  ) : (
+                    <button
+                      onClick={() => handleDisableAddon('company_finder')}
+                      disabled={togglingAddon === 'company_finder'}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-purple-600"
+                    >
+                      <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Client Data Tracking Add-on */}
+                <div className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-white font-semibold">Client Data Tracking</h3>
+                      {company?.subscription_type === 'annual' && (
+                        <span className="px-2 py-0.5 bg-green-600/30 text-green-300 text-xs rounded font-medium">
+                          Included FREE
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      Automated monthly PDF reports with client analytics
+                    </p>
+                    <p className="text-purple-400 text-xs mt-1">
+                      {company?.subscription_type === 'annual' 
+                        ? `£3/seat/month (£${((3 * (company?.subscription_seats || 1) * 12 * 0.9 * 1.2)).toFixed(2)}/year with VAT)`
+                        : `£5/seat/month (£${((5 * (company?.subscription_seats || 1) * 1.2)).toFixed(2)}/month with VAT)`
+                      }
+                    </p>
+                  </div>
+                  {!clientDataEnabled ? (
+                    <Button
+                      onClick={() => handleUpgradeAddon('client_data')}
+                      size="sm"
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      Upgrade Now
+                    </Button>
+                  ) : (
+                    <button
+                      onClick={() => handleDisableAddon('client_data')}
+                      disabled={togglingAddon === 'client_data'}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed bg-purple-600"
+                    >
+                      <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-6" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="p-3 bg-blue-900/20 border border-blue-600/30 rounded-lg">
+                  <p className="text-blue-300 text-sm">
+                    {company?.subscription_type === 'annual' 
+                      ? `ℹ️ Annual plans: Add-ons charged at £3/seat/month with 10% discount applied`
+                      : `ℹ️ Monthly plans: Add-ons charged at £5/seat/month`
+                    }
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Current Team Members */}
         <Card className="bg-gray-900/50 border-gray-800">

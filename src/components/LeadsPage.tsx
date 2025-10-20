@@ -49,6 +49,7 @@ export default function LeadsPage() {
   const [totalMatches, setTotalMatches] = useState(0); // Total number of matches found
   const [hasMoreResults, setHasMoreResults] = useState(false); // Whether more results available
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set()); // Track selected leads for bulk actions
+  const [companyFinderEnabled, setCompanyFinderEnabled] = useState<boolean>(false); // Feature gate for Company Finder
   const [stats, setStats] = useState({
     total: 0,
     contacted: 0,
@@ -80,6 +81,17 @@ export default function LeadsPage() {
       const profile = await getUserProfile(user.id);
       if (profile) {
         setUserRole(profile.role_type);
+        
+        // Check if Company Finder add-on is enabled
+        const { data: company } = await supabase
+          .from('companies')
+          .select('company_finder_enabled')
+          .eq('id', profile.company_id)
+          .single();
+        
+        if (company) {
+          setCompanyFinderEnabled(company.company_finder_enabled || false);
+        }
       }
       await loadLeads(user.id);
       await loadStats(user.id);
@@ -401,14 +413,31 @@ export default function LeadsPage() {
 
       <div className="pt-32 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
-          {/* NEW: Company Search - MOVED TO TOP */}
-          <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-8">
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Search className="h-5 w-5 text-purple-300" />
-                  <h3 className="text-lg font-semibold text-purple-100">Find New Companies</h3>
+          {/* Company Search Section - Feature Gated */}
+          {!companyFinderEnabled ? (
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-8">
+              <CardContent className="pt-6">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mb-4">
+                    <Search className="h-8 w-8 text-purple-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-purple-100 mb-2">
+                    Company Finder Not Available
+                  </h3>
+                  <p className="text-purple-200/80 max-w-md">
+                    This feature requires the Company Finder add-on. Please contact your admin to enable this feature.
+                  </p>
                 </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-8">
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Search className="h-5 w-5 text-purple-300" />
+                    <h3 className="text-lg font-semibold text-purple-100">Find New Companies</h3>
+                  </div>
                 
                 {/* Search Bar + Button */}
                 <div className="flex gap-3">

@@ -69,6 +69,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const adminSeats = session.metadata?.admin_seats;
         const juniorSeats = session.metadata?.junior_seats;
         const pricePerMonth = session.metadata?.price_per_month;
+        const companyFinderEnabled = session.metadata?.company_finder_enabled === 'true';
+        const clientDataEnabled = session.metadata?.client_data_enabled === 'true';
         const seatCountNum = parseInt(seatCount || '0');
         const discountPercentage = seatCountNum >= 30 ? 20 : seatCountNum >= 15 ? 10 : 0;
         
@@ -76,6 +78,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const isSeatUpdate = session.metadata?.seat_update === 'true';
         const newSeatCount = session.metadata?.new_seat_count;
         const subscriptionId = session.metadata?.subscription_id;
+        
+        // Check if this is an add-on purchase
+        const isAddonPurchase = session.metadata?.is_addon_purchase === 'true';
+        const addonType = session.metadata?.addon_type;
 
         if (!companyId) {
           console.error('No company ID in session metadata');
@@ -217,6 +223,36 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
   break; // Exit early for seat updates
 }
 
+        // HANDLE ADD-ON PURCHASE
+        if (isAddonPurchase && addonType) {
+          console.log('Processing add-on purchase:', addonType);
+          
+          try {
+            // Update database to enable the add-on
+            const updateField = addonType === 'company_finder' 
+              ? 'company_finder_enabled' 
+              : 'client_data_enabled';
+
+            const { error: updateError } = await supabase
+              .from('companies')
+              .update({
+                [updateField]: true,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', companyId);
+
+            if (updateError) {
+              console.error('Failed to enable add-on:', updateError);
+              throw updateError;
+            }
+
+            console.log(`Add-on ${addonType} enabled for company ${companyId}`);
+          } catch (error) {
+            console.error('Error processing add-on purchase:', error);
+          }
+          break; // Exit early for add-on purchases
+        }
+
         // HANDLE NEW SUBSCRIPTION CHECKOUT (existing logic)
         // If subscription exists, fetch it to get actual details including quantity
         let actualSeatCount = seatCountNum;
@@ -247,7 +283,7 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
           }
         }
 
-        // Update company with subscription AND seat allocation
+        // Update company with subscription AND seat allocation AND add-ons
         const { error: updateError } = await supabase
           .from('companies')
           .update({
@@ -267,6 +303,8 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
             locked_at: null,
             cancel_at_period_end: false, // Clear any pending cancellation
             scheduled_cancellation_date: null,
+            company_finder_enabled: companyFinderEnabled, // NEW: Enable Company Finder add-on
+            client_data_enabled: clientDataEnabled, // NEW: Enable Client Data add-on
             updated_at: new Date().toISOString()
           })
           .eq('id', companyId);
@@ -275,6 +313,7 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
           console.error('Failed to update company:', updateError);
         } else {
           console.log(`Company ${companyId} subscription activated with ${actualSeatCount} seats (${adminSeats} admin, ${juniorSeats} junior)`);
+          console.log(`Add-ons enabled: Company Finder=${companyFinderEnabled}, Client Data=${clientDataEnabled}`);
           
           // Send subscription activated email
           try {

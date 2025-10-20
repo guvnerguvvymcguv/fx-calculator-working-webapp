@@ -19,6 +19,8 @@ export default function Checkout() {
     adminCount: 0,
     juniorCount: 0
   });
+  const [companyFinderEnabled, setCompanyFinderEnabled] = useState(false);
+  const [clientDataEnabled, setClientDataEnabled] = useState(false);
 
   useEffect(() => {
     fetchCompanyData();
@@ -130,14 +132,29 @@ export default function Checkout() {
   const monthlyPrice = calculateMonthlyPrice(totalSeats);
   const pricePerSeat = calculatePricePerSeat(totalSeats);
   
+  // Calculate add-on pricing based on billing period and seat count
+  const calculateAddonPrice = () => {
+    const addonPricePerSeat = billingPeriod === 'monthly' ? 5 : 3; // £5/seat monthly or £3/seat annual
+    const addonSubtotal = addonPricePerSeat * totalSeats;
+    
+    if (billingPeriod === 'annual') {
+      // Annual: £3/seat/month × 12 months × 0.9 (10% discount)
+      return addonSubtotal * 12 * 0.9;
+    }
+    return addonSubtotal;
+  };
+  
+  const addonPriceEach = calculateAddonPrice();
+  const totalAddonsPrice = (companyFinderEnabled ? addonPriceEach : 0) + (clientDataEnabled ? addonPriceEach : 0);
+  
   // Calculate annual price per seat (monthly price with 10% discount)
   const annualPricePerSeat = pricePerSeat * 12 * 0.9;
 
   const calculatePrice = () => {
-    let subtotal = monthlyPrice;
+    let subtotal = monthlyPrice + totalAddonsPrice;
     
     if (billingPeriod === 'annual') {
-      subtotal = monthlyPrice * 12 * 0.9; // 10% discount for annual
+      subtotal = (monthlyPrice * 12 * 0.9) + totalAddonsPrice; // Base seats with discount + add-ons
     }
     
     const vat = subtotal * 0.2; // 20% VAT
@@ -177,7 +194,9 @@ export default function Checkout() {
           seatCount: totalSeats,
           pricePerMonth: monthlyPrice,
           adminSeats: seatChanges.adminSeats,
-          juniorSeats: seatChanges.juniorSeats
+          juniorSeats: seatChanges.juniorSeats,
+          companyFinderEnabled,
+          clientDataEnabled
         },
         headers: {
           Authorization: `Bearer ${session.access_token}`
@@ -367,6 +386,109 @@ export default function Checkout() {
           </CardContent>
         </Card>
 
+        {/* Add-ons Section - Only show if seats selected */}
+        {totalSeats > 0 && (
+          <Card className="bg-gray-900/50 border-gray-800 mb-6">
+            <CardHeader>
+              <CardTitle className="text-white">Optional Add-ons</CardTitle>
+              <p className="text-gray-400 text-sm mt-2">
+                Enhance your subscription with powerful features
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Company Finder Add-on */}
+              <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-colors">
+                <input
+                  type="checkbox"
+                  id="company-finder"
+                  checked={companyFinderEnabled}
+                  onChange={(e) => setCompanyFinderEnabled(e.target.checked)}
+                  className="mt-1 h-5 w-5 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+                />
+                <label htmlFor="company-finder" className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-white font-semibold">Company Finder</h4>
+                    <span className="text-purple-400 font-medium">
+                      {billingPeriod === 'monthly' 
+                        ? `+£${(5 * totalSeats).toFixed(0)}/month`
+                        : `+£${addonPriceEach.toFixed(0)}/year`
+                      }
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-2">
+                    Unlimited AI-powered company search to expand your pipeline
+                  </p>
+                  <ul className="text-xs text-gray-400 space-y-1">
+                    <li>• Unlimited company searches</li>
+                    <li>• AI-powered similarity matching</li>
+                    <li>• Lead management dashboard</li>
+                    <li>• Export to Salesforce</li>
+                  </ul>
+                  <p className="text-xs text-purple-400 mt-2">
+                    {billingPeriod === 'monthly' 
+                      ? `£5/seat/month (× ${totalSeats} seats)`
+                      : `£3/seat/month (× ${totalSeats} seats, billed annually with 10% discount)`
+                    }
+                  </p>
+                </label>
+              </div>
+
+              {/* Client Data Tracking Add-on */}
+              <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg hover:bg-gray-800/70 transition-colors">
+                <input
+                  type="checkbox"
+                  id="client-data"
+                  checked={clientDataEnabled}
+                  onChange={(e) => setClientDataEnabled(e.target.checked)}
+                  className="mt-1 h-5 w-5 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+                />
+                <label htmlFor="client-data" className="flex-1 cursor-pointer">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-white font-semibold">Client Data Tracking</h4>
+                    <span className="text-purple-400 font-medium">
+                      {billingPeriod === 'monthly' 
+                        ? `+£${(5 * totalSeats).toFixed(0)}/month`
+                        : `+£${addonPriceEach.toFixed(0)}/year`
+                      }
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm mb-2">
+                    Automated monthly PDF reports with client analytics
+                  </p>
+                  <ul className="text-xs text-gray-400 space-y-1">
+                    <li>• Monthly PDF reports</li>
+                    <li>• Per-client analytics</li>
+                    <li>• Currency pair tracking</li>
+                    <li>• Competitor analysis</li>
+                  </ul>
+                  <p className="text-xs text-purple-400 mt-2">
+                    {billingPeriod === 'monthly' 
+                      ? `£5/seat/month (× ${totalSeats} seats)`
+                      : `£3/seat/month (× ${totalSeats} seats, billed annually with 10% discount)`
+                    }
+                  </p>
+                </label>
+              </div>
+
+              {totalAddonsPrice > 0 && (
+                <div className="p-3 bg-purple-900/20 border border-purple-600/30 rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-purple-300 text-sm font-medium">
+                      Total Add-ons:
+                    </span>
+                    <span className="text-purple-300 font-semibold">
+                      {billingPeriod === 'monthly' 
+                        ? `£${totalAddonsPrice.toFixed(0)}/month`
+                        : `£${totalAddonsPrice.toFixed(0)}/year`
+                      }
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Billing Period Selection */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <Card 
@@ -429,8 +551,20 @@ export default function Checkout() {
               <>
                 <div className="flex justify-between text-gray-400">
                   <span>{totalSeats} seats × 1 month</span>
-                  <span>£{subtotal.toFixed(2)}</span>
+                  <span>£{monthlyPrice.toFixed(2)}</span>
                 </div>
+                {companyFinderEnabled && (
+                  <div className="flex justify-between text-gray-400">
+                    <span>Company Finder ({totalSeats} seats)</span>
+                    <span>£{(5 * totalSeats).toFixed(2)}</span>
+                  </div>
+                )}
+                {clientDataEnabled && (
+                  <div className="flex justify-between text-gray-400">
+                    <span>Client Data Tracking ({totalSeats} seats)</span>
+                    <span>£{(5 * totalSeats).toFixed(2)}</span>
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -439,9 +573,33 @@ export default function Checkout() {
                   <span>£{(monthlyPrice * 12).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-green-400">
-                  <span>Annual discount (10%)</span>
+                  <span>Annual discount on seats (10%)</span>
                   <span>-£{(monthlyPrice * 12 * 0.1).toFixed(2)}</span>
                 </div>
+                {companyFinderEnabled && (
+                  <>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Company Finder ({totalSeats} seats × 12 months)</span>
+                      <span>£{(3 * totalSeats * 12).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-green-400">
+                      <span>Annual discount on add-on (10%)</span>
+                      <span>-£{(3 * totalSeats * 12 * 0.1).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+                {clientDataEnabled && (
+                  <>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Client Data Tracking ({totalSeats} seats × 12 months)</span>
+                      <span>£{(3 * totalSeats * 12).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-green-400">
+                      <span>Annual discount on add-on (10%)</span>
+                      <span>-£{(3 * totalSeats * 12 * 0.1).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </>
             )}
             <div className="flex justify-between text-gray-400">

@@ -9,6 +9,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Add-on Price IDs
+const ADDON_PRICES = {
+  COMPANY_FINDER: 'price_1SKHKc5du1W5ijSGJa7hlPNZ', // £5/month
+  CLIENT_DATA: 'price_1SKHM05du1W5ijSGdWEkhTHP' // £5/month
+}
+
 // Define pricing tiers with Stripe price IDs and product IDs
 const PRICING_TIERS = {
   STANDARD: { 
@@ -83,7 +89,16 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json()
-    const { companyId, billingPeriod, seatCount, pricePerMonth, adminSeats, juniorSeats } = body
+    const { 
+      companyId, 
+      billingPeriod, 
+      seatCount, 
+      pricePerMonth, 
+      adminSeats, 
+      juniorSeats,
+      companyFinderEnabled = false,
+      clientDataEnabled = false
+    } = body
     
     console.log('Checkout request:', { 
       companyId, 
@@ -92,6 +107,8 @@ serve(async (req) => {
       pricePerMonth,
       adminSeats,
       juniorSeats,
+      companyFinderEnabled,
+      clientDataEnabled,
       userId: user.id 
     })
 
@@ -217,13 +234,60 @@ serve(async (req) => {
     junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
     billing_period: billingPeriod,
     price_per_month: pricePerMonth.toString(),
-    user_id: user.id
+    user_id: user.id,
+    company_finder_enabled: companyFinderEnabled.toString(),
+    client_data_enabled: clientDataEnabled.toString()
   },
   line_items: [{
     price: priceWithVat.id,
     quantity: seatCount
   }]
 };
+
+// Add add-ons to line items (only for monthly subscriptions)
+if (billingPeriod === 'monthly') {
+  if (companyFinderEnabled) {
+    // Add Company Finder add-on: £5 per seat per month
+    const addonPricePerSeat = 5; // £5/seat/month
+    const addonSubtotal = addonPricePerSeat * seatCount; // £5 × seats
+    const addonVat = Math.round(addonSubtotal * 100 * vatRate); // 20% VAT
+    const addonWithVatPence = Math.round(addonSubtotal * 100) + addonVat;
+    
+    const companyFinderPrice = await stripe.prices.create({
+      currency: 'gbp',
+      unit_amount: addonWithVatPence,
+      recurring: { interval: 'month' },
+      product: 'prod_TGoy9y2EU095hl'
+    });
+    
+    sessionConfig.line_items!.push({
+      price: companyFinderPrice.id,
+      quantity: 1 // Price already multiplied by seat count
+    });
+  }
+  
+  if (clientDataEnabled) {
+    // Add Client Data add-on: £5 per seat per month
+    const addonPricePerSeat = 5; // £5/seat/month
+    const addonSubtotal = addonPricePerSeat * seatCount; // £5 × seats
+    const addonVat = Math.round(addonSubtotal * 100 * vatRate); // 20% VAT
+    const addonWithVatPence = Math.round(addonSubtotal * 100) + addonVat;
+    
+    const clientDataPrice = await stripe.prices.create({
+      currency: 'gbp',
+      unit_amount: addonWithVatPence,
+      recurring: { interval: 'month' },
+      product: 'prod_TGozIi5v2P0dK5'
+    });
+    
+    sessionConfig.line_items!.push({
+      price: clientDataPrice.id,
+      quantity: 1 // Price already multiplied by seat count
+    });
+  }
+}
+
+// No need to reassign sessionConfig here, it's already properly typed
 
     } else {
       // For annual subscriptions, create a recurring subscription with annual interval
@@ -261,13 +325,66 @@ serve(async (req) => {
     junior_seats: (juniorSeats || company.junior_seats || 0).toString(),
     billing_period: billingPeriod,
     price_per_month: pricePerMonth.toString(),
-    user_id: user.id
+    user_id: user.id,
+    company_finder_enabled: companyFinderEnabled.toString(),
+    client_data_enabled: clientDataEnabled.toString()
   },
   line_items: [{
     price: annualPrice.id,
     quantity: seatCount
   }]
 };
+
+// For annual subscriptions, add add-ons at £3 per seat per month (£36/seat/year)
+if (companyFinderEnabled) {
+  // Company Finder: £3/seat/month = £36/seat/year
+  const addonPricePerSeatPerMonth = 3; // £3/seat/month
+  const addonPricePerSeatPerYear = addonPricePerSeatPerMonth * 12; // £36/seat/year
+  const addonSubtotal = addonPricePerSeatPerYear * seatCount; // £36 × seats
+  const addonWithDiscount = addonSubtotal * 0.9; // 10% annual discount
+  const addonVat = Math.round(addonWithDiscount * 100 * vatRate); // 20% VAT
+  const addonWithVatPence = Math.round(addonWithDiscount * 100) + addonVat;
+  
+  const companyFinderAnnualPrice = await stripe.prices.create({
+    currency: 'gbp',
+    unit_amount: addonWithVatPence,
+    recurring: { 
+      interval: 'year',
+      interval_count: 1 
+    },
+    product: 'prod_TGoy9y2EU095hl'
+  });
+  
+  sessionConfig.line_items!.push({
+    price: companyFinderAnnualPrice.id,
+    quantity: 1 // Price already multiplied by seat count
+  });
+}
+
+if (clientDataEnabled) {
+  // Client Data: £3/seat/month = £36/seat/year
+  const addonPricePerSeatPerMonth = 3; // £3/seat/month
+  const addonPricePerSeatPerYear = addonPricePerSeatPerMonth * 12; // £36/seat/year
+  const addonSubtotal = addonPricePerSeatPerYear * seatCount; // £36 × seats
+  const addonWithDiscount = addonSubtotal * 0.9; // 10% annual discount
+  const addonVat = Math.round(addonWithDiscount * 100 * vatRate); // 20% VAT
+  const addonWithVatPence = Math.round(addonWithDiscount * 100) + addonVat;
+  
+  const clientDataAnnualPrice = await stripe.prices.create({
+    currency: 'gbp',
+    unit_amount: addonWithVatPence,
+    recurring: { 
+      interval: 'year',
+      interval_count: 1 
+    },
+    product: 'prod_TGozIi5v2P0dK5'
+  });
+  
+  sessionConfig.line_items!.push({
+    price: clientDataAnnualPrice.id,
+    quantity: 1 // Price already multiplied by seat count
+  });
+}
     }
 
     try {

@@ -41,6 +41,7 @@ export default function CalculatorPage() {
   const [currentOffset, setCurrentOffset] = useState(0); // Track pagination offset
   const [totalMatches, setTotalMatches] = useState(0); // Total number of matches found
   const [hasMoreResults, setHasMoreResults] = useState(false); // Whether more results available
+  const [companyFinderEnabled, setCompanyFinderEnabled] = useState<boolean>(false); // Feature gate for Company Finder
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
@@ -78,6 +79,17 @@ export default function CalculatorPage() {
       const profile = await getUserProfile(user.id);
       if (profile) {
         setUserRole(profile.role_type);
+        
+        // Check if Company Finder add-on is enabled
+        const { data: company } = await supabase
+          .from('companies')
+          .select('company_finder_enabled')
+          .eq('id', profile.company_id)
+          .single();
+        
+        if (company) {
+          setCompanyFinderEnabled(company.company_finder_enabled || false);
+        }
       }
       setIsLoading(false);
     }
@@ -679,25 +691,39 @@ export default function CalculatorPage() {
                     </div>
                   </div>
 
-                  {/* Find Similar Companies Button */}
+                  {/* Find Similar Companies Button - Feature Gated */}
                   {calculator.competitorName && (
-                    <Button 
-                      onClick={handleFindSimilarCompanies}
-                      disabled={findingCompanies}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-blue-400/60 transition-all duration-200"
-                    >
-                      {findingCompanies ? (
-                        <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                          Finding Similar Companies...
-                        </>
-                      ) : (
-                        <>
-                          <TrendingUp className="mr-2 h-5 w-5" />
-                          Find Similar Companies to {calculator.competitorName}
-                        </>
-                      )}
-                    </Button>
+                    !companyFinderEnabled ? (
+                      <div className="p-6 bg-purple-600/10 rounded-lg border border-purple-400/30 text-center">
+                        <div className="w-12 h-12 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <TrendingUp className="h-6 w-6 text-purple-400" />
+                        </div>
+                        <h4 className="text-lg font-semibold text-purple-100 mb-2">
+                          Company Finder Not Available
+                        </h4>
+                        <p className="text-purple-200/80 text-sm max-w-md mx-auto">
+                          This feature requires the Company Finder add-on. Please contact your admin to enable this feature.
+                        </p>
+                      </div>
+                    ) : (
+                      <Button 
+                        onClick={handleFindSimilarCompanies}
+                        disabled={findingCompanies}
+                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-blue-400/60 transition-all duration-200"
+                      >
+                        {findingCompanies ? (
+                          <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                            Finding Similar Companies...
+                          </>
+                        ) : (
+                          <>
+                            <TrendingUp className="mr-2 h-5 w-5" />
+                            Find Similar Companies to {calculator.competitorName}
+                          </>
+                        )}
+                      </Button>
+                    )
                   )}
 
                   {/* Similar Companies Results */}
