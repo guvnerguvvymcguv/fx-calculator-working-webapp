@@ -445,23 +445,35 @@ if (subscription.cancel_at_period_end) {
   // They were set by our cancel-subscription function
 }
 
-          // If subscription has items, update seat count and price
+          // If subscription has items, calculate total price INCLUDING add-ons
           if (subscription.items && subscription.items.data.length > 0) {
-            const item = subscription.items.data[0];
-            const quantity = item.quantity || 0;
-            const pricePerUnit = item.price.unit_amount || 0;
-            // Remove VAT to get base price (price includes 20% VAT)
-            const pricePerUnitExVat = pricePerUnit / 1.2;
-            const monthlyPrice = (pricePerUnitExVat * quantity) / 100; // Convert from pence to pounds
+            // Calculate total monthly price from ALL subscription items (base + add-ons)
+            let totalMonthlyPrice = 0;
+            let baseSeatQuantity = 0;
             
-            updateData.subscription_seats = quantity;
-            updateData.subscription_price = monthlyPrice;
-            updateData.price_per_month = monthlyPrice;
+            subscription.items.data.forEach(item => {
+              const pricePerUnit = item.price.unit_amount || 0;
+              const quantity = item.quantity || 0;
+              // Remove VAT to get base price (price includes 20% VAT)
+              const pricePerUnitExVat = pricePerUnit / 1.2;
+              const itemMonthlyPrice = (pricePerUnitExVat * quantity) / 100;
+              
+              totalMonthlyPrice += itemMonthlyPrice;
+              
+              // The first item is always the base subscription
+              if (item === subscription.items.data[0]) {
+                baseSeatQuantity = quantity;
+              }
+            });
             
-            // Update discount percentage based on new quantity
-            updateData.discount_percentage = quantity >= 30 ? 20 : quantity >= 15 ? 10 : 0;
+            updateData.subscription_seats = baseSeatQuantity;
+            updateData.subscription_price = totalMonthlyPrice;
+            updateData.price_per_month = totalMonthlyPrice;
             
-            console.log('Updating subscription with quantity:', quantity, 'price:', monthlyPrice);
+            // Update discount percentage based on seat quantity (not add-ons)
+            updateData.discount_percentage = baseSeatQuantity >= 30 ? 20 : baseSeatQuantity >= 15 ? 10 : 0;
+            
+            console.log('Updating subscription with quantity:', baseSeatQuantity, 'price:', totalMonthlyPrice, 'items:', subscription.items.data.length);
           }
 
           await supabase
