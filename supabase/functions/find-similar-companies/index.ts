@@ -16,14 +16,14 @@ Deno.serve(async (req) => {
 
     console.log('Searching for companies similar to:', companyName);
 
-    // Step 1: Find the source company
+    // Step 1: Find potential source companies (return top 5 matches)
     const { data: sourceCompanies, error: searchError } = await supabase
       .from('companies_house_data')
       .select('*')
       .ilike('company_name', `%${companyName}%`)
       .eq('company_status', 'Active')
       .not('sic_code1', 'is', null)
-      .limit(5);
+      .limit(10);
 
     if (searchError) {
       throw new Error(`Search error: ${searchError.message}`);
@@ -39,8 +39,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    const sourceCompany = sourceCompanies[0];
-    console.log('Source company found:', sourceCompany.company_name);
+    // Prioritize retail/service companies over construction/manufacturing
+    const prioritizedCompanies = sourceCompanies.sort((a, b) => {
+      const aIsRetail = [a.sic_code1, a.sic_code2, a.sic_code3, a.sic_code4]
+        .some(sic => sic?.startsWith('47') || sic?.startsWith('46')); // Retail/Wholesale
+      const bIsRetail = [b.sic_code1, b.sic_code2, b.sic_code3, b.sic_code4]
+        .some(sic => sic?.startsWith('47') || sic?.startsWith('46'));
+      
+      if (aIsRetail && !bIsRetail) return -1;
+      if (!aIsRetail && bIsRetail) return 1;
+      return 0;
+    });
+
+    const sourceCompany = prioritizedCompanies[0];
+    console.log('Source company selected:', sourceCompany.company_name, 'SIC:', sourceCompany.sic_code1);
 
     // Step 2: Get SIC codes
     const sicCodes = [
