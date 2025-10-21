@@ -411,8 +411,30 @@ export default function LeadsPage() {
         </div>
       </nav>
 
-      <div className="pt-32 pb-12 px-4">
-        <div className="max-w-7xl mx-auto">
+      {/* Locked Overlay - Shows when Company Finder is disabled */}
+      {!companyFinderEnabled && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4" style={{ paddingTop: '5rem' }}>
+          {/* Lock Message Box - Clear and on top */}
+          <div className="relative z-50 max-w-md w-full bg-gray-900/95 border border-red-600/50 rounded-lg p-8 text-center shadow-2xl">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-white mb-2">Feature Locked</h1>
+              <p className="text-gray-300">
+                This feature requires the Company Finder add-on. Please contact your admin to enable this feature.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content - Blurred when locked */}
+      <div className={!companyFinderEnabled ? 'filter blur-sm pointer-events-none select-none' : ''}>
+        <div className="pt-32 pb-12 px-4">
+          <div className="max-w-7xl mx-auto">
           {/* Company Search Section - Feature Gated */}
           {!companyFinderEnabled ? (
             <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-8">
@@ -828,6 +850,7 @@ export default function LeadsPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
 
       {/* Calculation History Modal */}
