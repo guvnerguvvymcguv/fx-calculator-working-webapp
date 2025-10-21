@@ -1,6 +1,24 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
+// CLOTHING & FASHION RETAIL - Precise whitelist for companies like Superdry
+const CLOTHING_FASHION_PRECISE = [
+  '47710', // Retail sale of clothing in specialized stores (MAIN - Superdry, Next, ASOS, etc.)
+  '47711', // Retail sale of clothing in specialized stores (variant)
+  '47721', // Retail sale of footwear in specialized stores
+  '47722', // Retail sale of leather goods in specialized stores
+  '46420', // Wholesale of clothing and footwear
+  '14131', // Manufacture of other outerwear
+  '14141', // Manufacture of underwear
+  '14190', // Manufacture of other wearing apparel and accessories
+];
+
+// Generic codes to NEVER match (too broad)
+const EXCLUDED_GENERIC_SICS = [
+  '47910', // Online/mail order (includes tea, furniture, everything)
+  '47190', // Non-specialized stores (supermarkets, variety stores)
+];
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -58,28 +76,39 @@ Deno.serve(async (req) => {
     console.log('SIC codes:', [sourceCompany.sic_code1, sourceCompany.sic_code2, sourceCompany.sic_code3, sourceCompany.sic_code4].filter(Boolean));
     console.log('Size:', sourceCompany.accounts_category);
 
-    // Step 2: Get EXACT SIC codes from source company
-    const sicCodes = [
+    // Step 2: Filter source SIC codes to only clothing-specific ones (exclude generic)
+    const sourceSICs = [
       sourceCompany.sic_code1,
       sourceCompany.sic_code2,
       sourceCompany.sic_code3,
       sourceCompany.sic_code4,
-    ].filter(Boolean);
+    ].filter(Boolean).filter(sic => !EXCLUDED_GENERIC_SICS.includes(sic));
 
-    if (sicCodes.length === 0) {
+    console.log('Source SICs after excluding generic codes:', sourceSICs);
+
+    // Check if source company has ANY clothing-specific SIC codes
+    const clothingSICs = sourceSICs.filter(sic => 
+      CLOTHING_FASHION_PRECISE.some(wl => sic.startsWith(wl.substring(0, 5)))
+    );
+
+    console.log('Clothing-specific SICs found:', clothingSICs);
+
+    if (clothingSICs.length === 0) {
       return new Response(
         JSON.stringify({ 
           similarCompanies: [],
           totalMatches: 0,
           hasMore: false,
-          message: 'Source company has no industry codes. Cannot find similar companies.'
+          message: `${sourceCompany.company_name} does not appear to be a clothing/fashion retailer. Cannot find similar companies in this industry.`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 3: Find companies with EXACT SIC code matches
-    const orConditions = sicCodes
+    // Step 3: Search ONLY for companies with clothing-specific SIC codes
+    console.log('Searching with whitelist:', CLOTHING_FASHION_PRECISE);
+    
+    const orConditions = CLOTHING_FASHION_PRECISE
       .map(sic => `sic_code1.eq.${sic},sic_code2.eq.${sic},sic_code3.eq.${sic},sic_code4.eq.${sic}`)
       .join(',');
 
@@ -89,7 +118,7 @@ Deno.serve(async (req) => {
       .eq('company_status', 'Active')
       .neq('company_number', sourceCompany.company_number)
       .or(orConditions)
-      .limit(1000);
+      .limit(2000);
 
     if (candidatesError) {
       throw new Error(`Candidates error: ${candidatesError.message}`);
@@ -162,10 +191,10 @@ Deno.serve(async (req) => {
     
     // Step 6: Sort by number of matching SIC codes (more matches = more relevant)
     filteredCompanies.sort((a, b) => {
-      const aMatches = sicCodes.filter(sic => 
+      const aMatches = clothingSICs.filter(sic => 
         [a.sic_code1, a.sic_code2, a.sic_code3, a.sic_code4].includes(sic)
       ).length;
-      const bMatches = sicCodes.filter(sic => 
+      const bMatches = clothingSICs.filter(sic => 
         [b.sic_code1, b.sic_code2, b.sic_code3, b.sic_code4].includes(sic)
       ).length;
       return bMatches - aMatches;
@@ -181,13 +210,13 @@ Deno.serve(async (req) => {
       const size = getSizeDescription(company.accounts_category, company.num_mort_charges);
       const location = [company.post_town, company.country].filter(Boolean).join(', ') || 'UK';
 
-      const matchingSICs = sicCodes.filter(sic => 
+      const matchingSICs = clothingSICs.filter(sic => 
         [company.sic_code1, company.sic_code2, company.sic_code3, company.sic_code4].includes(sic)
       );
       
-      let reasoning = `Exact industry match (SIC ${matchingSICs.join(', ')})`;
+      let reasoning = `Clothing/fashion retailer (SIC ${matchingSICs.join(', ')})`;
       if (company.accounts_category === sourceCompany.accounts_category) {
-        reasoning += ', same company size';
+        reasoning += ', same size';
       }
 
       return {
