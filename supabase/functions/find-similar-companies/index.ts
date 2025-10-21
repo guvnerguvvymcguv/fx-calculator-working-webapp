@@ -111,7 +111,10 @@ Deno.serve(async (req) => {
 
     // Step 4: Filter by SIZE - only FULL or GROUP (large companies only)
     const sourceSize = sourceCompany.accounts_category?.toUpperCase() || '';
+    console.log('Source company size category:', sourceCompany.accounts_category);
+    
     const isSourceLarge = sourceSize.includes('FULL') || sourceSize.includes('GROUP');
+    console.log('Is source large?', isSourceLarge);
 
     let filteredCompanies = candidateCompanies;
     
