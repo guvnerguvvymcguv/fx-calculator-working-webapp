@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
 
     console.log('Searching for companies similar to:', companyName);
 
-    // Step 1: Find potential source companies (return top 5 matches)
+    // Step 1: Find the source company
     const { data: sourceCompanies, error: searchError } = await supabase
       .from('companies_house_data')
       .select('*')
@@ -33,16 +33,18 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           similarCompanies: [],
+          totalMatches: 0,
+          hasMore: false,
           message: 'Company not found. Try searching with a different name or check spelling.'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Prioritize retail/service companies over construction/manufacturing
+    // Prioritize retail/wholesale companies
     const prioritizedCompanies = sourceCompanies.sort((a, b) => {
       const aIsRetail = [a.sic_code1, a.sic_code2, a.sic_code3, a.sic_code4]
-        .some(sic => sic?.startsWith('47') || sic?.startsWith('46')); // Retail/Wholesale
+        .some(sic => sic?.startsWith('47') || sic?.startsWith('46'));
       const bIsRetail = [b.sic_code1, b.sic_code2, b.sic_code3, b.sic_code4]
         .some(sic => sic?.startsWith('47') || sic?.startsWith('46'));
       
@@ -52,9 +54,11 @@ Deno.serve(async (req) => {
     });
 
     const sourceCompany = prioritizedCompanies[0];
-    console.log('Source company selected:', sourceCompany.company_name, 'SIC:', sourceCompany.sic_code1);
+    console.log('Source company:', sourceCompany.company_name);
+    console.log('SIC codes:', [sourceCompany.sic_code1, sourceCompany.sic_code2, sourceCompany.sic_code3, sourceCompany.sic_code4].filter(Boolean));
+    console.log('Size:', sourceCompany.accounts_category);
 
-    // Step 2: Get SIC codes
+    // Step 2: Get EXACT SIC codes from source company
     const sicCodes = [
       sourceCompany.sic_code1,
       sourceCompany.sic_code2,
@@ -66,26 +70,17 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           similarCompanies: [],
+          totalMatches: 0,
+          hasMore: false,
           message: 'Source company has no industry codes. Cannot find similar companies.'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Step 3: Find similar companies using 3-digit sub-sector matching
-    // Build a broader query that searches by 3-digit SIC codes (e.g., 477 for clothing retail)
-    const threeDigitSectors = [...new Set(
-      sicCodes.map(sic => sic?.substring(0, 3)).filter(Boolean)
-    )];
-
-    // Build OR conditions for 3-digit matching across all SIC fields
-    const orConditions = threeDigitSectors
-      .flatMap(sector => [
-        `sic_code1.like.${sector}%`,
-        `sic_code2.like.${sector}%`,
-        `sic_code3.like.${sector}%`,
-        `sic_code4.like.${sector}%`
-      ])
+    // Step 3: Find companies with EXACT SIC code matches
+    const orConditions = sicCodes
+      .map(sic => `sic_code1.eq.${sic},sic_code2.eq.${sic},sic_code3.eq.${sic},sic_code4.eq.${sic}`)
       .join(',');
 
     const { data: candidateCompanies, error: candidatesError } = await supabase
@@ -94,70 +89,111 @@ Deno.serve(async (req) => {
       .eq('company_status', 'Active')
       .neq('company_number', sourceCompany.company_number)
       .or(orConditions)
-      .limit(500); // Increased limit since we're casting a wider net
+      .limit(1000);
 
     if (candidatesError) {
       throw new Error(`Candidates error: ${candidatesError.message}`);
     }
 
+    console.log(`Found ${candidateCompanies?.length || 0} companies with exact SIC match`);
+
     if (!candidateCompanies || candidateCompanies.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          similarCompanies: [],
-          message: 'No similar companies found in the same industry.'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Step 4: Score and filter - STRICT quality threshold
-    const scoredCompanies = candidateCompanies
-      .map(company => ({
-        company,
-        score: calculateSimilarityScore(sourceCompany, company),
-      }))
-      .filter(({ score }) => score >= 0.85) // Strict threshold - only high-quality matches
-      .sort((a, b) => b.score - a.score);
-
-    console.log(`After scoring: ${scoredCompanies.length} companies passed threshold (>= 0.85)`);
-
-    // If no good matches found, return empty with helpful message
-    if (scoredCompanies.length === 0) {
       return new Response(
         JSON.stringify({ 
           similarCompanies: [],
           totalMatches: 0,
           hasMore: false,
-          message: `No high-quality matches found for ${sourceCompany.company_name}. The companies in the database may not be similar enough in industry and size.`
+          message: 'No companies found with matching industry codes.'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Filter excluded
-    let filteredCompanies = scoredCompanies;
+    // Step 4: Filter by SIZE - only FULL or GROUP (large companies only)
+    const sourceSize = sourceCompany.accounts_category?.toUpperCase() || '';
+    const isSourceLarge = sourceSize.includes('FULL') || sourceSize.includes('GROUP');
+
+    let filteredCompanies = candidateCompanies;
+    
+    if (isSourceLarge) {
+      // If source is large, only show other large companies
+      filteredCompanies = candidateCompanies.filter(company => {
+        const candidateSize = company.accounts_category?.toUpperCase() || '';
+        return candidateSize.includes('FULL') || candidateSize.includes('GROUP');
+      });
+      console.log(`Filtered to ${filteredCompanies.length} large companies (FULL or GROUP)`);
+    } else {
+      // If source is not large, show same size category
+      filteredCompanies = candidateCompanies.filter(company => {
+        return company.accounts_category?.toUpperCase() === sourceSize;
+      });
+      console.log(`Filtered to ${filteredCompanies.length} companies matching size: ${sourceSize}`);
+    }
+
+    if (filteredCompanies.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          similarCompanies: [],
+          totalMatches: 0,
+          hasMore: false,
+          message: `No companies found with matching industry codes and similar size (${sourceSize}).`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Step 5: Exclude already-shown companies
     if (excludeCompanies.length > 0) {
       const normalizedExclusions = excludeCompanies.map((name: string) => 
         name.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
       );
       
-      filteredCompanies = scoredCompanies.filter(({ company }) => {
+      filteredCompanies = filteredCompanies.filter(company => {
         const normalized = company.company_name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
         return !normalizedExclusions.includes(normalized);
       });
     }
 
     const totalMatches = filteredCompanies.length;
-    filteredCompanies = filteredCompanies.slice(offset, offset + limit);
+    
+    // Step 6: Sort by number of matching SIC codes (more matches = more relevant)
+    filteredCompanies.sort((a, b) => {
+      const aMatches = sicCodes.filter(sic => 
+        [a.sic_code1, a.sic_code2, a.sic_code3, a.sic_code4].includes(sic)
+      ).length;
+      const bMatches = sicCodes.filter(sic => 
+        [b.sic_code1, b.sic_code2, b.sic_code3, b.sic_code4].includes(sic)
+      ).length;
+      return bMatches - aMatches;
+    });
 
-    // Step 5: Format results
-    const similarCompanies = filteredCompanies.map(({ company }) => ({
-      name: company.company_name,
-      industry: getIndustryDescription(company.sic_code1 || company.sic_code2),
-      location: [company.post_town, company.country].filter(Boolean).join(', ') || 'UK',
-      size: getSizeDescription(company.accounts_category, company.num_mort_charges),
-      reasoning: generateReasoning(sourceCompany, company, sicCodes),
-    }));
+    // Step 7: Apply pagination
+    const paginatedCompanies = filteredCompanies.slice(offset, offset + limit);
+
+    // Step 8: Format results
+    const similarCompanies = paginatedCompanies.map(company => {
+      const primarySIC = company.sic_code1 || company.sic_code2 || '';
+      const industry = getIndustryDescription(primarySIC);
+      const size = getSizeDescription(company.accounts_category, company.num_mort_charges);
+      const location = [company.post_town, company.country].filter(Boolean).join(', ') || 'UK';
+
+      const matchingSICs = sicCodes.filter(sic => 
+        [company.sic_code1, company.sic_code2, company.sic_code3, company.sic_code4].includes(sic)
+      );
+      
+      let reasoning = `Exact industry match (SIC ${matchingSICs.join(', ')})`;
+      if (company.accounts_category === sourceCompany.accounts_category) {
+        reasoning += ', same company size';
+      }
+
+      return {
+        name: company.company_name,
+        industry,
+        location,
+        size,
+        reasoning,
+      };
+    });
 
     return new Response(
       JSON.stringify({ 
@@ -176,78 +212,6 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-function calculateSimilarityScore(source: any, candidate: any): number {
-  let score = 0;
-
-  // INDUSTRY MATCHING (50% weight) - More precise matching
-  const sourceSICs = [source.sic_code1, source.sic_code2, source.sic_code3, source.sic_code4].filter(Boolean);
-  const candidateSICs = [candidate.sic_code1, candidate.sic_code2, candidate.sic_code3, candidate.sic_code4].filter(Boolean);
-  
-  let bestIndustryScore = 0;
-  
-  for (const sourceSIC of sourceSICs) {
-    for (const candidateSIC of candidateSICs) {
-      // Exact 5-digit match (perfect match)
-      if (sourceSIC === candidateSIC) {
-        bestIndustryScore = Math.max(bestIndustryScore, 0.5);
-      }
-      // Same 4-digit code (very similar activity)
-      else if (sourceSIC?.substring(0, 4) === candidateSIC?.substring(0, 4)) {
-        bestIndustryScore = Math.max(bestIndustryScore, 0.45);
-      }
-      // Same 3-digit sub-sector (e.g., 477 = clothing retail, 464 = clothing wholesale)
-      else if (sourceSIC?.substring(0, 3) === candidateSIC?.substring(0, 3)) {
-        bestIndustryScore = Math.max(bestIndustryScore, 0.4);
-      }
-      // Same 2-digit sector (too broad, lower score)
-      else if (sourceSIC?.substring(0, 2) === candidateSIC?.substring(0, 2)) {
-        bestIndustryScore = Math.max(bestIndustryScore, 0.15);
-      }
-    }
-  }
-  
-  score += bestIndustryScore;
-
-  // SIZE MATCHING (50% weight) - Critical for finding similar-scale companies
-  const sourceSize = source.accounts_category?.toUpperCase() || '';
-  const candidateSize = candidate.accounts_category?.toUpperCase() || '';
-  
-  // Exact size match
-  if (sourceSize === candidateSize && sourceSize) {
-    score += 0.5;
-  }
-  // Close size match (Large categories)
-  else if (
-    (sourceSize.includes('GROUP') && candidateSize.includes('FULL')) ||
-    (sourceSize.includes('FULL') && candidateSize.includes('GROUP'))
-  ) {
-    score += 0.45;
-  }
-  // Medium-Large with Large
-  else if (
-    (sourceSize.includes('GROUP') && candidateSize.includes('MEDIUM')) ||
-    (sourceSize.includes('FULL') && candidateSize.includes('MEDIUM')) ||
-    (sourceSize.includes('MEDIUM') && (candidateSize.includes('GROUP') || candidateSize.includes('FULL')))
-  ) {
-    score += 0.35;
-  }
-  // At least not micro/dormant
-  else if (
-    !candidateSize.includes('MICRO') && 
-    !candidateSize.includes('DORMANT') &&
-    candidateSize
-  ) {
-    score += 0.2;
-  }
-
-  // BONUS: Both have significant mortgage charges (indicator of substantial operations)
-  if (source.num_mort_charges >= 5 && candidate.num_mort_charges >= 5) {
-    score += 0.05;
-  }
-
-  return score;
-}
 
 function getSizeDescription(accountsCategory: string | null, numMortgages: number): string {
   const category = accountsCategory?.toUpperCase() || '';
@@ -296,14 +260,3 @@ function getIndustryDescription(sicCode: string | null): string {
   return sectorDescriptions[sicCode[0]] || `Industry ${sicCode}`;
 }
 
-function generateReasoning(source: any, candidate: any, sicCodes: string[]): string {
-  const matchingSICs = sicCodes.filter(sic => 
-    [candidate.sic_code1, candidate.sic_code2, candidate.sic_code3, candidate.sic_code4].includes(sic)
-  );
-  
-  let reasoning = 'Same industry classification';
-  if (matchingSICs.length > 1) reasoning = 'Multiple matching industry codes';
-  if (candidate.accounts_category === source.accounts_category) reasoning += ', similar company size';
-  
-  return reasoning;
-}
