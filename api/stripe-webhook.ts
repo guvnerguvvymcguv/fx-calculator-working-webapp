@@ -420,7 +420,7 @@ if (isSeatUpdate && subscriptionId && newSeatCount) {
         // Find company by stripe_subscription_id
         const { data: company } = await supabase
           .from('companies')
-          .select('id')
+          .select('id, subscription_price, company_finder_enabled, client_data_enabled')
           .eq('stripe_subscription_id', subscription.id)
           .single();
 
@@ -445,35 +445,30 @@ if (subscription.cancel_at_period_end) {
   // They were set by our cancel-subscription function
 }
 
-          // If subscription has items, calculate total price INCLUDING add-ons
-          if (subscription.items && subscription.items.data.length > 0) {
-            // Calculate total monthly price from ALL subscription items (base + add-ons)
-            let totalMonthlyPrice = 0;
-            let baseSeatQuantity = 0;
-            
-            subscription.items.data.forEach(item => {
-              const pricePerUnit = item.price.unit_amount || 0;
+          // Only update prices if add-ons are enabled (to preserve add-on pricing)
+          // If no add-ons, update normally from subscription items
+          const hasAddons = company.company_finder_enabled || company.client_data_enabled;
+          
+          if (hasAddons) {
+            console.log('Add-ons detected - preserving current pricing in subscription.updated');
+            // Don't update prices - let the add-on checkout handler manage pricing
+          } else {
+            // No add-ons - safe to update price from subscription
+            if (subscription.items && subscription.items.data.length > 0) {
+              const item = subscription.items.data[0];
               const quantity = item.quantity || 0;
+              const pricePerUnit = item.price.unit_amount || 0;
               // Remove VAT to get base price (price includes 20% VAT)
               const pricePerUnitExVat = pricePerUnit / 1.2;
-              const itemMonthlyPrice = (pricePerUnitExVat * quantity) / 100;
+              const monthlyPrice = (pricePerUnitExVat * quantity) / 100;
               
-              totalMonthlyPrice += itemMonthlyPrice;
+              updateData.subscription_seats = quantity;
+              updateData.subscription_price = monthlyPrice;
+              updateData.price_per_month = monthlyPrice;
+              updateData.discount_percentage = quantity >= 30 ? 20 : quantity >= 15 ? 10 : 0;
               
-              // The first item is always the base subscription
-              if (item === subscription.items.data[0]) {
-                baseSeatQuantity = quantity;
-              }
-            });
-            
-            updateData.subscription_seats = baseSeatQuantity;
-            updateData.subscription_price = totalMonthlyPrice;
-            updateData.price_per_month = totalMonthlyPrice;
-            
-            // Update discount percentage based on seat quantity (not add-ons)
-            updateData.discount_percentage = baseSeatQuantity >= 30 ? 20 : baseSeatQuantity >= 15 ? 10 : 0;
-            
-            console.log('Updating subscription with quantity:', baseSeatQuantity, 'price:', totalMonthlyPrice, 'items:', subscription.items.data.length);
+              console.log('No add-ons - updating subscription with quantity:', quantity, 'price:', monthlyPrice);
+            }
           }
 
           await supabase
