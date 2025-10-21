@@ -158,22 +158,15 @@ serve(async (req) => {
     console.log('Created ongoing price:', ongoingPrice.id)
 
     // Calculate new total monthly price for Supabase
-    // Base price per seat
-    const baseMonthlyPricePerSeat = company.subscription_seats <= 14 ? 30 : 
-                                     company.subscription_seats <= 29 ? 27 : 24
-    const baseMonthlyTotal = company.subscription_seats * baseMonthlyPricePerSeat
-    
-    // Add add-on price (monthly equivalent)
-    const addonMonthlyEquivalent = company.subscription_type === 'annual' 
-      ? (3 * 12 * 0.9) // £32.40/year = £2.70/month equivalent
+    // We'll fetch the current price in the webhook and add the add-on price
+    const addonMonthlyPricePerSeat = company.subscription_type === 'annual' 
+      ? (3 * 12 * 0.9) / 12 // £32.40/year = £2.70/month equivalent
       : 5 // £5/month
-    
-    const newMonthlyTotal = baseMonthlyTotal + (addonMonthlyEquivalent * seatCount)
 
-    console.log('New subscription price calculation:', {
-      baseMonthlyTotal,
-      addonMonthlyEquivalent,
-      newMonthlyTotal
+    console.log('Add-on pricing for metadata:', {
+      addonMonthlyPricePerSeat,
+      seatCount,
+      addonMonthlyTotal: addonMonthlyPricePerSeat * seatCount
     })
 
     // Get origin URL
@@ -201,7 +194,7 @@ serve(async (req) => {
         ongoing_price_id: ongoingPrice.id,
         seat_count: seatCount.toString(),
         subscription_id: company.stripe_subscription_id,
-        new_monthly_price: newMonthlyTotal.toString()
+        addon_monthly_price_per_seat: addonMonthlyPricePerSeat.toString()
       },
       line_items: [{
         price_data: {

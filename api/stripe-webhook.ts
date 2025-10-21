@@ -85,7 +85,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const ongoingPriceId = session.metadata?.ongoing_price_id;
         const addonSeatCount = parseInt(session.metadata?.seat_count || '0');
         const addonSubscriptionId = session.metadata?.subscription_id;
-        const newMonthlyPrice = parseFloat(session.metadata?.new_monthly_price || '0');
 
         if (!companyId) {
           console.error('No company ID in session metadata');
@@ -99,10 +98,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             addonType, 
             ongoingPriceId,
             seatCount: addonSeatCount,
-            newMonthlyPrice
+            subscriptionId: addonSubscriptionId
           });
           
           try {
+            // FIRST: Fetch current company data to preserve it
+            const { data: currentCompany, error: fetchError } = await supabase
+              .from('companies')
+              .select('subscription_price, price_per_month, admin_seats, junior_seats, subscription_seats')
+              .eq('id', companyId)
+              .single();
+
+            if (fetchError || !currentCompany) {
+              console.error('Failed to fetch company data:', fetchError);
+              throw new Error('Company not found');
+            }
+
+            console.log('Current company data:', currentCompany);
+
+            // Calculate add-on price to ADD to existing price
+            const addonMonthlyPricePerSeat = parseFloat(session.metadata?.addon_monthly_price_per_seat || '5');
+            const addonTotalMonthly = addonMonthlyPricePerSeat * addonSeatCount;
+            const newTotalPrice = (currentCompany.subscription_price || 0) + addonTotalMonthly;
+
+            console.log('Price calculation:', {
+              currentPrice: currentCompany.subscription_price,
+              addonPricePerSeat: addonMonthlyPricePerSeat,
+              addonSeats: addonSeatCount,
+              addonTotal: addonTotalMonthly,
+              newTotalPrice
+            });
+
             // Add the subscription item for ongoing billing
             const subscriptionItem = await stripe.subscriptionItems.create({
               subscription: addonSubscriptionId,
@@ -113,7 +139,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             console.log('✅ Subscription item created:', subscriptionItem.id);
 
-            // Update database to enable add-on and update price
+            // Update database to enable add-on and update price (PRESERVE other fields)
             const columnName = addonType === 'company_finder' 
               ? 'company_finder_enabled' 
               : 'client_data_enabled';
@@ -122,9 +148,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               .from('companies')
               .update({
                 [columnName]: true,
-                subscription_price: newMonthlyPrice,
-                price_per_month: newMonthlyPrice,
+                subscription_price: newTotalPrice,
+                price_per_month: newTotalPrice,
                 updated_at: new Date().toISOString()
+                // NOTE: We do NOT update admin_seats, junior_seats, or subscription_seats
               })
               .eq('id', companyId);
             
@@ -135,7 +162,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               throw updateError;
             }
 
-            console.log(`✅ Add-on ${addonType} enabled for company ${companyId}, price updated to £${newMonthlyPrice}`);
+            console.log(`✅ Add-on ${addonType} enabled for company ${companyId}`);
+            console.log(`✅ Price updated: £${currentCompany.subscription_price} → £${newTotalPrice}`);
           } catch (error) {
             console.error('Error processing add-on proration:', error);
           }
