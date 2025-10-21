@@ -91,8 +91,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           break;
         }
 
+        // DEBUG: Log all the checks
+        console.log('DEBUG - Checkout type checks:', {
+          isAddonProration,
+          addonType,
+          ongoingPriceId,
+          addonSubscriptionId,
+          isSeatUpdate,
+          newSeatCount,
+          subscriptionId
+        });
+
+        // CRITICAL: Check add-on proration FIRST (before seat update check)
         // HANDLE ADD-ON PRORATED PAYMENT
         if (isAddonProration && addonType && ongoingPriceId && addonSubscriptionId) {
+          console.log('🔧 ADD-ON PRORATION DETECTED - Processing add-on payment');
           console.log('Processing add-on prorated payment:', { 
             companyId, 
             addonType, 
