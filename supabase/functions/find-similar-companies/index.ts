@@ -154,33 +154,68 @@ Deno.serve(async (req) => {
 function calculateSimilarityScore(source: any, candidate: any): number {
   let score = 0;
 
+  // INDUSTRY MATCHING (50% weight) - More precise matching
   const sourceSICs = [source.sic_code1, source.sic_code2, source.sic_code3, source.sic_code4].filter(Boolean);
   const candidateSICs = [candidate.sic_code1, candidate.sic_code2, candidate.sic_code3, candidate.sic_code4].filter(Boolean);
   
-  const exactMatch = sourceSICs.some(sic => candidateSICs.includes(sic));
-  if (exactMatch) {
-    score += 0.6;
-  } else {
-    const sourceSectors = sourceSICs.map(sic => sic?.substring(0, 2));
-    const candidateSectors = candidateSICs.map(sic => sic?.substring(0, 2));
-    const sectorMatch = sourceSectors.some(sector => candidateSectors.includes(sector));
-    if (sectorMatch) score += 0.3;
+  let bestIndustryScore = 0;
+  
+  for (const sourceSIC of sourceSICs) {
+    for (const candidateSIC of candidateSICs) {
+      // Exact 5-digit match (perfect match)
+      if (sourceSIC === candidateSIC) {
+        bestIndustryScore = Math.max(bestIndustryScore, 0.5);
+      }
+      // Same 4-digit code (very similar activity)
+      else if (sourceSIC?.substring(0, 4) === candidateSIC?.substring(0, 4)) {
+        bestIndustryScore = Math.max(bestIndustryScore, 0.45);
+      }
+      // Same 3-digit sub-sector (e.g., 477 = clothing retail, 464 = clothing wholesale)
+      else if (sourceSIC?.substring(0, 3) === candidateSIC?.substring(0, 3)) {
+        bestIndustryScore = Math.max(bestIndustryScore, 0.4);
+      }
+      // Same 2-digit sector (too broad, lower score)
+      else if (sourceSIC?.substring(0, 2) === candidateSIC?.substring(0, 2)) {
+        bestIndustryScore = Math.max(bestIndustryScore, 0.15);
+      }
+    }
   }
+  
+  score += bestIndustryScore;
 
+  // SIZE MATCHING (50% weight) - Critical for finding similar-scale companies
   const sourceSize = source.accounts_category?.toUpperCase() || '';
   const candidateSize = candidate.accounts_category?.toUpperCase() || '';
   
-  if (sourceSize === candidateSize) {
-    score += 0.4;
-  } else if (
+  // Exact size match
+  if (sourceSize === candidateSize && sourceSize) {
+    score += 0.5;
+  }
+  // Close size match (Large categories)
+  else if (
     (sourceSize.includes('GROUP') && candidateSize.includes('FULL')) ||
     (sourceSize.includes('FULL') && candidateSize.includes('GROUP'))
   ) {
+    score += 0.45;
+  }
+  // Medium-Large with Large
+  else if (
+    (sourceSize.includes('GROUP') && candidateSize.includes('MEDIUM')) ||
+    (sourceSize.includes('FULL') && candidateSize.includes('MEDIUM')) ||
+    (sourceSize.includes('MEDIUM') && (candidateSize.includes('GROUP') || candidateSize.includes('FULL')))
+  ) {
     score += 0.35;
-  } else if (!candidateSize.includes('MICRO') && !candidateSize.includes('DORMANT')) {
+  }
+  // At least not micro/dormant
+  else if (
+    !candidateSize.includes('MICRO') && 
+    !candidateSize.includes('DORMANT') &&
+    candidateSize
+  ) {
     score += 0.2;
   }
 
+  // BONUS: Both have significant mortgage charges (indicator of substantial operations)
   if (source.num_mort_charges >= 5 && candidate.num_mort_charges >= 5) {
     score += 0.05;
   }
