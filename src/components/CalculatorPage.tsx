@@ -266,20 +266,22 @@ export default function CalculatorPage() {
         excludeCompanies: shownCompanies // Exclude companies already shown
       });
       
-      const response = await fetch('/api/find-similar-companies', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          companyName: calculator.competitorName,
-          userId: currentUser.id,
-          companyId: profile?.company_id,
-          excludeCompanies: shownCompanies, // Pass exclusion list
-          limit: 10,
-          offset: currentOffset // Pass pagination offset
-        })
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/find-similar-companies`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            companyName: calculator.competitorName,
+            excludeCompanies: shownCompanies,
+            limit: 10,
+            offset: currentOffset
+          })
+        }
+      );
 
       const data = await response.json();
       console.log('API response:', data);
