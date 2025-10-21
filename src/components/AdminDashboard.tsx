@@ -32,6 +32,7 @@ export default function AdminDashboard() {
   const [processingUpdate, setProcessingUpdate] = useState(false);
   const [successMessageType, setSuccessMessageType] = useState<'checkout' | 'seat_update' | null>(null);
   const [monthlyReportsEnabled, setMonthlyReportsEnabled] = useState(false);
+  const [clientDataEnabled, setClientDataEnabled] = useState(false);
   const [savingReportSettings, setSavingReportSettings] = useState(false);
   const [testingReport, setTestingReport] = useState(false);
   const [metrics, setMetrics] = useState({
@@ -653,6 +654,7 @@ setUserCalculationCounts(counts);
 
     setCompanyData(company);
     setMonthlyReportsEnabled(company?.monthly_reports_enabled || false);
+    setClientDataEnabled(company?.client_data_enabled || false);
 
     // Fetch ALL team members (including inactive for seat count)
     const { data: allMembers } = await supabase
@@ -1142,102 +1144,141 @@ setUserCalculationCounts(counts);
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {/* Description */}
-              <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                <Mail className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-white font-medium mb-1">Automated Client Intelligence Reports</p>
-                  <p className="text-sm text-gray-400">
-                    Receive a comprehensive PDF report on the 1st of every month with detailed insights about your clients' trading activity, 
-                    currency pair usage, average trade values, and savings performance.
-                  </p>
-                </div>
-              </div>
-
-              {/* Toggle Section */}
-              <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg">
-                <div>
-                  <p className="text-white font-medium">Monthly Reports</p>
-                  <p className="text-sm text-gray-400">
-                    {monthlyReportsEnabled 
-                      ? 'Reports will be sent to all company admins on the 1st of each month'
-                      : 'Enable to receive monthly PDF reports via email'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={monthlyReportsEnabled}
-                      onChange={handleToggleMonthlyReports}
-                      disabled={savingReportSettings}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                  </label>
-                  <span className={`text-sm font-medium ${monthlyReportsEnabled ? 'text-green-400' : 'text-gray-400'}`}>
-                    {monthlyReportsEnabled ? 'Enabled' : 'Disabled'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Report Details */}
-              {monthlyReportsEnabled && (
-                <div className="p-4 bg-purple-900/20 border border-purple-800/30 rounded-lg">
-                  <h4 className="text-white font-medium mb-3 flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-400" />
-                    Active - Next report scheduled
-                  </h4>
-                  <div className="space-y-2 text-sm text-gray-300">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Send Date:</span>
-                      <span className="text-white">1st of every month at 9:00 AM</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Recipients:</span>
-                      <span className="text-white">All company admins</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Report Period:</span>
-                      <span className="text-white">Previous month's activity</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Format:</span>
-                      <span className="text-white">PDF attachment via email</span>
-                    </div>
+            {!clientDataEnabled ? (
+              // LOCKED STATE - Add-on not purchased
+              <div className="space-y-4">
+                {/* Description */}
+                <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <Mail className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-medium mb-1">Automated Client Intelligence Reports</p>
+                    <p className="text-sm text-gray-400">
+                      Receive a comprehensive PDF report on the 1st of every month with detailed insights about your clients' trading activity, 
+                      currency pair usage, average trade values, and savings performance.
+                    </p>
                   </div>
                 </div>
-              )}
 
-              {/* Test Button */}
-              <div className="flex justify-end pt-4 border-t border-gray-700">
-                <Button
-                  onClick={handleTestReport}
-                  disabled={testingReport || !monthlyReportsEnabled}
-                  variant="outline"
-                  className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
-                >
-                  {testingReport ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2" />
-                      Generating Test Report...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="h-4 w-4 mr-2" />
-                      Send Test Report
-                    </>
-                  )}
-                </Button>
+                {/* Locked Banner */}
+                <div className="flex items-center justify-between p-6 bg-amber-900/20 border border-amber-600/30 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-amber-900/30 flex items-center justify-center">
+                      <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">Premium Feature</p>
+                      <p className="text-sm text-gray-400">Upgrade your subscription to unlock automated monthly client reports</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => navigate('/admin/account')}
+                    className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+                  >
+                    Upgrade Now
+                  </Button>
+                </div>
               </div>
+            ) : (
+              // UNLOCKED STATE - Add-on purchased
+              <div className="space-y-6">
+                {/* Description */}
+                <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <Mail className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-medium mb-1">Automated Client Intelligence Reports</p>
+                    <p className="text-sm text-gray-400">
+                      Receive a comprehensive PDF report on the 1st of every month with detailed insights about your clients' trading activity, 
+                      currency pair usage, average trade values, and savings performance.
+                    </p>
+                  </div>
+                </div>
 
-              {!monthlyReportsEnabled && (
-                <p className="text-xs text-gray-500 text-center">
-                  Enable monthly reports to test the feature
-                </p>
-              )}
-            </div>
+                {/* Toggle Section */}
+                <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg">
+                  <div>
+                    <p className="text-white font-medium">Monthly Reports</p>
+                    <p className="text-sm text-gray-400">
+                      {monthlyReportsEnabled 
+                        ? 'Reports will be sent to all company admins on the 1st of each month'
+                        : 'Enable to receive monthly PDF reports via email'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={monthlyReportsEnabled}
+                        onChange={handleToggleMonthlyReports}
+                        disabled={savingReportSettings}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                    <span className={`text-sm font-medium ${monthlyReportsEnabled ? 'text-green-400' : 'text-gray-400'}`}>
+                      {monthlyReportsEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Report Details */}
+                {monthlyReportsEnabled && (
+                  <div className="p-4 bg-purple-900/20 border border-purple-800/30 rounded-lg">
+                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-400" />
+                      Active - Next report scheduled
+                    </h4>
+                    <div className="space-y-2 text-sm text-gray-300">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Send Date:</span>
+                        <span className="text-white">1st of every month at 9:00 AM</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Recipients:</span>
+                        <span className="text-white">All company admins</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Report Period:</span>
+                        <span className="text-white">Previous month's activity</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Format:</span>
+                        <span className="text-white">PDF attachment via email</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Test Button */}
+                <div className="flex justify-end pt-4 border-t border-gray-700">
+                  <Button
+                    onClick={handleTestReport}
+                    disabled={testingReport || !monthlyReportsEnabled}
+                    variant="outline"
+                    className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
+                  >
+                    {testingReport ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2" />
+                        Generating Test Report...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Send Test Report
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {!monthlyReportsEnabled && (
+                  <p className="text-xs text-gray-500 text-center">
+                    Enable monthly reports to test the feature
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
