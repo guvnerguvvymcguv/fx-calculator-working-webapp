@@ -72,9 +72,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 3: Find similar companies
-    const orConditions = sicCodes
-      .map(sic => `sic_code1.eq.${sic},sic_code2.eq.${sic},sic_code3.eq.${sic},sic_code4.eq.${sic}`)
+    // Step 3: Find similar companies using 3-digit sub-sector matching
+    // Build a broader query that searches by 3-digit SIC codes (e.g., 477 for clothing retail)
+    const threeDigitSectors = [...new Set(
+      sicCodes.map(sic => sic?.substring(0, 3)).filter(Boolean)
+    )];
+
+    // Build OR conditions for 3-digit matching across all SIC fields
+    const orConditions = threeDigitSectors
+      .flatMap(sector => [
+        `sic_code1.like.${sector}%`,
+        `sic_code2.like.${sector}%`,
+        `sic_code3.like.${sector}%`,
+        `sic_code4.like.${sector}%`
+      ])
       .join(',');
 
     const { data: candidateCompanies, error: candidatesError } = await supabase
@@ -83,7 +94,7 @@ Deno.serve(async (req) => {
       .eq('company_status', 'Active')
       .neq('company_number', sourceCompany.company_number)
       .or(orConditions)
-      .limit(100);
+      .limit(500); // Increased limit since we're casting a wider net
 
     if (candidatesError) {
       throw new Error(`Candidates error: ${candidatesError.message}`);
@@ -99,14 +110,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 4: Score and filter
+    // Step 4: Score and filter - STRICT quality threshold
     const scoredCompanies = candidateCompanies
       .map(company => ({
         company,
         score: calculateSimilarityScore(sourceCompany, company),
       }))
-      .filter(({ score }) => score > 0.8)
+      .filter(({ score }) => score >= 0.85) // Strict threshold - only high-quality matches
       .sort((a, b) => b.score - a.score);
+
+    console.log(`After scoring: ${scoredCompanies.length} companies passed threshold (>= 0.85)`);
+
+    // If no good matches found, return empty with helpful message
+    if (scoredCompanies.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          similarCompanies: [],
+          totalMatches: 0,
+          hasMore: false,
+          message: `No high-quality matches found for ${sourceCompany.company_name}. The companies in the database may not be similar enough in industry and size.`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Filter excluded
     let filteredCompanies = scoredCompanies;
