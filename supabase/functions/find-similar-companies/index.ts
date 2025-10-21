@@ -109,24 +109,25 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 4: Filter by SIZE - only FULL or GROUP (large companies only)
+    // Step 4: Filter by SIZE - EXACT matching for FULL or GROUP only
     const sourceSize = sourceCompany.accounts_category?.toUpperCase() || '';
     console.log('Source company size category:', sourceCompany.accounts_category);
     
-    const isSourceLarge = sourceSize.includes('FULL') || sourceSize.includes('GROUP');
+    // Check if source is exactly FULL or GROUP (large companies)
+    const isSourceLarge = sourceSize === 'FULL' || sourceSize === 'GROUP';
     console.log('Is source large?', isSourceLarge);
 
     let filteredCompanies = candidateCompanies;
     
     if (isSourceLarge) {
-      // If source is large, only show other large companies
+      // If source is large, only show other large companies (EXACT match for FULL or GROUP)
       filteredCompanies = candidateCompanies.filter(company => {
         const candidateSize = company.accounts_category?.toUpperCase() || '';
-        return candidateSize.includes('FULL') || candidateSize.includes('GROUP');
+        return candidateSize === 'FULL' || candidateSize === 'GROUP';
       });
       console.log(`Filtered to ${filteredCompanies.length} large companies (FULL or GROUP)`);
     } else {
-      // If source is not large, show same size category
+      // If source is not large, show exact same size category
       filteredCompanies = candidateCompanies.filter(company => {
         return company.accounts_category?.toUpperCase() === sourceSize;
       });
