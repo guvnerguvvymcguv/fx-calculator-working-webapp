@@ -76,13 +76,13 @@ export default function CalculatorPage() {
     try {
       const { data: leads, error } = await supabase
         .from('user_leads')
-        .select('company_name')
+        .select('custom_name')
         .eq('user_id', currentUser.id);
 
       if (error) throw error;
 
       if (leads && leads.length > 0) {
-        const companyNames = new Set(leads.map(lead => lead.company_name.toLowerCase()));
+        const companyNames = new Set(leads.map(lead => lead.custom_name.toLowerCase()));
         setAddedCompanies(companyNames);
       }
     } catch (error) {
@@ -274,10 +274,10 @@ export default function CalculatorPage() {
       // Get companies already in My Leads
       const { data: myLeads } = await supabase
         .from('user_leads')
-        .select('company_name')
+        .select('custom_name')
         .eq('user_id', currentUser.id);
       
-      const companiesInMyLeads = myLeads?.map(lead => lead.company_name) || [];
+      const companiesInMyLeads = myLeads?.map(lead => lead.custom_name) || [];
       
       // Build exclusion list: shown companies + companies in My Leads
       const excludeCompanies = [
