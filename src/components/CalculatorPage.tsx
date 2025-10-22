@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calculator, TrendingUp, DollarSign, History, Home, LayoutDashboard, Users } from 'lucide-react';
+import { Calculator, TrendingUp, DollarSign, History, Home, LayoutDashboard, Users, Globe } from 'lucide-react';
 
 // Import our custom hooks and constants
 import { useFXCalculator } from '../hooks/useFXCalculator';
@@ -15,7 +15,7 @@ import { HistoricalRateModal } from './ui/HistoricalRateModal';
 import { signOut, getCurrentUser } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { saveCalculation } from '../lib/calculations';
-import { addOrUpdateLead } from '../lib/userLeads'; // NEW: Import lead management
+import { addOrUpdateLead } from '../lib/userLeads';
 
 // Helper function to get user profile
 const getUserProfile = async (userId: string) => {
@@ -35,15 +35,17 @@ export default function CalculatorPage() {
   const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
   const [findingCompanies, setFindingCompanies] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
-  const [addedCompanies, setAddedCompanies] = useState<Set<string>>(new Set()); // Track added companies
-  const [hasSearched, setHasSearched] = useState(false); // Track if user has searched once
-  const [totalMatches, setTotalMatches] = useState(0); // Total number of matches found
-  const [companyFinderEnabled, setCompanyFinderEnabled] = useState<boolean>(false); // Feature gate for Company Finder
+  const [addedCompanies, setAddedCompanies] = useState<Set<string>>(new Set());
+  const [hasSearched, setHasSearched] = useState(false);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [companyFinderEnabled, setCompanyFinderEnabled] = useState<boolean>(false);
+  const [shownCompanyNames, setShownCompanyNames] = useState<string[]>([]);
+  const [searchAttempt, setSearchAttempt] = useState(0);
+  const [noMoreCompanies, setNoMoreCompanies] = useState(false);
   const navigate = useNavigate();
   
   // Use our custom hooks for clean separation of concerns
   const calculator = useFXCalculator();
-  // Don't auto-update Your Rate - let users type freely
   const liveRates = useLiveRates(selectedPair);
 
   // Check authentication on component mount
@@ -63,21 +65,42 @@ export default function CalculatorPage() {
     };
   }, [navigate]);
 
+  // Load companies already in My Leads when component mounts
+  useEffect(() => {
+    if (currentUser) {
+      loadExistingLeads();
+    }
+  }, [currentUser]);
+
+  const loadExistingLeads = async () => {
+    try {
+      const { data: leads, error } = await supabase
+        .from('user_leads')
+        .select('company_name')
+        .eq('user_id', currentUser.id);
+
+      if (error) throw error;
+
+      if (leads && leads.length > 0) {
+        const companyNames = new Set(leads.map(lead => lead.company_name.toLowerCase()));
+        setAddedCompanies(companyNames);
+      }
+    } catch (error) {
+      console.error('Error loading existing leads:', error);
+    }
+  };
+
   const checkAuth = async () => {
     const { user, error } = await getCurrentUser();
     
     if (error || !user) {
-      // Not authenticated, redirect to login
       navigate('/login');
     } else {
-      // User is authenticated
       setCurrentUser(user);
-      // Get user role
       const profile = await getUserProfile(user.id);
       if (profile) {
         setUserRole(profile.role_type);
         
-        // Check if Company Finder add-on is enabled
         const { data: company } = await supabase
           .from('companies')
           .select('company_finder_enabled')
@@ -97,10 +120,8 @@ export default function CalculatorPage() {
       const results = calculator.calculateSavings();
       console.log('Calculation results:', results);
       
-      // Get user profile for company_id
       const profile = await getUserProfile(currentUser.id);
       
-      // Calculate all values needed for export
       const yourRateWithPips = parseFloat(calculator.yourRate) + (calculator.selectedPips / 10000);
       const competitorRateFloat = parseFloat(calculator.competitorRate);
       const tradeAmountFloat = parseFloat(calculator.tradeAmount);
@@ -111,7 +132,6 @@ export default function CalculatorPage() {
       const annualSavings = savingsPerTrade * parseInt(calculator.tradesPerYear);
       const percentageSavings = (savingsPerTrade / costWithCompetitor) * 100;
       
-      // Save complete calculation data to calculations table
       const normalizedClientName = calculator.competitorName.toLowerCase().replace(/[^a-z0-9]/g, '');
       const { error: calcError } = await supabase
         .from('calculations')
@@ -119,7 +139,7 @@ export default function CalculatorPage() {
           user_id: currentUser.id,
           company_id: profile?.company_id,
           client_name: calculator.competitorName,
-          normalized_client_name: normalizedClientName, // NEW: Add normalized name
+          normalized_client_name: normalizedClientName,
           calculation_data: {
             currency_pair: selectedPair,
             your_rate: parseFloat(calculator.yourRate),
@@ -128,7 +148,6 @@ export default function CalculatorPage() {
             trade_amount: tradeAmountFloat,
             trades_per_year: parseInt(calculator.tradesPerYear),
             pips_added: calculator.selectedPips,
-            // Results
             price_difference: results.priceDifference,
             difference_in_pips: pipsDifference,
             cost_with_competitor: costWithCompetitor,
@@ -153,7 +172,6 @@ export default function CalculatorPage() {
         console.error('Failed to save calculation:', calcError);
       }
       
-      // Save calculation to database (existing saveCalculation function)
       const calculationData = {
         currencyPair: selectedPair,
         yourRate: parseFloat(calculator.yourRate),
@@ -171,21 +189,21 @@ export default function CalculatorPage() {
       if (success) {
         console.log('Calculation saved successfully');
         
-        // NEW: Auto-save to user_leads (mark as contacted)
         const leadResult = await addOrUpdateLead({
           userId: currentUser.id,
           companyName: calculator.competitorName,
           source: 'calculator',
-          contacted: true // Mark as contacted since we did a calculation
+          contacted: true
         });
         
         if (leadResult.success) {
-          console.log(leadResult.message); // "Added X to your list" or "Marked X as contacted"
+          console.log(leadResult.message);
+          // Update addedCompanies set
+          setAddedCompanies(prev => new Set(prev).add(calculator.competitorName.toLowerCase()));
         } else {
           console.error('Failed to save lead:', leadResult.message);
         }
         
-        // Log to activity_logs table with ALL fields needed for export
         const { error: logError } = await supabase
           .from('activity_logs')
           .insert({
@@ -251,15 +269,28 @@ export default function CalculatorPage() {
     }
 
     setFindingCompanies(true);
-    setSimilarCompanies([]); // Reset companies list
 
     try {
       const profile = await getUserProfile(currentUser.id);
       
+      // Get companies already in My Leads
+      const { data: myLeads } = await supabase
+        .from('user_leads')
+        .select('company_name')
+        .eq('user_id', currentUser.id);
+      
+      const companiesInMyLeads = myLeads?.map(lead => lead.company_name) || [];
+      
+      // Build exclusion list: shown companies + companies in My Leads
+      const excludeCompanies = [
+        ...shownCompanyNames,
+        ...companiesInMyLeads
+      ];
+      
       console.log('Calling google-competitor-search API with:', {
         companyName: calculator.competitorName,
-        userId: currentUser.id,
-        companyId: profile?.company_id
+        excludeCompanies,
+        attempt: searchAttempt + 1
       });
       
       const response = await fetch(
@@ -272,7 +303,8 @@ export default function CalculatorPage() {
           },
           body: JSON.stringify({
             companyName: calculator.competitorName,
-            limit: 10
+            limit: 10,
+            excludeCompanies
           })
         }
       );
@@ -285,13 +317,20 @@ export default function CalculatorPage() {
       }
 
       if (data.similarCompanies && data.similarCompanies.length > 0) {
-        setSimilarCompanies(data.similarCompanies);
+        // Add new companies to shown list
+        const newCompanyNames = data.similarCompanies.map((c: any) => c.name);
+        setShownCompanyNames(prev => [...prev, ...newCompanyNames]);
+        
+        // Append to existing results (not replace)
+        setSimilarCompanies(prev => [...prev, ...data.similarCompanies]);
         setHasSearched(true);
-        setTotalMatches(data.totalMatches || 0);
+        setSearchAttempt(prev => prev + 1);
+        setTotalMatches(prev => prev + data.similarCompanies.length);
+        setNoMoreCompanies(false);
       } else {
-        if (hasSearched) {
-          alert('No more similar companies found. You\'ve seen all companies that match well enough!');
-        } else {
+        // No more companies found
+        setNoMoreCompanies(true);
+        if (!hasSearched) {
           alert('No similar companies found. Try a different company name.');
         }
       }
@@ -311,13 +350,11 @@ export default function CalculatorPage() {
         userId: currentUser.id,
         companyName: companyName,
         source: 'similar_results',
-        contacted: false // Not contacted yet, just added from search
+        contacted: false
       });
 
       if (result.success) {
-        // Add to tracking set
         setAddedCompanies(prev => new Set(prev).add(companyName.toLowerCase()));
-        // Show success message
         alert(result.message);
       } else {
         alert(result.message);
@@ -328,7 +365,6 @@ export default function CalculatorPage() {
     }
   };
 
-  // NEW: Check if company is already added
   const isCompanyAdded = (companyName: string): boolean => {
     return addedCompanies.has(companyName.toLowerCase());
   };
@@ -343,7 +379,6 @@ export default function CalculatorPage() {
     calculator.setYourRate(price.toFixed(4));
   };
 
-  // Show loading while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#10051A' }}>
@@ -354,11 +389,10 @@ export default function CalculatorPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#10051A' }}>
-      {/* Enhanced Navigation */}
+      {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/5 backdrop-blur-md border-b border-white/10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo */}
             <div className="flex items-center gap-2">
               <TrendingUp className="h-6 w-6 text-purple-400" />
               <span className="text-xl font-bold bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">
@@ -366,7 +400,6 @@ export default function CalculatorPage() {
               </span>
             </div>
             
-            {/* Navigation Links */}
             <div className="flex items-center gap-3">
               <Button 
                 variant="ghost" 
@@ -682,7 +715,7 @@ export default function CalculatorPage() {
                     </div>
                   </div>
 
-                  {/* Find Similar Companies Button - Feature Gated */}
+                  {/* Find Similar Companies Button */}
                   {calculator.competitorName && (
                     !companyFinderEnabled ? (
                       <div className="p-6 bg-purple-600/10 rounded-lg border border-purple-400/30 text-center">
@@ -696,6 +729,15 @@ export default function CalculatorPage() {
                           This feature requires the Company Finder add-on. Please contact your admin to enable this feature.
                         </p>
                       </div>
+                    ) : noMoreCompanies ? (
+                      <div className="p-6 bg-blue-600/10 rounded-lg border border-blue-400/30 text-center">
+                        <h4 className="text-lg font-semibold text-purple-100 mb-2">
+                          No More Similar Companies Found
+                        </h4>
+                        <p className="text-purple-200/80 text-sm">
+                          All companies that match well enough are already shown or in your list!
+                        </p>
+                      </div>
                     ) : (
                       <Button 
                         onClick={handleFindSimilarCompanies}
@@ -706,6 +748,11 @@ export default function CalculatorPage() {
                           <>
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
                             Finding Similar Companies...
+                          </>
+                        ) : hasSearched ? (
+                          <>
+                            <TrendingUp className="mr-2 h-5 w-5" />
+                            Find More Similar Companies
                           </>
                         ) : (
                           <>
@@ -739,6 +786,12 @@ export default function CalculatorPage() {
                                   <span className="px-2 py-1 bg-blue-600/30 rounded text-blue-200">
                                     {company.size}
                                   </span>
+                                  {company.isSubsidiary && (
+                                    <span className="px-2 py-1 bg-orange-600/30 rounded text-orange-200 flex items-center gap-1">
+                                      <Globe className="h-3 w-3" />
+                                      UK Subsidiary
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
                               </div>
@@ -771,6 +824,9 @@ export default function CalculatorPage() {
                   setSimilarCompanies([]);
                   setHasSearched(false);
                   setTotalMatches(0);
+                  setShownCompanyNames([]);
+                  setSearchAttempt(0);
+                  setNoMoreCompanies(false);
                 }}
                 variant="outline"
                 className="w-full border-white/20 text-purple-200 hover:bg-white/10"
