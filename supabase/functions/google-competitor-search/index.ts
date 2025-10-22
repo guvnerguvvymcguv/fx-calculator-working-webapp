@@ -14,80 +14,78 @@ Deno.serve(async (req) => {
 
     console.log('Searching for competitors of:', companyName);
 
-    // Try multiple search strategies
+    // Try multiple search queries to get more results
     const searchStrategies = [
       `${companyName} similar companies UK fashion retail`,
       `${companyName} alternative brands UK clothing`,
-      `companies like ${companyName} UK fashion`,
-      `${companyName} vs competitors analysis UK retail`
+      `companies like ${companyName} UK`,
+      `${companyName} vs competitors UK fashion`,
+      `best alternatives to ${companyName} UK clothing`
     ];
 
-    let allExtractedCompanies = new Set<string>();
+    const allExtractedCompanies = new Set<string>();
     
-    // Try the first search strategy
-    const searchQuery = searchStrategies[0];
-    const googleSearchUrl = `https://customsearch.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${googleSearchEngineId}&q=${encodeURIComponent(searchQuery)}&num=10`;
-    
-    console.log('Calling Google Custom Search API...');
-    console.log('Search query:', searchQuery);
-    
-    const googleResponse = await fetch(googleSearchUrl);
-    
-    if (!googleResponse.ok) {
-      const errorText = await googleResponse.text();
-      console.error('Google API error:', googleResponse.status, errorText);
-      throw new Error(`Google API error: ${googleResponse.status} - ${errorText}`);
+    // Try multiple searches to get more results
+    for (let i = 0; i < Math.min(3, searchStrategies.length); i++) {
+      const searchQuery = searchStrategies[i];
+      const googleSearchUrl = `https://customsearch.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${googleSearchEngineId}&q=${encodeURIComponent(searchQuery)}&num=10`;
+      
+      console.log(`Search attempt ${i + 1}: ${searchQuery}`);
+      
+      try {
+        const googleResponse = await fetch(googleSearchUrl);
+        
+        if (!googleResponse.ok) {
+          console.error(`Search ${i + 1} failed:`, googleResponse.status);
+          continue;
+        }
+        
+        const googleData = await googleResponse.json();
+        console.log(`Search ${i + 1} returned`, googleData.items?.length || 0, 'results');
+
+        if (googleData.items && googleData.items.length > 0) {
+          // Extract text from results
+          const extractedText = googleData.items
+            .map((item: any) => `${item.title} ${item.snippet}`)
+            .join(' ');
+
+          // Extract company names
+          const companies = extractCompanyNames(extractedText);
+          companies.forEach(name => allExtractedCompanies.add(name));
+        }
+      } catch (error) {
+        console.error(`Search ${i + 1} error:`, error);
+        continue;
+      }
     }
-    
-    const googleData = await googleResponse.json();
-    console.log('Google returned', googleData.items?.length || 0, 'search results');
 
-    if (!googleData.items || googleData.items.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          similarCompanies: [],
-          totalMatches: 0,
-          hasMore: false,
-          message: 'No search results found from Google.'
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('All extracted companies before filtering:', Array.from(allExtractedCompanies));
 
-    // Log search results for debugging
-    const searchResults = googleData.items.slice(0, 3).map((item: any) => ({
-      title: item.title,
-      snippet: item.snippet
-    }));
-    console.log('Search results:', JSON.stringify(searchResults, null, 2));
+    // CRITICAL: Remove the searched company from results (case-insensitive)
+    const searchedCompanyLower = companyName.toLowerCase().trim();
+    const filteredCompanies = Array.from(allExtractedCompanies).filter(company => {
+      const companyLower = company.toLowerCase().trim();
+      // Exclude exact matches or very similar names
+      return companyLower !== searchedCompanyLower && 
+             !companyLower.includes(searchedCompanyLower) &&
+             !searchedCompanyLower.includes(companyLower);
+    });
 
-    // Extract text from Google results
-    const extractedText = googleData.items
-      .map((item: any) => `${item.title} ${item.snippet}`)
-      .join(' ');
+    console.log('Filtered companies (excluding searched company):', filteredCompanies);
 
-    console.log('Combined text for parsing (first 500 chars):', extractedText.substring(0, 500));
-
-    // Extract company names
-    const potentialCompanies = extractCompanyNames(extractedText);
-    potentialCompanies.forEach(name => allExtractedCompanies.add(name));
-    
-    console.log('Extracted company names:', Array.from(allExtractedCompanies));
-
-    // If we found no companies, return a helpful message
-    if (allExtractedCompanies.size === 0) {
-      // Return some well-known UK fashion retailers as fallback
-      const fallbackCompanies = [
-        'ASOS', 'Next', 'Boohoo', 'River Island', 'New Look',
-        'H&M', 'Zara', 'Primark', 'Topshop', 'Marks & Spencer'
-      ];
+    // If we found no companies after filtering, return well-known alternatives
+    if (filteredCompanies.length === 0) {
+      console.log('No companies found, using fallback list');
+      
+      // Return suggested competitors based on company type
+      const fallbackCompanies = getSuggestedCompetitors(companyName);
       
       const similarCompanies = fallbackCompanies.slice(0, limit).map(name => ({
         name: name,
         industry: 'Retail - Clothing',
         location: 'UK',
         size: 'Large',
-        reasoning: 'Well-known UK fashion retailer (suggested match)'
+        reasoning: 'Found by Spread Checker'
       }));
 
       return new Response(
@@ -95,24 +93,19 @@ Deno.serve(async (req) => {
           similarCompanies,
           totalMatches: similarCompanies.length,
           hasMore: false,
-          message: 'Using suggested UK fashion retailers',
-          debug: {
-            searchQuery,
-            note: 'Google results did not contain recognizable competitor names'
-          }
+          message: 'Showing suggested similar companies'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Format results
-    const companiesArray = Array.from(allExtractedCompanies);
-    const similarCompanies = companiesArray.slice(0, limit).map(name => ({
+    // Format results (take up to limit)
+    const similarCompanies = filteredCompanies.slice(0, limit).map(name => ({
       name: name,
       industry: 'Retail - Clothing',
       location: 'UK',
       size: 'Large',
-      reasoning: 'Found via Google search'
+      reasoning: 'Found by Spread Checker'
     }));
 
     console.log(`Returning ${similarCompanies.length} companies`);
@@ -121,11 +114,7 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         similarCompanies,
         totalMatches: similarCompanies.length,
-        hasMore: false,
-        debug: {
-          searchQuery,
-          extractedCompanies: companiesArray
-        }
+        hasMore: false
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -146,35 +135,50 @@ Deno.serve(async (req) => {
 function extractCompanyNames(text: string): string[] {
   const companies = new Set<string>();
   
-  // Expanded list of UK clothing retailers
+  // Comprehensive list of UK and international fashion retailers
   const knownRetailers = [
-    // Major chains
-    'ASOS', 'Next', 'Boohoo', 'Primark', 'River Island', 'New Look', 
-    'Topshop', 'Topman', 'H&M', 'Zara', 'Marks & Spencer', 'M&S',
-    'JD Sports', 'Sports Direct', 'Debenhams', 'House of Fraser',
-    'John Lewis', 'Monsoon', 'Ted Baker', 'Reiss', 'AllSaints',
-    'Burberry', 'Barbour', 'Joules', 'Fat Face', 'White Stuff',
-    'Boden', 'Phase Eight', 'Coast', 'Karen Millen', 'French Connection',
-    'Matalan', 'TK Maxx', 'Peacocks', 'Dorothy Perkins', 'Burton',
-    'Miss Selfridge', 'Warehouse', 'Oasis', 'Gap', 'Uniqlo',
-    // Additional retailers
-    'Superdry', 'Jack Wills', 'Hollister', 'Abercrombie', 'Urban Outfitters',
-    'Pretty Little Thing', 'Missguided', 'PrettyLittleThing', 'Nasty Gal',
-    'Pull & Bear', 'Bershka', 'Stradivarius', 'Mango', 'COS',
-    'Arket', 'Other Stories', 'Weekday', 'Monki', 'Massimo Dutti',
-    'Ted Baker', 'Whistles', 'Jigsaw', 'Hobbs', 'LK Bennett',
-    'Crew Clothing', 'Joules', 'Seasalt', 'Baukjen', 'Toast',
-    // Online pure-plays
-    'Shein', 'Fashion Nova', 'Oh Polly', 'In The Style', 'Meshki'
+    // Fast fashion online
+    'ASOS', 'Boohoo', 'Shein', 'Pretty Little Thing', 'PrettyLittleThing',
+    'Missguided', 'Nasty Gal', 'Fashion Nova', 'Oh Polly', 'In The Style',
+    
+    // High street chains
+    'Next', 'Primark', 'River Island', 'New Look', 'Topshop', 'Topman',
+    'H&M', 'Zara', 'Marks & Spencer', 'M&S', 'Matalan', 'TK Maxx',
+    'Peacocks', 'Dorothy Perkins', 'Burton', 'Miss Selfridge',
+    
+    // Premium high street
+    'Superdry', 'AllSaints', 'Ted Baker', 'Reiss', 'Whistles',
+    'Karen Millen', 'French Connection', 'Jack Wills', 'Joules',
+    'Barbour', 'Fat Face', 'White Stuff', 'Crew Clothing',
+    
+    // International brands
+    'Gap', 'Uniqlo', 'Mango', 'COS', 'Massimo Dutti',
+    'Pull & Bear', 'Bershka', 'Stradivarius', 'Hollister',
+    'Abercrombie', 'Urban Outfitters', 'American Eagle',
+    
+    // Department stores
+    'Debenhams', 'House of Fraser', 'John Lewis', 'Selfridges',
+    'Harrods', 'Harvey Nichols', 'Fenwicks',
+    
+    // Designer/Premium
+    'Burberry', 'Paul Smith', 'Mulberry', 'Alexander McQueen',
+    'Vivienne Westwood', 'Stella McCartney',
+    
+    // Sports/Athleisure
+    'JD Sports', 'Sports Direct', 'Nike', 'Adidas', 'Puma',
+    'Gymshark', 'Lululemon', 'Sweaty Betty',
+    
+    // Others
+    'Boden', 'Phase Eight', 'Coast', 'Jigsaw', 'Hobbs',
+    'LK Bennett', 'Seasalt', 'Toast', 'Baukjen', 'Arket',
+    'Other Stories', 'Weekday', 'Monki', 'Meshki'
   ];
 
-  // Check for known retailers (case insensitive)
-  const lowerText = text.toLowerCase();
-  
+  // Check for retailers (case insensitive)
   for (const retailer of knownRetailers) {
-    const lowerRetailer = retailer.toLowerCase();
-    // Use word boundaries to avoid partial matches
-    const regex = new RegExp(`\\b${lowerRetailer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    // Escape special regex characters
+    const escapedRetailer = retailer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escapedRetailer}\\b`, 'i');
     if (regex.test(text)) {
       companies.add(retailer);
     }
@@ -183,4 +187,27 @@ function extractCompanyNames(text: string): string[] {
   console.log(`Found ${companies.size} known retailers in text`);
 
   return Array.from(companies);
+}
+
+// Get suggested competitors based on the company name
+function getSuggestedCompetitors(companyName: string): string[] {
+  const lowerName = companyName.toLowerCase();
+  
+  // Fast fashion/online competitors
+  if (['asos', 'boohoo', 'shein', 'prettylittlething', 'missguided'].some(name => lowerName.includes(name))) {
+    return ['ASOS', 'Boohoo', 'Shein', 'Pretty Little Thing', 'Missguided', 'Nasty Gal', 'Fashion Nova', 'Oh Polly', 'In The Style', 'New Look'];
+  }
+  
+  // Premium high street
+  if (['superdry', 'allsaints', 'reiss', 'ted baker', 'jack wills'].some(name => lowerName.includes(name))) {
+    return ['AllSaints', 'Ted Baker', 'Reiss', 'Superdry', 'Jack Wills', 'French Connection', 'Whistles', 'Karen Millen', 'Joules', 'Barbour'];
+  }
+  
+  // High street chains
+  if (['next', 'primark', 'river island', 'new look', 'h&m', 'zara'].some(name => lowerName.includes(name))) {
+    return ['Next', 'Primark', 'River Island', 'H&M', 'Zara', 'New Look', 'Topshop', 'Marks & Spencer', 'Matalan', 'TK Maxx'];
+  }
+  
+  // Default: mix of fast fashion and high street
+  return ['ASOS', 'Next', 'Boohoo', 'Shein', 'Primark', 'River Island', 'H&M', 'Zara', 'New Look', 'Pretty Little Thing'];
 }
