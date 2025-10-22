@@ -9,28 +9,34 @@ Deno.serve(async (req) => {
   try {
     const googleApiKey = Deno.env.get('GOOGLE_API_KEY')!;
     const googleSearchEngineId = Deno.env.get('GOOGLE_SEARCH_ENGINE_ID')!;
+    const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')!;
 
     const { companyName, limit = 10 } = await req.json();
 
     console.log('Searching for competitors of:', companyName);
 
-    // Try multiple search queries to get more results
+    // Multiple search strategies to maximize results
     const searchStrategies = [
-      `${companyName} similar companies UK fashion retail`,
-      `${companyName} alternative brands UK clothing`,
+      `${companyName} competitors UK`,
+      `${companyName} similar companies UK`,
+      `${companyName} alternative brands UK`,
       `companies like ${companyName} UK`,
-      `${companyName} vs competitors UK fashion`,
-      `best alternatives to ${companyName} UK clothing`
+      `${companyName} vs competitors UK`,
+      `best alternatives to ${companyName} UK`,
+      `${companyName} competitor analysis UK`,
+      `brands similar to ${companyName}`,
+      `${companyName} rivals UK market`,
+      `top competitors ${companyName} UK`
     ];
 
-    const allExtractedCompanies = new Set<string>();
+    let allGoogleText = '';
     
-    // Try multiple searches to get more results
-    for (let i = 0; i < Math.min(3, searchStrategies.length); i++) {
+    // Run multiple searches and combine results
+    for (let i = 0; i < searchStrategies.length; i++) {
       const searchQuery = searchStrategies[i];
       const googleSearchUrl = `https://customsearch.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${googleSearchEngineId}&q=${encodeURIComponent(searchQuery)}&num=10`;
       
-      console.log(`Search attempt ${i + 1}: ${searchQuery}`);
+      console.log(`Search ${i + 1}/10: ${searchQuery}`);
       
       try {
         const googleResponse = await fetch(googleSearchUrl);
@@ -41,17 +47,21 @@ Deno.serve(async (req) => {
         }
         
         const googleData = await googleResponse.json();
-        console.log(`Search ${i + 1} returned`, googleData.items?.length || 0, 'results');
+        const resultCount = googleData.items?.length || 0;
+        console.log(`Search ${i + 1} returned ${resultCount} results`);
 
         if (googleData.items && googleData.items.length > 0) {
           // Extract text from results
           const extractedText = googleData.items
-            .map((item: any) => `${item.title} ${item.snippet}`)
-            .join(' ');
+            .map((item: any) => `${item.title}\n${item.snippet}`)
+            .join('\n\n');
+          
+          allGoogleText += extractedText + '\n\n';
+        }
 
-          // Extract company names
-          const companies = extractCompanyNames(extractedText);
-          companies.forEach(name => allExtractedCompanies.add(name));
+        // Small delay to avoid rate limiting
+        if (i < searchStrategies.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       } catch (error) {
         console.error(`Search ${i + 1} error:`, error);
@@ -59,50 +69,123 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('All extracted companies before filtering:', Array.from(allExtractedCompanies));
+    console.log(`Combined Google text length: ${allGoogleText.length} characters`);
 
-    // CRITICAL: Remove the searched company from results (case-insensitive)
-    const searchedCompanyLower = companyName.toLowerCase().trim();
-    const filteredCompanies = Array.from(allExtractedCompanies).filter(company => {
-      const companyLower = company.toLowerCase().trim();
-      // Exclude exact matches or very similar names
-      return companyLower !== searchedCompanyLower && 
-             !companyLower.includes(searchedCompanyLower) &&
-             !searchedCompanyLower.includes(companyLower);
-    });
-
-    console.log('Filtered companies (excluding searched company):', filteredCompanies);
-
-    // If we found no companies after filtering, return well-known alternatives
-    if (filteredCompanies.length === 0) {
-      console.log('No companies found, using fallback list');
-      
-      // Return suggested competitors based on company type
-      const fallbackCompanies = getSuggestedCompetitors(companyName);
-      
-      const similarCompanies = fallbackCompanies.slice(0, limit).map(name => ({
-        name: name,
-        industry: 'Retail - Clothing',
-        location: 'UK',
-        size: 'Large',
-        reasoning: 'Found by Spread Checker'
-      }));
-
+    if (!allGoogleText || allGoogleText.length < 100) {
       return new Response(
         JSON.stringify({ 
-          similarCompanies,
-          totalMatches: similarCompanies.length,
+          similarCompanies: [],
+          totalMatches: 0,
           hasMore: false,
-          message: 'Showing suggested similar companies'
+          message: 'No search results found from Google.'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Format results (take up to limit)
-    const similarCompanies = filteredCompanies.slice(0, limit).map(name => ({
+    // Use Claude AI to extract company names
+    console.log('Calling Claude AI to extract company names...');
+    
+    const aiPrompt = `You are analyzing search results about competitors to ${companyName}.
+
+Here is text from Google search results:
+
+${allGoogleText}
+
+Extract ONLY the company/brand names that are competitors or similar companies to ${companyName}.
+
+CRITICAL RULES:
+1. Return ONLY company names, nothing else
+2. Exclude "${companyName}" itself from the results
+3. Only include companies that operate in the UK - this includes both UK-headquartered companies (like ASOS, Next) AND international companies with UK operations (like Zara, H&M, Uniqlo)
+4. Exclude companies that don't have UK operations or stores
+5. Remove duplicates (e.g., "Sainsbury's" and "Sainsbury's PLC" should just be "Sainsbury's")
+6. Return as a valid JSON array only, no other text
+7. Maximum 15 companies
+
+Example response format:
+["Company A", "Company B", "Company C"]
+
+Your response (JSON array only):`;
+
+    const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': anthropicApiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: aiPrompt
+        }]
+      })
+    });
+
+    if (!claudeResponse.ok) {
+      const errorText = await claudeResponse.text();
+      console.error('Claude API error:', claudeResponse.status, errorText);
+      throw new Error(`Claude API error: ${claudeResponse.status}`);
+    }
+
+    const claudeData = await claudeResponse.json();
+    console.log('Claude API response:', JSON.stringify(claudeData, null, 2));
+
+    // Extract the text content from Claude's response
+    const aiResponseText = claudeData.content[0].text.trim();
+    console.log('AI extracted text:', aiResponseText);
+
+    // Parse the JSON array from AI response
+    let extractedCompanies: string[] = [];
+    try {
+      // Try to parse as JSON directly
+      extractedCompanies = JSON.parse(aiResponseText);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', parseError);
+      // Try to extract JSON array from text
+      const jsonMatch = aiResponseText.match(/\[.*\]/s);
+      if (jsonMatch) {
+        extractedCompanies = JSON.parse(jsonMatch[0]);
+      } else {
+        console.error('Could not find JSON array in response');
+        extractedCompanies = [];
+      }
+    }
+
+    console.log('Extracted companies from AI:', extractedCompanies);
+
+    if (!Array.isArray(extractedCompanies) || extractedCompanies.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          similarCompanies: [],
+          totalMatches: 0,
+          hasMore: false,
+          message: 'Could not extract company names from search results.'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Filter out the searched company (case-insensitive) and clean up
+    const searchedCompanyLower = companyName.toLowerCase().trim();
+    const filteredCompanies = extractedCompanies
+      .filter((company: string) => {
+        const companyLower = company.toLowerCase().trim();
+        return companyLower !== searchedCompanyLower && 
+               !companyLower.includes(searchedCompanyLower) &&
+               !searchedCompanyLower.includes(companyLower);
+      })
+      .filter((company: string) => company && company.length > 1); // Remove empty/single char
+
+    console.log('Filtered companies:', filteredCompanies);
+
+    // Format results
+    const similarCompanies = filteredCompanies.slice(0, limit).map((name: string) => ({
       name: name,
-      industry: 'Retail - Clothing',
+      industry: 'Similar Business',
       location: 'UK',
       size: 'Large',
       reasoning: 'Found by Spread Checker'
@@ -130,84 +213,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-// Extract company names from text
-function extractCompanyNames(text: string): string[] {
-  const companies = new Set<string>();
-  
-  // Comprehensive list of UK and international fashion retailers
-  const knownRetailers = [
-    // Fast fashion online
-    'ASOS', 'Boohoo', 'Shein', 'Pretty Little Thing', 'PrettyLittleThing',
-    'Missguided', 'Nasty Gal', 'Fashion Nova', 'Oh Polly', 'In The Style',
-    
-    // High street chains
-    'Next', 'Primark', 'River Island', 'New Look', 'Topshop', 'Topman',
-    'H&M', 'Zara', 'Marks & Spencer', 'M&S', 'Matalan', 'TK Maxx',
-    'Peacocks', 'Dorothy Perkins', 'Burton', 'Miss Selfridge',
-    
-    // Premium high street
-    'Superdry', 'AllSaints', 'Ted Baker', 'Reiss', 'Whistles',
-    'Karen Millen', 'French Connection', 'Jack Wills', 'Joules',
-    'Barbour', 'Fat Face', 'White Stuff', 'Crew Clothing',
-    
-    // International brands
-    'Gap', 'Uniqlo', 'Mango', 'COS', 'Massimo Dutti',
-    'Pull & Bear', 'Bershka', 'Stradivarius', 'Hollister',
-    'Abercrombie', 'Urban Outfitters', 'American Eagle',
-    
-    // Department stores
-    'Debenhams', 'House of Fraser', 'John Lewis', 'Selfridges',
-    'Harrods', 'Harvey Nichols', 'Fenwicks',
-    
-    // Designer/Premium
-    'Burberry', 'Paul Smith', 'Mulberry', 'Alexander McQueen',
-    'Vivienne Westwood', 'Stella McCartney',
-    
-    // Sports/Athleisure
-    'JD Sports', 'Sports Direct', 'Nike', 'Adidas', 'Puma',
-    'Gymshark', 'Lululemon', 'Sweaty Betty',
-    
-    // Others
-    'Boden', 'Phase Eight', 'Coast', 'Jigsaw', 'Hobbs',
-    'LK Bennett', 'Seasalt', 'Toast', 'Baukjen', 'Arket',
-    'Other Stories', 'Weekday', 'Monki', 'Meshki'
-  ];
-
-  // Check for retailers (case insensitive)
-  for (const retailer of knownRetailers) {
-    // Escape special regex characters
-    const escapedRetailer = retailer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escapedRetailer}\\b`, 'i');
-    if (regex.test(text)) {
-      companies.add(retailer);
-    }
-  }
-
-  console.log(`Found ${companies.size} known retailers in text`);
-
-  return Array.from(companies);
-}
-
-// Get suggested competitors based on the company name
-function getSuggestedCompetitors(companyName: string): string[] {
-  const lowerName = companyName.toLowerCase();
-  
-  // Fast fashion/online competitors
-  if (['asos', 'boohoo', 'shein', 'prettylittlething', 'missguided'].some(name => lowerName.includes(name))) {
-    return ['ASOS', 'Boohoo', 'Shein', 'Pretty Little Thing', 'Missguided', 'Nasty Gal', 'Fashion Nova', 'Oh Polly', 'In The Style', 'New Look'];
-  }
-  
-  // Premium high street
-  if (['superdry', 'allsaints', 'reiss', 'ted baker', 'jack wills'].some(name => lowerName.includes(name))) {
-    return ['AllSaints', 'Ted Baker', 'Reiss', 'Superdry', 'Jack Wills', 'French Connection', 'Whistles', 'Karen Millen', 'Joules', 'Barbour'];
-  }
-  
-  // High street chains
-  if (['next', 'primark', 'river island', 'new look', 'h&m', 'zara'].some(name => lowerName.includes(name))) {
-    return ['Next', 'Primark', 'River Island', 'H&M', 'Zara', 'New Look', 'Topshop', 'Marks & Spencer', 'Matalan', 'TK Maxx'];
-  }
-  
-  // Default: mix of fast fashion and high street
-  return ['ASOS', 'Next', 'Boohoo', 'Shein', 'Primark', 'River Island', 'H&M', 'Zara', 'New Look', 'Pretty Little Thing'];
-}
