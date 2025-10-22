@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     const googleSearchEngineId = Deno.env.get('GOOGLE_SEARCH_ENGINE_ID')!;
     const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')!;
 
-    const { companyName, limit = 10 } = await req.json();
+    const { companyName, limit = 10, excludeCompanies = [] } = await req.json();
 
     console.log('Searching for competitors of:', companyName);
 
@@ -112,11 +112,14 @@ CRITICAL RULES:
 5. If a company moved its headquarters OUT of the UK, EXCLUDE it
 6. If you're unsure whether a company has UK headquarters, EXCLUDE it (be conservative)
 7. Remove duplicates (e.g., "Sainsbury's" and "Sainsbury's PLC" should just be "Sainsbury's")
-8. Return as a valid JSON array only, no other text or explanation
+8. Return as a valid JSON array of objects with this format:
+   [{"name": "Company Name", "isSubsidiary": true/false}]
+   - Set "isSubsidiary" to true if it's an international company with UK subsidiary (e.g., H&M UK, Zara UK, Aldi UK)
+   - Set "isSubsidiary" to false if it's a UK-headquartered company (e.g., ASOS, Tesco, Barclays)
 9. Maximum 15 companies
 
 Example response format:
-["Company A", "Company B", "Company C"]
+[{"name": "ASOS", "isSubsidiary": false}, {"name": "H&M", "isSubsidiary": true}, {"name": "Next", "isSubsidiary": false}]
 
 Your response (JSON array only):`;
 
@@ -151,7 +154,7 @@ Your response (JSON array only):`;
     console.log('AI extracted text:', aiResponseText);
 
     // Parse the JSON array from AI response
-    let extractedCompanies: string[] = [];
+    let extractedCompanies: Array<{name: string, isSubsidiary: boolean}> = [];
     try {
       // Try to parse as JSON directly
       extractedCompanies = JSON.parse(aiResponseText);
@@ -181,26 +184,37 @@ Your response (JSON array only):`;
       );
     }
 
-    // Filter out the searched company (case-insensitive) and clean up
+    // Filter out the searched company (case-insensitive) and excluded companies
     const searchedCompanyLower = companyName.toLowerCase().trim();
+    const excludeLower = excludeCompanies.map(c => c.toLowerCase().trim());
+    
     const filteredCompanies = extractedCompanies
-      .filter((company: string) => {
-        const companyLower = company.toLowerCase().trim();
-        return companyLower !== searchedCompanyLower && 
-               !companyLower.includes(searchedCompanyLower) &&
-               !searchedCompanyLower.includes(companyLower);
-      })
-      .filter((company: string) => company && company.length > 1); // Remove empty/single char
+      .filter((company: {name: string, isSubsidiary: boolean}) => {
+        const companyLower = company.name.toLowerCase().trim();
+        // Exclude searched company
+        if (companyLower === searchedCompanyLower || 
+            companyLower.includes(searchedCompanyLower) ||
+            searchedCompanyLower.includes(companyLower)) {
+          return false;
+        }
+        // Exclude companies in exclusion list
+        if (excludeLower.includes(companyLower)) {
+          return false;
+        }
+        // Remove empty/single char
+        return company.name && company.name.length > 1;
+      });
 
     console.log('Filtered companies:', filteredCompanies);
 
     // Format results
-    const similarCompanies = filteredCompanies.slice(0, limit).map((name: string) => ({
-      name: name,
+    const similarCompanies = filteredCompanies.slice(0, limit).map((company: {name: string, isSubsidiary: boolean}) => ({
+      name: company.name,
       industry: 'Similar Business',
       location: 'UK',
       size: 'Large',
-      reasoning: 'Found by Spread Checker'
+      reasoning: 'Found by Spread Checker',
+      isSubsidiary: company.isSubsidiary
     }));
 
     console.log(`Returning ${similarCompanies.length} companies`);
