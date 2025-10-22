@@ -103,11 +103,17 @@ CRITICAL RULES:
    - Companies that just ship to UK or have UK customers but NO UK headquarters/offices should be EXCLUDED
    - Examples of UK-based companies: ASOS (UK HQ), Boohoo (UK HQ), Sainsbury's (UK HQ), Barclays (UK HQ)
    - Examples to EXCLUDE: Shein (China HQ), Farfetch (Portugal/US HQ), companies that only sell online to UK
-4. If a company moved its headquarters OUT of the UK, EXCLUDE it
-5. If you're unsure whether a company has UK headquarters, EXCLUDE it (be conservative)
-6. Remove duplicates (e.g., "Sainsbury's" and "Sainsbury's PLC" should just be "Sainsbury's")
-7. Return as a valid JSON array only, no other text or explanation
-8. Maximum 15 companies
+4. ONLY include companies in the SAME industry/sector as ${companyName}:
+   - If ${companyName} is fashion retail (e.g., ASOS), only include other fashion retailers
+   - If ${companyName} is a supermarket (e.g., Tesco), only include other supermarkets
+   - If ${companyName} is a bank (e.g., Barclays), only include other banks
+   - EXCLUDE companies from different industries even if they're mentioned together
+   - Example: When searching for ASOS (fashion), EXCLUDE Sainsbury's (supermarket) even if both mentioned
+5. If a company moved its headquarters OUT of the UK, EXCLUDE it
+6. If you're unsure whether a company has UK headquarters, EXCLUDE it (be conservative)
+7. Remove duplicates (e.g., "Sainsbury's" and "Sainsbury's PLC" should just be "Sainsbury's")
+8. Return as a valid JSON array only, no other text or explanation
+9. Maximum 15 companies
 
 Example response format:
 ["Company A", "Company B", "Company C"]
