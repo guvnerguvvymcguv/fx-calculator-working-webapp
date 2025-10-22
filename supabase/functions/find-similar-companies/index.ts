@@ -19,6 +19,28 @@ const EXCLUDED_GENERIC_SICS = [
   '47190', // Non-specialized stores (supermarkets, variety stores)
 ];
 
+// Company size tiers
+type CompanySize = 'LARGE' | 'MEDIUM' | 'SMALL' | 'MICRO' | 'UNKNOWN';
+
+function getCompanySize(accountsCategory: string | null): CompanySize {
+  const category = accountsCategory?.toUpperCase() || '';
+  
+  // Large companies (exact match only)
+  if (category === 'GROUP' || category === 'FULL') return 'LARGE';
+  
+  // Medium companies
+  if (category === 'MEDIUM' || category.includes('MEDIUM')) return 'MEDIUM';
+  
+  // Small companies
+  if (category === 'SMALL' || category.includes('SMALL')) return 'SMALL';
+  
+  // Micro companies
+  if (category.includes('MICRO')) return 'MICRO';
+  
+  // Unknown/problematic categories (NO ACCOUNTS FILED, TOTAL EXEMPTION, etc.)
+  return 'UNKNOWN';
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -138,29 +160,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 4: Filter by SIZE - EXACT matching for FULL or GROUP only
-    const sourceSize = sourceCompany.accounts_category?.toUpperCase() || '';
-    console.log('Source company size category:', sourceCompany.accounts_category);
-    
-    // Check if source is exactly FULL or GROUP (large companies)
-    const isSourceLarge = sourceSize === 'FULL' || sourceSize === 'GROUP';
-    console.log('Is source large?', isSourceLarge);
+    // Step 4: Filter by SIZE - EXACT tier matching
+    const sourceSize = getCompanySize(sourceCompany.accounts_category);
+    console.log('Source company size tier:', sourceSize);
+    console.log('Source company accounts_category:', sourceCompany.accounts_category);
 
     let filteredCompanies = candidateCompanies;
     
-    if (isSourceLarge) {
-      // If source is large, only show other large companies (EXACT match for FULL or GROUP)
+    if (sourceSize === 'LARGE') {
+      // If source is large, only show other LARGE companies
       filteredCompanies = candidateCompanies.filter(company => {
-        const candidateSize = company.accounts_category?.toUpperCase() || '';
-        return candidateSize === 'FULL' || candidateSize === 'GROUP';
+        return getCompanySize(company.accounts_category) === 'LARGE';
       });
-      console.log(`Filtered to ${filteredCompanies.length} large companies (FULL or GROUP)`);
+      console.log(`Filtered to ${filteredCompanies.length} LARGE companies`);
+    } else if (sourceSize === 'MEDIUM') {
+      // If source is medium, only show MEDIUM companies
+      filteredCompanies = candidateCompanies.filter(company => {
+        return getCompanySize(company.accounts_category) === 'MEDIUM';
+      });
+      console.log(`Filtered to ${filteredCompanies.length} MEDIUM companies`);
+    } else if (sourceSize === 'SMALL') {
+      // If source is small, only show SMALL companies
+      filteredCompanies = candidateCompanies.filter(company => {
+        return getCompanySize(company.accounts_category) === 'SMALL';
+      });
+      console.log(`Filtered to ${filteredCompanies.length} SMALL companies`);
     } else {
-      // If source is not large, show exact same size category
-      filteredCompanies = candidateCompanies.filter(company => {
-        return company.accounts_category?.toUpperCase() === sourceSize;
-      });
-      console.log(`Filtered to ${filteredCompanies.length} companies matching size: ${sourceSize}`);
+      // MICRO or UNKNOWN - no filtering, show all
+      console.log(`Source is ${sourceSize}, showing all sizes`);
     }
 
     if (filteredCompanies.length === 0) {
@@ -169,7 +196,7 @@ Deno.serve(async (req) => {
           similarCompanies: [],
           totalMatches: 0,
           hasMore: false,
-          message: `No companies found with matching industry codes and similar size (${sourceSize}).`
+          message: `No companies found with matching industry codes and ${sourceSize} company size.`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -247,18 +274,25 @@ Deno.serve(async (req) => {
 });
 
 function getSizeDescription(accountsCategory: string | null, numMortgages: number): string {
+  const size = getCompanySize(accountsCategory);
   const category = accountsCategory?.toUpperCase() || '';
   
-  if (category.includes('GROUP')) return 'Large (Group)';
-  if (category.includes('FULL')) return 'Medium-Large';
-  if (category.includes('MEDIUM')) return 'Medium';
-  if (category.includes('SMALL')) return 'Small';
-  if (category.includes('MICRO')) return 'Micro';
+  // Return human-readable descriptions based on tier
+  if (size === 'LARGE') {
+    if (category === 'GROUP') return 'Large (Group)';
+    if (category === 'FULL') return 'Large (Full Accounts)';
+    return 'Large';
+  }
   
-  if (numMortgages >= 10) return 'Large';
+  if (size === 'MEDIUM') return 'Medium';
+  if (size === 'SMALL') return 'Small';
+  if (size === 'MICRO') return 'Micro';
+  
+  // Fallback for UNKNOWN
+  if (numMortgages >= 10) return 'Large (High Debt)';
   if (numMortgages >= 5) return 'Medium-Large';
   if (numMortgages >= 2) return 'Medium';
-  return 'Small-Medium';
+  return 'Size Unknown';
 }
 
 function getIndustryDescription(sicCode: string | null): string {
