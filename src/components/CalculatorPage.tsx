@@ -254,20 +254,19 @@ export default function CalculatorPage() {
     }
 
     setFindingCompanies(true);
-    // Don't reset similarCompanies - we're appending for pagination
+    setSimilarCompanies([]); // Reset companies list
 
     try {
       const profile = await getUserProfile(currentUser.id);
       
-      console.log('Calling find-similar-companies API with:', {
+      console.log('Calling google-competitor-search API with:', {
         companyName: calculator.competitorName,
         userId: currentUser.id,
-        companyId: profile?.company_id,
-        excludeCompanies: shownCompanies // Exclude companies already shown
+        companyId: profile?.company_id
       });
       
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/find-similar-companies`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-competitor-search`,
         {
           method: 'POST',
           headers: {
@@ -276,9 +275,7 @@ export default function CalculatorPage() {
           },
           body: JSON.stringify({
             companyName: calculator.competitorName,
-            excludeCompanies: shownCompanies,
-            limit: 10,
-            offset: currentOffset
+            limit: 10
           })
         }
       );
@@ -291,13 +288,10 @@ export default function CalculatorPage() {
       }
 
       if (data.similarCompanies && data.similarCompanies.length > 0) {
-        setSimilarCompanies(prev => [...prev, ...data.similarCompanies]); // Append to existing results
-        // Track all shown companies
-        const newShownCompanies = data.similarCompanies.map((c: any) => c.name);
-        setShownCompanies(prev => [...prev, ...newShownCompanies]);
+        setSimilarCompanies(data.similarCompanies);
         setHasSearched(true);
         setTotalMatches(data.totalMatches || 0);
-        setHasMoreResults(data.hasMore || false);
+        setHasMoreResults(false); // Google search doesn't paginate
         setCurrentOffset(prev => prev + 10); // Increment offset for next page
       } else {
         if (hasSearched) {
