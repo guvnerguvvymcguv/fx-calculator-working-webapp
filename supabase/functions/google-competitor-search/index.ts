@@ -97,10 +97,17 @@ Extract ONLY the company/brand names that are competitors or similar companies t
 CRITICAL RULES:
 1. Return ONLY company names, nothing else
 2. Exclude "${companyName}" itself from the results
-3. Only include companies that operate in the UK - this includes both UK-headquartered companies (like ASOS, Next) AND international companies with UK operations (like Zara, H&M, Uniqlo)
-4. Exclude companies that don't have UK operations or stores
+3. ONLY include companies where a UK customer can actually do business TODAY:
+   - UK-based companies (e.g., Sainsbury's, ASOS, Lloyds Bank, BP)
+   - International companies with active UK operations/stores/offices (e.g., Aldi UK, Zara UK, McDonald's UK, Apple UK)
+   - Companies must have physical UK presence OR serve UK customers directly
+4. EXCLUDE companies with NO UK presence:
+   - US-only companies (e.g., Walmart, Target, Kohl's - unless they operate in UK)
+   - Companies that exited the UK market
+   - Companies with no UK stores, offices, or customer base
+   - If you're unsure whether a company operates in the UK, EXCLUDE it
 5. Remove duplicates (e.g., "Sainsbury's" and "Sainsbury's PLC" should just be "Sainsbury's")
-6. Return as a valid JSON array only, no other text
+6. Return as a valid JSON array only, no other text or explanation
 7. Maximum 15 companies
 
 Example response format:
