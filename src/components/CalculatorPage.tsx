@@ -36,11 +36,8 @@ export default function CalculatorPage() {
   const [findingCompanies, setFindingCompanies] = useState(false);
   const [similarCompanies, setSimilarCompanies] = useState<any[]>([]);
   const [addedCompanies, setAddedCompanies] = useState<Set<string>>(new Set()); // Track added companies
-  const [shownCompanies, setShownCompanies] = useState<string[]>([]); // Track all companies shown in this session
   const [hasSearched, setHasSearched] = useState(false); // Track if user has searched once
-  const [currentOffset, setCurrentOffset] = useState(0); // Track pagination offset
   const [totalMatches, setTotalMatches] = useState(0); // Total number of matches found
-  const [hasMoreResults, setHasMoreResults] = useState(false); // Whether more results available
   const [companyFinderEnabled, setCompanyFinderEnabled] = useState<boolean>(false); // Feature gate for Company Finder
   const navigate = useNavigate();
   
@@ -291,8 +288,6 @@ export default function CalculatorPage() {
         setSimilarCompanies(data.similarCompanies);
         setHasSearched(true);
         setTotalMatches(data.totalMatches || 0);
-        setHasMoreResults(false); // Google search doesn't paginate
-        setCurrentOffset(prev => prev + 10); // Increment offset for next page
       } else {
         if (hasSearched) {
           alert('No more similar companies found. You\'ve seen all companies that match well enough!');
@@ -764,26 +759,6 @@ export default function CalculatorPage() {
                           </div>
                         ))}
                       </div>
-                      
-                      {/* Load More Button */}
-                      {hasMoreResults && (
-                        <Button
-                          onClick={handleFindSimilarCompanies}
-                          disabled={findingCompanies}
-                          className="w-full mt-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-2 rounded-lg transition-all duration-200"
-                        >
-                          {findingCompanies ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                              Loading More...
-                            </>
-                          ) : (
-                            <>
-                              Load More Companies ({totalMatches - similarCompanies.length} remaining)
-                            </>
-                          )}
-                        </Button>
-                      )}
                     </div>
                   )}
                 </>
@@ -794,11 +769,8 @@ export default function CalculatorPage() {
                 onClick={() => {
                   calculator.resetCalculator();
                   setSimilarCompanies([]);
-                  setShownCompanies([]);
                   setHasSearched(false);
-                  setCurrentOffset(0);
                   setTotalMatches(0);
-                  setHasMoreResults(false);
                 }}
                 variant="outline"
                 className="w-full border-white/20 text-purple-200 hover:bg-white/10"
