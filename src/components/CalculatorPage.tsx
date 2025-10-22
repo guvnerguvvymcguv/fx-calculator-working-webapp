@@ -271,8 +271,6 @@ export default function CalculatorPage() {
     setFindingCompanies(true);
 
     try {
-      const profile = await getUserProfile(currentUser.id);
-      
       // Get companies already in My Leads
       const { data: myLeads } = await supabase
         .from('user_leads')
