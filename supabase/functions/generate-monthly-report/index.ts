@@ -111,29 +111,35 @@ serve(async (req) => {
           continue;
         }
 
-        // Get date range - use CURRENT month for test mode, PREVIOUS month for production
+        // Get date range - use LAST 30 DAYS for test mode, PREVIOUS MONTH for production
         const now = new Date();
         let firstDay, lastDay, monthName;
-        
+
         if (testCompanyId) {
-          // TEST MODE: Use current month
-          firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-          lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-          // Set lastDay to end of day
-          lastDay.setHours(23, 59, 59, 999);
-          console.log('🧪 TEST MODE: Using CURRENT month data');
+          // TEST MODE: Use last 30 days from today
+          lastDay = new Date(); // Today
+          lastDay.setHours(23, 59, 59, 999); // End of today
+
+          firstDay = new Date(); // Start from today
+          firstDay.setDate(firstDay.getDate() - 30); // Go back 30 days
+          firstDay.setHours(0, 0, 0, 0); // Start of that day
+
+          monthName = `Last 30 Days (${firstDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+
+          console.log('🧪 TEST MODE: Using LAST 30 DAYS data');
         } else {
           // PRODUCTION MODE: Use previous month
           firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
           lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
           lastDay.setHours(23, 59, 59, 999);
+
+          monthName = firstDay.toLocaleDateString('en-GB', {
+            month: 'long',
+            year: 'numeric'
+          });
+
           console.log('🚀 PRODUCTION MODE: Using PREVIOUS month data');
         }
-
-        monthName = firstDay.toLocaleDateString('en-GB', { 
-          month: 'long', 
-          year: 'numeric' 
-        });
 
         console.log(`Date range: ${firstDay.toISOString()} to ${lastDay.toISOString()}`);
 
