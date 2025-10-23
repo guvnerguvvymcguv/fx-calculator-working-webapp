@@ -1,5 +1,5 @@
 // Main Edge Function - Generate Monthly Client Reports
-// Runs on 1st of every month at 9am
+// Runs on 1st of every month at 9am OR manually for testing
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0';
@@ -10,27 +10,75 @@ import { aggregateClientData } from './queries.ts';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
   try {
     console.log('🚀 Starting monthly client report generation...');
 
-    // Get all companies that have monthly reports enabled
-    const { data: companies, error: companiesError } = await supabase
-      .from('companies')
-      .select('id, name, stripe_customer_id')
-      .eq('monthly_reports_enabled', true);
+    // Get request body to check for company_id (test mode)
+    const requestBody = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
+    const testCompanyId = requestBody.company_id;
+
+    console.log('Request body:', requestBody);
+    console.log('Test company ID:', testCompanyId);
+
+    // If test mode, get the specific company
+    let companies;
+    let companiesError;
+
+    if (testCompanyId) {
+      // TEST MODE: Get specific company for testing
+      console.log('Test mode - fetching company:', testCompanyId);
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name, stripe_customer_id, monthly_reports_enabled, client_data_enabled')
+        .eq('id', testCompanyId)
+        .single();
+      
+      companies = data ? [data] : [];
+      companiesError = error;
+      
+      console.log('Test company data:', companies);
+    } else {
+      // PRODUCTION MODE: Get all companies with reports enabled
+      console.log('Production mode - fetching all enabled companies');
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name, stripe_customer_id, monthly_reports_enabled, client_data_enabled')
+        .eq('client_data_enabled', true)
+        .eq('monthly_reports_enabled', true);
+      
+      companies = data;
+      companiesError = error;
+    }
 
     if (companiesError) {
+      console.error('Error fetching companies:', companiesError);
       throw new Error(`Failed to fetch companies: ${companiesError.message}`);
     }
 
     if (!companies || companies.length === 0) {
-      console.log('No companies have monthly reports enabled');
+      console.log('No companies have monthly reports enabled or no activity');
       return new Response(
-        JSON.stringify({ message: 'No companies to process' }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: true,
+          message: testCompanyId ? 'Company not found or reports not enabled' : 'No companies to process' 
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       );
     }
 
@@ -42,6 +90,27 @@ serve(async (req) => {
       try {
         console.log(`\n📊 Processing company: ${company.name}`);
 
+        // Check if reports are enabled
+        if (!company.client_data_enabled) {
+          console.log(`Client data not enabled for ${company.name} - skipping`);
+          results.push({
+            company: company.name,
+            skipped: true,
+            reason: 'Client data addon not enabled'
+          });
+          continue;
+        }
+
+        if (!company.monthly_reports_enabled && !testCompanyId) {
+          console.log(`Monthly reports not enabled for ${company.name} - skipping`);
+          results.push({
+            company: company.name,
+            skipped: true,
+            reason: 'Monthly reports not enabled'
+          });
+          continue;
+        }
+
         // Get previous month's date range
         const now = new Date();
         const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -52,6 +121,8 @@ serve(async (req) => {
           year: 'numeric' 
         });
 
+        console.log(`Date range: ${firstDayLastMonth.toISOString()} to ${lastDayLastMonth.toISOString()}`);
+
         // Aggregate client data for this company
         const clientData = await aggregateClientData(
           supabase,
@@ -60,14 +131,22 @@ serve(async (req) => {
           lastDayLastMonth.toISOString()
         );
 
+        console.log(`Found ${clientData.clients.length} clients with ${clientData.summary.totalCalculations} total calculations`);
+
         if (clientData.clients.length === 0) {
           console.log(`No activity for ${company.name} last month - skipping`);
+          results.push({
+            company: company.name,
+            skipped: true,
+            reason: 'No activity in period'
+          });
           continue;
         }
 
         console.log(`Found ${clientData.clients.length} active clients for ${company.name}`);
 
         // Generate PDF
+        console.log('Generating PDF...');
         const pdfBuffer = await generatePDF({
           companyName: company.name,
           monthName: monthName,
@@ -75,7 +154,7 @@ serve(async (req) => {
           clients: clientData.clients,
         });
 
-        console.log('✅ PDF generated successfully');
+        console.log('✅ PDF generated successfully, size:', pdfBuffer.length, 'bytes');
 
         // Get all admins for this company
         const { data: admins, error: adminsError } = await supabase
@@ -90,14 +169,23 @@ serve(async (req) => {
 
         if (!admins || admins.length === 0) {
           console.log(`No admins found for ${company.name} - skipping email`);
+          results.push({
+            company: company.name,
+            clients: clientData.clients.length,
+            calculations: clientData.summary.totalCalculations,
+            adminsSent: 0,
+            error: 'No admins found'
+          });
           continue;
         }
 
         console.log(`Sending to ${admins.length} admins...`);
 
         // Send email to all admins
+        let emailsSent = 0;
         for (const admin of admins) {
           try {
+            console.log(`Sending email to ${admin.email}...`);
             await sendEmail({
               to: admin.email,
               adminName: admin.full_name || 'Admin',
@@ -107,6 +195,7 @@ serve(async (req) => {
               pdfBuffer: pdfBuffer,
             });
 
+            emailsSent++;
             console.log(`✅ Email sent to ${admin.email}`);
           } catch (emailError) {
             console.error(`Failed to send email to ${admin.email}:`, emailError);
@@ -117,14 +206,14 @@ serve(async (req) => {
           company: company.name,
           clients: clientData.clients.length,
           calculations: clientData.summary.totalCalculations,
-          adminsSent: admins.length,
+          adminsSent: emailsSent,
         });
 
       } catch (error) {
         console.error(`Error processing ${company.name}:`, error);
         results.push({
           company: company.name,
-          error: error.message,
+          error: error.message || 'Unknown error',
         });
       }
     }
@@ -135,10 +224,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Monthly reports generated successfully',
+        message: testCompanyId ? 'Test report generated successfully' : 'Monthly reports generated successfully',
         results: results,
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error) {
@@ -146,9 +238,13 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: error.message || 'Unknown error occurred',
+        stack: error.stack
       }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
   }
 });
