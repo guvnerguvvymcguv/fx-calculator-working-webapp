@@ -11,22 +11,15 @@ Deno.serve(async (req) => {
     const googleSearchEngineId = Deno.env.get('GOOGLE_SEARCH_ENGINE_ID')!;
     const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')!;
 
-    const { companyName, limit = 10, excludeCompanies = [] } = await req.json();
+    const { companyName, limit = 5, excludeCompanies = [] } = await req.json();
 
     console.log('Searching for competitors of:', companyName);
 
-    // Multiple search strategies to maximize results
+    // Reduced search strategies to avoid rate limiting (Google allows ~1 request/second)
     const searchStrategies = [
       `${companyName} competitors UK`,
       `${companyName} similar companies UK`,
-      `${companyName} alternative brands UK`,
-      `companies like ${companyName} UK`,
-      `${companyName} vs competitors UK`,
-      `best alternatives to ${companyName} UK`,
-      `${companyName} competitor analysis UK`,
-      `brands similar to ${companyName}`,
-      `${companyName} rivals UK market`,
-      `top competitors ${companyName} UK`
+      `companies like ${companyName} UK`
     ];
 
     let allGoogleText = '';
@@ -36,7 +29,7 @@ Deno.serve(async (req) => {
       const searchQuery = searchStrategies[i];
       const googleSearchUrl = `https://customsearch.googleapis.com/customsearch/v1?key=${googleApiKey}&cx=${googleSearchEngineId}&q=${encodeURIComponent(searchQuery)}&num=10`;
       
-      console.log(`Search ${i + 1}/10: ${searchQuery}`);
+      console.log(`Search ${i + 1}/${searchStrategies.length}: ${searchQuery}`);
       
       try {
         const googleResponse = await fetch(googleSearchUrl);
@@ -59,9 +52,9 @@ Deno.serve(async (req) => {
           allGoogleText += extractedText + '\n\n';
         }
 
-        // Small delay to avoid rate limiting
+        // Longer delay to avoid rate limiting (Google requires ~1 second between requests)
         if (i < searchStrategies.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       } catch (error) {
         console.error(`Search ${i + 1} error:`, error);
@@ -116,7 +109,7 @@ CRITICAL RULES:
    [{"name": "Company Name", "isSubsidiary": true/false}]
    - Set "isSubsidiary" to true if it's an international company with UK subsidiary (e.g., H&M UK, Zara UK, Aldi UK)
    - Set "isSubsidiary" to false if it's a UK-headquartered company (e.g., ASOS, Tesco, Barclays)
-9. Maximum 15 companies
+9. Maximum 10 companies (we will return fewer based on request)
 
 Example response format:
 [{"name": "ASOS", "isSubsidiary": false}, {"name": "H&M", "isSubsidiary": true}, {"name": "Next", "isSubsidiary": false}]

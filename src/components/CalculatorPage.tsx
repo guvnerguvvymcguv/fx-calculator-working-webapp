@@ -301,7 +301,7 @@ export default function CalculatorPage() {
           },
           body: JSON.stringify({
             companyName: calculator.competitorName,
-            limit: 10,
+            limit: 5,
             excludeCompanies
           })
         }
