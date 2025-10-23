@@ -804,26 +804,59 @@ setUserCalculationCounts(counts);
   };
 
   const handleTestReport = async () => {
-    if (!confirm('This will generate and send a test report for the previous month to all admins. Continue?')) {
+    if (!confirm('This will generate and send a test report for the LAST 30 DAYS to all admins. Continue?')) {
       return;
     }
     
     setTestingReport(true);
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Not authenticated');
+        setTestingReport(false);
+        return;
+      }
+      
+      // Get company_id from user profile
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!profile?.company_id) {
+        alert('Company not found');
+        setTestingReport(false);
+        return;
+      }
+      
       const { data: { session } } = await supabase.auth.getSession();
       
+      console.log('Sending test report request with company_id:', profile.company_id);
+      
+      // ✅ Pass company_id in body to trigger TEST MODE (last 30 days)
       const response = await supabase.functions.invoke('generate-monthly-report', {
+        body: {
+          company_id: profile.company_id  // THIS IS THE KEY - triggers test mode
+        },
         headers: {
           Authorization: `Bearer ${session?.access_token}`
         }
       });
       
-      if (response.error) throw response.error;
+      console.log('Test report response:', response);
       
-      alert('Test report sent successfully! Check your email.');
+      if (response.error) {
+        console.error('Test report error:', response.error);
+        throw response.error;
+      }
+      
+      alert('Test report sent successfully! Check your email in a few moments.');
     } catch (error) {
       console.error('Error generating test report:', error);
-      alert('Failed to generate test report. Please try again.');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to generate test report';
+      alert(`Error: ${errorMsg}`);
     } finally {
       setTestingReport(false);
     }
