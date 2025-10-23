@@ -23,130 +23,99 @@ export async function sendEmail(data: EmailData): Promise<void> {
   const base64PDF = encodeBase64(data.pdfBuffer);
 
   const emailPayload = {
-    from: 'Spread Checker <reports@spreadchecker.co.uk>',
+    from: 'SpreadChecker <reports@spreadchecker.co.uk>',
     to: data.to,
-    subject: `Spread Checker - Client Data Report (${data.monthName})`,
+    subject: `SpreadChecker - Client Data Report (${data.monthName})`,
     html: `
       <!DOCTYPE html>
       <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .header {
-              background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
-              color: white;
-              padding: 30px;
-              border-radius: 8px 8px 0 0;
-              text-align: center;
-            }
-            .header h1 {
-              margin: 0;
-              font-size: 24px;
-            }
-            .content {
-              background: #f9fafb;
-              padding: 30px;
-              border-radius: 0 0 8px 8px;
-            }
-            .summary-box {
-              background: white;
-              border: 1px solid #e5e7eb;
-              border-radius: 6px;
-              padding: 20px;
-              margin: 20px 0;
-            }
-            .summary-item {
-              display: flex;
-              justify-content: space-between;
-              padding: 10px 0;
-              border-bottom: 1px solid #f3f4f6;
-            }
-            .summary-item:last-child {
-              border-bottom: none;
-            }
-            .summary-label {
-              color: #6b7280;
-              font-weight: 500;
-            }
-            .summary-value {
-              color: #111827;
-              font-weight: 600;
-            }
-            .summary-value.highlight {
-              color: #10b981;
-              font-size: 18px;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 30px;
-              padding-top: 20px;
-              border-top: 1px solid #e5e7eb;
-              color: #6b7280;
-              font-size: 14px;
-            }
-            a {
-              color: #9333ea;
-              text-decoration: none;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>📊 Client Data Report</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9;">${data.monthName}</p>
-          </div>
-          
-          <div class="content">
-            <p>Hi ${data.adminName},</p>
-            
-            <p>Your monthly client data report for <strong>${data.monthName}</strong> is attached.</p>
-            
-            <div class="summary-box">
-              <h3 style="margin-top: 0; color: #111827;">This Month's Activity</h3>
-              
-              <div class="summary-item">
-                <span class="summary-label">Active Clients</span>
-                <span class="summary-value">${data.summary.totalClients}</span>
-              </div>
-              
-              <div class="summary-item">
-                <span class="summary-label">Total Calculations</span>
-                <span class="summary-value">${data.summary.totalCalculations}</span>
-              </div>
-              
-              <div class="summary-item">
-                <span class="summary-label">Combined Monthly Savings</span>
-                <span class="summary-value highlight">£${data.summary.combinedMonthlySavings.toLocaleString('en-GB', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}</span>
-              </div>
-            </div>
-            
-            <p>Review the detailed PDF breakdown to see:</p>
-            <ul style="color: #4b5563;">
-              <li>Currency pair usage per client</li>
-              <li>Average trade values and frequency</li>
-              <li>Savings performance metrics</li>
-              <li>Complete calculation details</li>
-            </ul>
-            
-            <p style="margin-top: 25px;">Best regards,<br><strong>The Spread Checker Team</strong></p>
-          </div>
-          
-          <div class="footer">
-            <p>This is an automated monthly report from <a href="https://spreadchecker.co.uk">Spread Checker</a></p>
-            <p>To modify your report settings, visit your <a href="https://spreadchecker.co.uk/admin">admin dashboard</a></p>
-          </div>
-        </body>
+      <head>
+        <meta charset="UTF-8">
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1a1a1a;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <!-- Header -->
+                <tr>
+                  <td style="background: #667eea; color: white; padding: 40px 30px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: 600; color: white;">Client Data Report</h1>
+                    <table cellpadding="0" cellspacing="0" align="center" style="margin-top: 12px;">
+                      <tr>
+                        <td style="background: white; color: #667eea; padding: 6px 18px; border-radius: 20px; font-size: 14px; font-weight: 600;">${data.monthName}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 40px 30px;">
+                    <p style="margin: 16px 0; color: #4a4a4a;">Hi ${data.adminName},</p>
+
+                    <p style="margin: 16px 0; color: #4a4a4a;">Your monthly client data report for <strong>${data.monthName}</strong> is attached.</p>
+
+                    <!-- Stats Table -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background: #f8f9fc; border-radius: 8px; padding: 20px; margin: 24px 0;">
+                      <tr>
+                        <td style="padding: 20px;">
+                          <h3 style="margin-top: 0; color: #667eea;">This Month's Activity</h3>
+                          <table style="width: 100%;">
+                            <tr>
+                              <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 60%;">Active Clients</td>
+                              <td style="padding: 10px 0; color: #4a4a4a; text-align: right;">${data.summary.totalClients}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 60%;">Total Calculations</td>
+                              <td style="padding: 10px 0; color: #4a4a4a; text-align: right;">${data.summary.totalCalculations}</td>
+                            </tr>
+                            <tr>
+                              <td style="padding: 10px 0; font-weight: 600; color: #2d2d2d; width: 60%;">Combined Monthly Savings</td>
+                              <td style="padding: 10px 0; color: #667eea; font-weight: bold; text-align: right;">£${data.summary.combinedMonthlySavings.toLocaleString('en-GB', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}</td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin: 16px 0; color: #4a4a4a;">Review the detailed PDF breakdown to see:</p>
+
+                    <!-- Feature List -->
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0;">
+                      <tr>
+                        <td style="background: #f8f9fc; padding: 16px 20px; border-radius: 6px; border-left: 3px solid #667eea;">
+                          <ul style="margin: 0; padding-left: 20px; color: #4a4a4a;">
+                            <li>Currency pair usage per client</li>
+                            <li>Average trade values and frequency</li>
+                            <li>Savings performance metrics</li>
+                            <li>Complete calculation details</li>
+                          </ul>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin: 16px 0; color: #4a4a4a;">Best regards,<br>The SpreadChecker Team</p>
+
+                    <p style="margin: 24px 0 0 0; padding-top: 16px; border-top: 1px solid #eee; color: #888; font-size: 14px;">This is an automated monthly report from <a href="https://spreadchecker.co.uk" style="color: #667eea; text-decoration: none;">SpreadChecker</a></p>
+
+                    <p style="margin: 8px 0 0 0; color: #888; font-size: 14px;">To modify your report settings, visit your <a href="https://spreadchecker.co.uk/admin" style="color: #667eea; text-decoration: none;">admin dashboard</a></p>
+                  </td>
+                </tr>
+                <!-- Footer -->
+                <tr>
+                  <td style="padding: 30px; text-align: center; color: #888; font-size: 14px; border-top: 1px solid #eee;">
+                    <p style="margin: 0;">SpreadChecker Ltd | London, UK<br>
+                    © 2025 SpreadChecker. All rights reserved.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
       </html>
     `,
     attachments: [
