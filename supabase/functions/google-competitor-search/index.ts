@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     // Use Claude AI to extract company names
     console.log('Calling Claude AI to extract company names...');
     
-    const aiPrompt = `You are analyzing search results about competitors to ${companyName}.
+const aiPrompt = `You are analyzing search results to find UK-based competitors to ${companyName}.
 
 Here is text from Google search results:
 
@@ -87,32 +87,52 @@ ${allGoogleText}
 
 Extract ONLY the company/brand names that are competitors or similar companies to ${companyName}.
 
-CRITICAL RULES:
+CRITICAL UK-BASED RULES (VERY STRICT):
 1. Return ONLY company names, nothing else
 2. Exclude "${companyName}" itself from the results
-3. ONLY include companies that are UK-BASED (headquartered in the UK):
-   - Company must have its main headquarters in the UK
-   - UK subsidiaries of international companies are ALLOWED if they have UK offices (e.g., "Aldi UK" is allowed because Aldi has UK headquarters for UK operations)
-   - Companies that just ship to UK or have UK customers but NO UK headquarters/offices should be EXCLUDED
-   - Examples of UK-based companies: ASOS (UK HQ), Boohoo (UK HQ), Sainsbury's (UK HQ), Barclays (UK HQ)
-   - Examples to EXCLUDE: Shein (China HQ), Farfetch (Portugal/US HQ), companies that only sell online to UK
-4. ONLY include companies in the SAME industry/sector as ${companyName}:
-   - If ${companyName} is fashion retail (e.g., ASOS), only include other fashion retailers
-   - If ${companyName} is a supermarket (e.g., Tesco), only include other supermarkets
-   - If ${companyName} is a bank (e.g., Barclays), only include other banks
-   - EXCLUDE companies from different industries even if they're mentioned together
-   - Example: When searching for ASOS (fashion), EXCLUDE Sainsbury's (supermarket) even if both mentioned
-5. If a company moved its headquarters OUT of the UK, EXCLUDE it
-6. If you're unsure whether a company has UK headquarters, EXCLUDE it (be conservative)
-7. Remove duplicates (e.g., "Sainsbury's" and "Sainsbury's PLC" should just be "Sainsbury's")
-8. Return as a valid JSON array of objects with this format:
-   [{"name": "Company Name", "isSubsidiary": true/false}]
-   - Set "isSubsidiary" to true if it's an international company with UK subsidiary (e.g., H&M UK, Zara UK, Aldi UK)
-   - Set "isSubsidiary" to false if it's a UK-headquartered company (e.g., ASOS, Tesco, Barclays)
-9. Maximum 10 companies (we will return fewer based on request)
+3. ONLY include companies that UK FX brokers would actually target:
+   - Must operate PRIMARILY in the UK market with significant UK presence
+   - Must have UK headquarters OR substantial UK operations (not just a sales office)
+   - UK brokers need to be able to call them and do business in the UK
+   
+4. STRICT EXCLUSIONS - DO NOT include:
+   - International parent companies (e.g., Deutsche Telekom, AT&T, Telenor, NTT, Tata)
+   - Foreign companies that only have small UK subsidiaries
+   - Companies headquartered outside UK unless they have MAJOR UK operations
+   - US, European, or Asian companies (even if they operate in UK)
+   
+5. GOOD EXAMPLES to include:
+   - UK-headquartered companies: ASOS, Tesco, Sainsbury's, BT Group, Sky, Barclays
+   - Major UK operations with significant presence: Aldi UK, Lidl UK (have UK headquarters for UK ops)
+   
+6. BAD EXAMPLES to EXCLUDE:
+   - Deutsche Telekom (German, even though owns EE)
+   - AT&T (American)
+   - Telenor (Norwegian)
+   - Telefonica (Spanish, even though owns O2)
+   - NTT Communications (Japanese)
+   - Tata Communications (Indian)
+   - Any company where the parent is foreign and UK is just one market
+   
+7. ONLY include companies in the SAME industry/sector as ${companyName}:
+   - If ${companyName} is fashion retail → only fashion retailers
+   - If ${companyName} is telecom → only telecom companies
+   - If ${companyName} is supermarket → only supermarkets
+   - If ${companyName} is bank → only banks
+   - EXCLUDE companies from different industries
+   
+8. When in doubt, EXCLUDE the company (be very conservative)
 
-Example response format:
-[{"name": "ASOS", "isSubsidiary": false}, {"name": "H&M", "isSubsidiary": true}, {"name": "Next", "isSubsidiary": false}]
+9. Remove duplicates (e.g., "Sainsbury's" and "Sainsbury's PLC" → just "Sainsbury's")
+
+10. Return as valid JSON array:
+   [{"name": "Company Name", "isSubsidiary": true/false}]
+   - isSubsidiary = true: International company with MAJOR UK operations (e.g., Aldi UK, Lidl UK)
+   - isSubsidiary = false: UK-headquartered company
+   
+11. Maximum 5 companies
+
+Think: Would a UK FX broker actually call this company to offer FX services? If no, EXCLUDE it.
 
 Your response (JSON array only):`;
 
