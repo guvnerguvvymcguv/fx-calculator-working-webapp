@@ -98,10 +98,6 @@ export async function sendEmail(data: EmailData): Promise<void> {
                     </table>
 
                     <p style="margin: 16px 0; color: #4a4a4a;">Best regards,<br>The SpreadChecker Team</p>
-
-                    <p style="margin: 24px 0 0 0; padding-top: 16px; border-top: 1px solid #eee; color: #888; font-size: 14px;">This is an automated monthly report from <a href="https://spreadchecker.co.uk" style="color: #667eea; text-decoration: none;">SpreadChecker</a></p>
-
-                    <p style="margin: 8px 0 0 0; color: #888; font-size: 14px;">To modify your report settings, visit your <a href="https://spreadchecker.co.uk/admin" style="color: #667eea; text-decoration: none;">admin dashboard</a></p>
                   </td>
                 </tr>
                 <!-- Footer -->

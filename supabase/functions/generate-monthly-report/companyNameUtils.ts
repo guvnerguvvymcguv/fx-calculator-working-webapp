@@ -14,7 +14,8 @@
  *
  * @example
  * normalizeCompanyName("Superdry PLC") // "superdry"
- * normalizeCompanyName("TESCO Stores Limited") // "tesco stores"
+ * normalizeCompanyName("TESCO Stores Limited") // "tesco"
+ * normalizeCompanyName("Tescos") // "tesco"
  * normalizeCompanyName("Next P.L.C.") // "next"
  */
 export function normalizeCompanyName(name: string): string {
@@ -29,6 +30,9 @@ export function normalizeCompanyName(name: string): string {
     .replace(/\s+/g, ' ')
     // Remove common company suffixes (case insensitive)
     .replace(/\b(ltd|limited|plc|llc|inc|incorporated|corp|corporation|co|group|holdings?|international|stores?|supermarkets?|retail|com)\b/gi, '')
+    // Remove trailing 's' that's commonly added to company names (e.g., "Tescos" -> "Tesco")
+    // Only do this if the word is longer than 4 characters to avoid removing legitimate 's' endings
+    .replace(/\b(\w{4,})s\b/g, '$1')
     // Remove extra spaces again
     .replace(/\s+/g, ' ')
     .trim();
