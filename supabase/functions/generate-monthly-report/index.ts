@@ -111,24 +111,38 @@ serve(async (req) => {
           continue;
         }
 
-        // Get previous month's date range
+        // Get date range - use CURRENT month for test mode, PREVIOUS month for production
         const now = new Date();
-        const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        let firstDay, lastDay, monthName;
+        
+        if (testCompanyId) {
+          // TEST MODE: Use current month
+          firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+          lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+          // Set lastDay to end of day
+          lastDay.setHours(23, 59, 59, 999);
+          console.log('🧪 TEST MODE: Using CURRENT month data');
+        } else {
+          // PRODUCTION MODE: Use previous month
+          firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+          lastDay.setHours(23, 59, 59, 999);
+          console.log('🚀 PRODUCTION MODE: Using PREVIOUS month data');
+        }
 
-        const monthName = firstDayLastMonth.toLocaleDateString('en-GB', { 
+        monthName = firstDay.toLocaleDateString('en-GB', { 
           month: 'long', 
           year: 'numeric' 
         });
 
-        console.log(`Date range: ${firstDayLastMonth.toISOString()} to ${lastDayLastMonth.toISOString()}`);
+        console.log(`Date range: ${firstDay.toISOString()} to ${lastDay.toISOString()}`);
 
         // Aggregate client data for this company
         const clientData = await aggregateClientData(
           supabase,
           company.id,
-          firstDayLastMonth.toISOString(),
-          lastDayLastMonth.toISOString()
+          firstDay.toISOString(),
+          lastDay.toISOString()
         );
 
         console.log(`Found ${clientData.clients.length} clients with ${clientData.summary.totalCalculations} total calculations`);

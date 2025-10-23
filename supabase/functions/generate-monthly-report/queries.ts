@@ -54,29 +54,24 @@ export async function aggregateClientData(
   endDate: string
 ): Promise<{ summary: ReportSummary; clients: ClientData[] }> {
   
-  // Fetch all calculations for this company in the date range
-  const { data: calculations, error } = await supabase
-    .from('activity_logs')
-    .select(`
-      *,
-      user_profiles!inner (
-        id,
-        full_name,
-        company_id
-      )
-    `)
-    .eq('user_profiles.company_id', companyId)
-    .eq('action_type', 'calculation')
-    .gte('created_at', startDate)
-    .lte('created_at', endDate)
-    .order('client_name')
-    .order('created_at', { ascending: false });
+  console.log('📊 Fetching calculations for company:', companyId);
+  console.log('📅 Date range:', startDate, 'to', endDate);
+  
+  // First get all junior users for this company
+  const { data: juniorUsers, error: juniorError } = await supabase
+    .from('user_profiles')
+    .select('id, full_name')
+    .eq('company_id', companyId)
+    .eq('role_type', 'junior')
+    .neq('is_active', false);
 
-  if (error) {
-    throw new Error(`Failed to fetch calculations: ${error.message}`);
+  if (juniorError) {
+    console.error('Error fetching junior users:', juniorError);
+    throw new Error(`Failed to fetch junior users: ${juniorError.message}`);
   }
 
-  if (!calculations || calculations.length === 0) {
+  if (!juniorUsers || juniorUsers.length === 0) {
+    console.log('No junior users found for company');
     return {
       summary: {
         totalClients: 0,
@@ -89,19 +84,69 @@ export async function aggregateClientData(
     };
   }
 
+  const juniorUserIds = juniorUsers.map(u => u.id);
+  console.log('Found junior users:', juniorUsers.length, juniorUserIds);
+
+  // Fetch all calculations for these junior users in the date range
+  const { data: calculations, error } = await supabase
+    .from('activity_logs')
+    .select('*')
+    .in('user_id', juniorUserIds)
+    .eq('action_type', 'calculation')
+    .gte('created_at', startDate)
+    .lte('created_at', endDate)
+    .order('client_name')
+    .order('created_at', { ascending: false });
+
+  console.log('Calculations query result:', calculations?.length || 0, 'records found');
+  if (error) {
+    console.error('Error fetching calculations:', error);
+  }
+
+  if (error) {
+    throw new Error(`Failed to fetch calculations: ${error.message}`);
+  }
+
+  if (!calculations || calculations.length === 0) {
+    console.log('No calculations found in date range');
+    return {
+      summary: {
+        totalClients: 0,
+        totalCalculations: 0,
+        combinedMonthlySavings: 0,
+        combinedAnnualSavings: 0,
+        currencyPairDistribution: {},
+      },
+      clients: [],
+    };
+  }
+
+  // Create a map of user IDs to names
+  const userMap: { [key: string]: string } = {};
+  juniorUsers.forEach(user => {
+    userMap[user.id] = user.full_name || 'Unknown';
+  });
+
   // Group by client name (normalized)
   const clientGroups: { [key: string]: ClientCalculation[] } = {};
   
   calculations.forEach((calc: any) => {
+    // Skip if no client name
+    if (!calc.client_name || calc.client_name.trim() === '') {
+      return;
+    }
+    
     const normalizedName = calc.client_name.toLowerCase().trim();
     if (!clientGroups[normalizedName]) {
       clientGroups[normalizedName] = [];
     }
     clientGroups[normalizedName].push({
       ...calc,
-      user_name: calc.user_profiles?.full_name || 'Unknown',
+      user_name: userMap[calc.user_id] || 'Unknown',
     });
   });
+
+  console.log('Grouped into', Object.keys(clientGroups).length, 'unique clients');
 
   // Process each client
   const clients: ClientData[] = [];
