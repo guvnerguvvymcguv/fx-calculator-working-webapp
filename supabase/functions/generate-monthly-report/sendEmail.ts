@@ -1,7 +1,7 @@
 // Email Sending Logic
 // Sends monthly reports via Resend API
 
-import { encodeBase64 } from "https://deno.land/std@0.177.0/encoding/base64.ts";
+import { encode as encodeBase64 } from "https://deno.land/std@0.177.0/encoding/base64.ts";
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 
