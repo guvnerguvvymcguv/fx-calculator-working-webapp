@@ -52,9 +52,9 @@ Deno.serve(async (req) => {
           allGoogleText += extractedText + '\n\n';
         }
 
-        // Longer delay to avoid rate limiting (Google requires ~1 second between requests)
+        // Reduced delay since billing is enabled (300ms is sufficient)
         if (i < searchStrategies.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       } catch (error) {
         console.error(`Search ${i + 1} error:`, error);
