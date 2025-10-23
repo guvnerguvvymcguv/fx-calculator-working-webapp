@@ -1,6 +1,8 @@
 // Email Sending Logic
 // Sends monthly reports via Resend API
 
+import { encodeBase64 } from "https://deno.land/std@0.177.0/encoding/base64.ts";
+
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!;
 
 interface EmailData {
@@ -17,8 +19,8 @@ interface EmailData {
 }
 
 export async function sendEmail(data: EmailData): Promise<void> {
-  // Convert PDF buffer to base64
-  const base64PDF = btoa(String.fromCharCode(...data.pdfBuffer));
+  // Convert PDF buffer to base64 using Deno's native encoder
+  const base64PDF = encodeBase64(data.pdfBuffer);
 
   const emailPayload = {
     from: 'Spread Checker <reports@spreadchecker.co.uk>',
