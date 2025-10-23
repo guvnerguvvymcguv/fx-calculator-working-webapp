@@ -1,6 +1,8 @@
 // Data Aggregation Logic
 // Fetches and processes calculation data for monthly reports
 
+import { normalizeCompanyName } from './companyNameUtils.ts';
+
 interface ClientCalculation {
   id: string;
   created_at: string;
@@ -154,16 +156,20 @@ export async function aggregateClientData(
     userMap[user.id] = user.full_name || 'Unknown';
   });
 
-  // Group by client name (normalized)
+  // Group by client name (normalized using proper company name normalization)
+  // This removes suffixes like PLC, LIMITED, STORES, etc. to prevent duplicates
   const clientGroups: { [key: string]: ClientCalculation[] } = {};
-  
+
   calculations.forEach((calc: any) => {
     // Skip if no client name
     if (!calc.client_name || calc.client_name.trim() === '') {
       return;
     }
-    
-    const normalizedName = calc.client_name.toLowerCase().trim();
+
+    // Use proper normalization that removes company suffixes like PLC, LIMITED, STORES, etc.
+    // This matches the logic used in the My Leads page
+    const normalizedName = normalizeCompanyName(calc.client_name);
+
     if (!clientGroups[normalizedName]) {
       clientGroups[normalizedName] = [];
     }
@@ -181,7 +187,12 @@ export async function aggregateClientData(
   let totalAnnualSavings = 0;
 
   for (const [normalizedName, calcs] of Object.entries(clientGroups)) {
-    const clientName = calcs[0].client_name; // Use original case
+    // Use the shortest client name as it's usually the cleanest
+    // e.g., prefer "Tesco" over "TESCO PLC" or "TESCO STORES LIMITED"
+    const clientName = calcs
+      .map(c => c.client_name)
+      .sort((a, b) => a.length - b.length)[0];
+
     const broker = calcs[0].user_name || 'Unknown';
 
     // Calculate stats
