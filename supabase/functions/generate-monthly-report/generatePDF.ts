@@ -1,7 +1,7 @@
-// PDF Generation with PDFKit
+// PDF Generation with jsPDF
 // Creates professional Bloomberg-style client reports
 
-import PDFDocument from 'https://esm.sh/pdfkit@0.13.0';
+import { jsPDF } from 'https://esm.sh/jspdf@2.5.1';
 
 interface PDFData {
   companyName: string;
@@ -32,315 +32,248 @@ interface PDFData {
   }>;
 }
 
-// Color scheme
-const COLORS = {
-  primary: '#9333ea',      // Purple
-  secondary: '#7e22ce',    // Dark purple
-  background: '#1a1a2e',   // Dark navy
-  text: '#ffffff',         // White
-  textMuted: '#a0a0a0',    // Light grey
-  accent: '#10b981',       // Green (for savings)
-  border: '#333344',       // Subtle border
-};
-
 export async function generatePDF(data: PDFData): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({
-        size: 'A4',
-        margins: { top: 50, bottom: 50, left: 50, right: 50 },
-        bufferPages: true,
-      });
-
-      const chunks: Uint8Array[] = [];
-      
-      doc.on('data', (chunk) => chunks.push(chunk));
-      doc.on('end', () => {
-        const result = new Uint8Array(
-          chunks.reduce((acc, chunk) => acc + chunk.length, 0)
-        );
-        let offset = 0;
-        for (const chunk of chunks) {
-          result.set(chunk, offset);
-          offset += chunk.length;
-        }
-        resolve(result);
-      });
-      doc.on('error', reject);
-
-      // Page 1: Cover & Summary
-      addCoverPage(doc, data);
-
-      // Pages 2+: Per-client breakdowns
-      data.clients.forEach((client, index) => {
-        if (index > 0) {
-          doc.addPage();
-        } else {
-          doc.addPage();
-        }
-        addClientPage(doc, client, data.monthName);
-      });
-
-      doc.end();
-    } catch (error) {
-      reject(error);
-    }
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
   });
+
+  // Page 1: Cover & Summary
+  addCoverPage(doc, data);
+
+  // Pages 2+: Per-client breakdowns
+  data.clients.forEach((client, index) => {
+    doc.addPage();
+    addClientPage(doc, client, data.monthName, index);
+  });
+
+  // Convert to Uint8Array
+  const pdfBlob = doc.output('arraybuffer');
+  return new Uint8Array(pdfBlob);
 }
 
-function addCoverPage(doc: any, data: PDFData) {
+function addCoverPage(doc: jsPDF, data: PDFData) {
   // Header
-  doc
-    .fontSize(32)
-    .fillColor(COLORS.primary)
-    .text('SPREAD CHECKER', 50, 50);
+  doc.setFontSize(32);
+  doc.setTextColor(147, 51, 234); // Purple
+  doc.text('SPREAD CHECKER', 20, 30);
 
-  doc
-    .fontSize(24)
-    .fillColor(COLORS.text)
-    .text('Client Data Report', 50, 90);
+  doc.setFontSize(24);
+  doc.setTextColor(0, 0, 0);
+  doc.text('Client Data Report', 20, 45);
 
-  doc
-    .fontSize(12)
-    .fillColor(COLORS.textMuted)
-    .text(`Period: ${data.monthName}`, 50, 125)
-    .text(`Company: ${data.companyName}`, 50, 142)
-    .text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 50, 159);
+  doc.setFontSize(12);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Period: ${data.monthName}`, 20, 55);
+  doc.text(`Company: ${data.companyName}`, 20, 62);
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 20, 69);
 
   // Summary box
-  const boxY = 220;
-  doc
-    .fontSize(16)
-    .fillColor(COLORS.text)
-    .text('MONTHLY SUMMARY', 50, boxY);
+  const boxY = 85;
+  doc.setFontSize(16);
+  doc.setTextColor(0, 0, 0);
+  doc.text('MONTHLY SUMMARY', 20, boxY);
 
-  doc
-    .fontSize(11)
-    .fillColor(COLORS.textMuted)
-    .text('Clients with Activity:', 70, boxY + 35)
-    .fillColor(COLORS.text)
-    .text(data.summary.totalClients.toString(), 250, boxY + 35);
+  doc.setFontSize(11);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Clients with Activity:', 25, boxY + 12);
+  doc.setTextColor(0, 0, 0);
+  doc.text(data.summary.totalClients.toString(), 90, boxY + 12);
 
-  doc
-    .fillColor(COLORS.textMuted)
-    .text('Total Calculations:', 70, boxY + 55)
-    .fillColor(COLORS.text)
-    .text(data.summary.totalCalculations.toString(), 250, boxY + 55);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Total Calculations:', 25, boxY + 20);
+  doc.setTextColor(0, 0, 0);
+  doc.text(data.summary.totalCalculations.toString(), 90, boxY + 20);
 
-  doc
-    .fillColor(COLORS.textMuted)
-    .text('Combined Monthly Savings:', 70, boxY + 75)
-    .fillColor(COLORS.accent)
-    .text(
-      `£${data.summary.combinedMonthlySavings.toLocaleString('en-GB', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`,
-      250,
-      boxY + 75
-    );
+  doc.setTextColor(100, 100, 100);
+  doc.text('Combined Monthly Savings:', 25, boxY + 28);
+  doc.setTextColor(16, 185, 129); // Green
+  doc.text(
+    `£${data.summary.combinedMonthlySavings.toLocaleString('en-GB', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    90,
+    boxY + 28
+  );
 
-  doc
-    .fillColor(COLORS.textMuted)
-    .text('Combined Annual Savings:', 70, boxY + 95)
-    .fillColor(COLORS.accent)
-    .text(
-      `£${data.summary.combinedAnnualSavings.toLocaleString('en-GB', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`,
-      250,
-      boxY + 95
-    );
+  doc.setTextColor(100, 100, 100);
+  doc.text('Combined Annual Savings:', 25, boxY + 36);
+  doc.setTextColor(16, 185, 129);
+  doc.text(
+    `£${data.summary.combinedAnnualSavings.toLocaleString('en-GB', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    90,
+    boxY + 36
+  );
 
   // Currency pair breakdown
-  const pairY = boxY + 140;
-  doc
-    .fontSize(14)
-    .fillColor(COLORS.text)
-    .text('CURRENCY PAIR DISTRIBUTION', 50, pairY);
+  const pairY = boxY + 50;
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text('CURRENCY PAIR DISTRIBUTION', 20, pairY);
 
-  let pairTextY = pairY + 30;
+  let pairTextY = pairY + 10;
   const sortedPairs = Object.entries(data.summary.currencyPairDistribution)
     .sort(([, a], [, b]) => b - a);
 
+  doc.setFontSize(10);
   sortedPairs.forEach(([pair, count]) => {
     const percentage = ((count / data.summary.totalCalculations) * 100).toFixed(1);
-    doc
-      .fontSize(10)
-      .fillColor(COLORS.textMuted)
-      .text(`${pair}:`, 70, pairTextY)
-      .fillColor(COLORS.text)
-      .text(`${count} calculations (${percentage}%)`, 150, pairTextY);
-    pairTextY += 20;
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${pair}:`, 25, pairTextY);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`${count} calculations (${percentage}%)`, 50, pairTextY);
+    pairTextY += 7;
   });
 }
 
-function addClientPage(doc: any, client: any, monthName: string) {
+function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: number) {
   // Client header
-  doc
-    .fontSize(18)
-    .fillColor(COLORS.primary)
-    .text(client.clientName.toUpperCase(), 50, 50);
+  doc.setFontSize(18);
+  doc.setTextColor(147, 51, 234);
+  doc.text(client.clientName.toUpperCase(), 20, 20);
 
-  doc
-    .fontSize(10)
-    .fillColor(COLORS.textMuted)
-    .text(`Calculations This Month: ${client.stats.totalCalculations}`, 50, 75)
-    .text(`Broker: ${client.broker}`, 50, 90);
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Calculations This Month: ${client.stats.totalCalculations}`, 20, 28);
+  doc.text(`Broker: ${client.broker}`, 20, 34);
 
-  // Divider
-  doc
-    .moveTo(50, 110)
-    .lineTo(545, 110)
-    .strokeColor(COLORS.border)
-    .stroke();
+  // Divider line
+  doc.setDrawColor(200, 200, 200);
+  doc.line(20, 40, 190, 40);
 
   // Trading Profile
-  let yPos = 130;
-  doc
-    .fontSize(14)
-    .fillColor(COLORS.text)
-    .text('TRADING PROFILE', 50, yPos);
+  let yPos = 48;
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text('TRADING PROFILE', 20, yPos);
 
-  yPos += 25;
-  doc
-    .fontSize(10)
-    .fillColor(COLORS.textMuted)
-    .text('Currency Pairs Traded:', 70, yPos);
+  yPos += 8;
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Currency Pairs Traded:', 25, yPos);
 
-  yPos += 18;
+  yPos += 6;
   const sortedPairs = Object.entries(client.stats.currencyPairs)
     .sort(([, a], [, b]) => (b as number) - (a as number));
 
+  doc.setFontSize(9);
   sortedPairs.forEach(([pair, count]) => {
     const percentage = ((count as number / client.stats.totalCalculations) * 100).toFixed(1);
-    doc
-      .fontSize(9)
-      .fillColor(COLORS.textMuted)
-      .text(`├─ ${pair}:`, 90, yPos)
-      .fillColor(COLORS.text)
-      .text(`${count} calculations (${percentage}%)`, 180, yPos);
-    yPos += 16;
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${pair}:`, 30, yPos);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`${count} calculations (${percentage}%)`, 55, yPos);
+    yPos += 5;
   });
 
-  yPos += 10;
-  doc
-    .fontSize(10)
-    .fillColor(COLORS.textMuted)
-    .text('Volume:', 70, yPos);
+  yPos += 3;
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Volume:', 25, yPos);
 
-  yPos += 18;
-  doc
-    .fontSize(9)
-    .fillColor(COLORS.textMuted)
-    .text(`├─ Trades Per Year:`, 90, yPos)
-    .fillColor(COLORS.text)
-    .text(client.stats.tradesPerYear.toString(), 250, yPos);
+  yPos += 6;
+  doc.setFontSize(9);
+  doc.text('Trades Per Year:', 30, yPos);
+  doc.setTextColor(0, 0, 0);
+  doc.text(client.stats.tradesPerYear.toString(), 80, yPos);
 
-  yPos += 16;
-  doc
-    .fillColor(COLORS.textMuted)
-    .text(`├─ Trades Per Month:`, 90, yPos)
-    .fillColor(COLORS.text)
-    .text(`~${client.stats.tradesPerMonth}`, 250, yPos);
+  yPos += 5;
+  doc.setTextColor(100, 100, 100);
+  doc.text('Trades Per Month:', 30, yPos);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`~${client.stats.tradesPerMonth}`, 80, yPos);
 
-  yPos += 16;
-  doc
-    .fillColor(COLORS.textMuted)
-    .text(`├─ Avg Trade Value:`, 90, yPos)
-    .fillColor(COLORS.text)
-    .text(
-      `£${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
-      250,
-      yPos
-    );
+  yPos += 5;
+  doc.setTextColor(100, 100, 100);
+  doc.text('Avg Trade Value:', 30, yPos);
+  doc.setTextColor(0, 0, 0);
+  doc.text(
+    `£${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
+    80,
+    yPos
+  );
 
-  yPos += 16;
-  doc
-    .fillColor(COLORS.textMuted)
-    .text(`└─ Monthly Trade Volume:`, 90, yPos)
-    .fillColor(COLORS.text)
-    .text(
-      `~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
-        maximumFractionDigits: 0,
-      })}`,
-      250,
-      yPos
-    );
+  yPos += 5;
+  doc.setTextColor(100, 100, 100);
+  doc.text('Monthly Trade Volume:', 30, yPos);
+  doc.setTextColor(0, 0, 0);
+  doc.text(
+    `~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
+      maximumFractionDigits: 0,
+    })}`,
+    80,
+    yPos
+  );
 
   // Divider
-  yPos += 25;
-  doc
-    .moveTo(50, yPos)
-    .lineTo(545, yPos)
-    .strokeColor(COLORS.border)
-    .stroke();
+  yPos += 8;
+  doc.setDrawColor(200, 200, 200);
+  doc.line(20, yPos, 190, yPos);
 
   // Monthly Summary
-  yPos += 20;
-  doc
-    .fontSize(14)
-    .fillColor(COLORS.text)
-    .text('MONTHLY SUMMARY', 50, yPos);
+  yPos += 8;
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text('MONTHLY SUMMARY', 20, yPos);
 
-  yPos += 25;
-  doc
-    .fontSize(9)
-    .fillColor(COLORS.textMuted)
-    .text('Average Savings/Trade:', 70, yPos)
-    .fillColor(COLORS.accent)
-    .text(
-      `£${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`,
-      250,
-      yPos
-    );
+  yPos += 8;
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Average Savings/Trade:', 25, yPos);
+  doc.setTextColor(16, 185, 129);
+  doc.text(
+    `£${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    80,
+    yPos
+  );
 
-  yPos += 16;
-  doc
-    .fillColor(COLORS.textMuted)
-    .text('Combined Annual Savings:', 70, yPos)
-    .fillColor(COLORS.accent)
-    .text(
-      `£${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`,
-      250,
-      yPos
-    );
+  yPos += 5;
+  doc.setTextColor(100, 100, 100);
+  doc.text('Combined Annual Savings:', 25, yPos);
+  doc.setTextColor(16, 185, 129);
+  doc.text(
+    `£${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    80,
+    yPos
+  );
 
-  yPos += 16;
-  doc
-    .fillColor(COLORS.textMuted)
-    .text('Average % Savings:', 70, yPos)
-    .fillColor(COLORS.accent)
-    .text(`${client.stats.avgPercentageSavings.toFixed(2)}%`, 250, yPos);
+  yPos += 5;
+  doc.setTextColor(100, 100, 100);
+  doc.text('Average % Savings:', 25, yPos);
+  doc.setTextColor(16, 185, 129);
+  doc.text(`${client.stats.avgPercentageSavings.toFixed(2)}%`, 80, yPos);
 
-  yPos += 16;
-  doc
-    .fillColor(COLORS.textMuted)
-    .text('Average PIPs Added:', 70, yPos)
-    .fillColor(COLORS.text)
-    .text(`+${client.stats.avgPips.toFixed(0)}`, 250, yPos);
+  yPos += 5;
+  doc.setTextColor(100, 100, 100);
+  doc.text('Average PIPs Added:', 25, yPos);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`+${client.stats.avgPips.toFixed(0)}`, 80, yPos);
 
   // Calculations List
-  yPos += 35;
-  doc
-    .fontSize(14)
-    .fillColor(COLORS.text)
-    .text(`${monthName.toUpperCase()} CALCULATIONS`, 50, yPos);
+  yPos += 12;
+  doc.setFontSize(14);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`${monthName.toUpperCase()} CALCULATIONS`, 20, yPos);
 
-  yPos += 25;
+  yPos += 8;
 
-  // Show each calculation
-  client.calculations.forEach((calc: any, index: number) => {
-    if (yPos > 700) {
+  // Show each calculation (limit to first 3 to avoid overflow)
+  const maxCalcs = Math.min(client.calculations.length, 3);
+  client.calculations.slice(0, maxCalcs).forEach((calc: any, index: number) => {
+    if (yPos > 250) {
       doc.addPage();
-      yPos = 50;
+      yPos = 20;
     }
 
     const calcDate = new Date(calc.created_at);
@@ -351,61 +284,39 @@ function addClientPage(doc: any, client: any, monthName: string) {
       minute: '2-digit',
     });
 
-    doc
-      .fontSize(10)
-      .fillColor(COLORS.primary)
-      .text(`Calc ${index + 1} - ${dateStr}`, 70, yPos);
+    doc.setFontSize(10);
+    doc.setTextColor(147, 51, 234);
+    doc.text(`Calc ${index + 1} - ${dateStr}`, 25, yPos);
 
-    yPos += 18;
+    yPos += 6;
+    doc.setFontSize(8);
+    
     const calcDetails = [
       ['Pair:', calc.currency_pair],
       ['Their Rate:', calc.competitor_rate?.toFixed(4)],
       ['Our Rate:', calc.your_rate?.toFixed(4)],
-      ['Amount to Buy:', `£${calc.amount_to_buy?.toLocaleString()}`],
-      ['Trades/Year:', calc.trades_per_year],
-      ['Price Difference:', `${calc.price_difference >= 0 ? '+' : ''}${calc.price_difference?.toFixed(4)}`],
-      ['PIPs:', calc.payment_amount || calc.pips_difference],
-      [
-        'Cost w/ Competitor:',
-        `£${calc.cost_with_competitor?.toLocaleString('en-GB', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`,
-      ],
-      [
-        'Cost w/ Us:',
-        `£${calc.cost_with_us?.toLocaleString('en-GB', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`,
-      ],
-      [
-        'Savings/Trade:',
-        `£${calc.savings_per_trade?.toLocaleString('en-GB', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`,
-      ],
-      [
-        'Annual Savings:',
-        `£${calc.annual_savings?.toLocaleString('en-GB', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`,
-      ],
-      ['% Savings:', `${calc.percentage_savings?.toFixed(2)}%`],
+      ['Amount:', `£${calc.amount_to_buy?.toLocaleString()}`],
+      ['Savings:', `£${calc.savings_per_trade?.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`],
     ];
 
     calcDetails.forEach(([label, value]) => {
-      doc
-        .fontSize(8)
-        .fillColor(COLORS.textMuted)
-        .text(`├─ ${label}`, 90, yPos)
-        .fillColor(COLORS.text)
-        .text(value, 220, yPos);
-      yPos += 13;
+      doc.setTextColor(100, 100, 100);
+      doc.text(label, 30, yPos);
+      doc.setTextColor(0, 0, 0);
+      doc.text(value, 65, yPos);
+      yPos += 4;
     });
 
-    yPos += 10;
+    yPos += 3;
   });
+
+  if (client.calculations.length > maxCalcs) {
+    doc.setFontSize(9);
+    doc.setTextColor(100, 100, 100);
+    doc.text(
+      `... and ${client.calculations.length - maxCalcs} more calculations`,
+      25,
+      yPos
+    );
+  }
 }
