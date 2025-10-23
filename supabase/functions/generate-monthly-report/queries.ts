@@ -62,8 +62,7 @@ export async function aggregateClientData(
     .from('user_profiles')
     .select('id, full_name')
     .eq('company_id', companyId)
-    .eq('role_type', 'junior')
-    .neq('is_active', false);
+    .eq('role_type', 'junior');
 
   if (juniorError) {
     console.error('Error fetching junior users:', juniorError);
@@ -87,6 +86,13 @@ export async function aggregateClientData(
   const juniorUserIds = juniorUsers.map(u => u.id);
   console.log('Found junior users:', juniorUsers.length, juniorUserIds);
 
+  // Debug: Log the exact date range being queried
+  console.log('🔍 Query Parameters:');
+  console.log('  - User IDs:', juniorUserIds);
+  console.log('  - Start Date:', startDate);
+  console.log('  - End Date:', endDate);
+  console.log('  - Action Type: calculation');
+
   // Fetch all calculations for these junior users in the date range
   const { data: calculations, error } = await supabase
     .from('activity_logs')
@@ -101,6 +107,27 @@ export async function aggregateClientData(
   console.log('Calculations query result:', calculations?.length || 0, 'records found');
   if (error) {
     console.error('Error fetching calculations:', error);
+  }
+
+  // Debug: If no calculations found, let's check if ANY exist for these users
+  if (!calculations || calculations.length === 0) {
+    console.log('⚠️ No calculations found. Checking if calculations exist at all...');
+    const { data: anyCalcs, error: anyError } = await supabase
+      .from('activity_logs')
+      .select('id, created_at, action_type, client_name')
+      .in('user_id', juniorUserIds)
+      .eq('action_type', 'calculation')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (!anyError && anyCalcs) {
+      console.log('📋 Sample calculations (most recent 5):', anyCalcs);
+      if (anyCalcs.length > 0) {
+        console.log('⚠️ Calculations exist but date range mismatch!');
+        console.log('   Most recent calculation:', anyCalcs[0].created_at);
+        console.log('   Query range:', startDate, 'to', endDate);
+      }
+    }
   }
 
   if (error) {
