@@ -43,12 +43,12 @@ body {
 .animated-gradient-card {
   position: relative;
   border-radius: 0.75rem;
-  padding: 2px;
+  padding: 3px; /* Thicker border */
   background: linear-gradient(
     90deg,
-    rgba(168, 85, 247, 0.4),
-    rgba(59, 130, 246, 0.4),
-    rgba(168, 85, 247, 0.4)
+    rgba(168, 85, 247, 0.6),
+    rgba(59, 130, 246, 0.6),
+    rgba(168, 85, 247, 0.6)
   );
   background-size: 200% 200%;
   animation: rotate-gradient 3s ease infinite;
@@ -65,7 +65,7 @@ body {
 }
 
 .animated-gradient-card-content {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.05); /* Solid background like original */
   backdrop-filter: blur(12px);
   border-radius: 0.625rem;
   height: 100%;
