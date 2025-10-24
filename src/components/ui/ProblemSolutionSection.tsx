@@ -12,7 +12,7 @@ export default function ProblemSolutionSection() {
         
         <div className="flex flex-col gap-8 items-center max-w-2xl mx-auto">
           {/* Problem - Enhanced 3D with Red Glow */}
-          <div className="w-full bg-gradient-to-b from-red-500/10 to-red-500/5 backdrop-blur-xl border-red-500/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(239,68,68,0.2),0_24px_64px_rgba(239,68,68,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(239,68,68,0.3),0_28px_72px_rgba(239,68,68,0.15),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-red-500/20 p-6">
+          <div className="w-full bg-gradient-to-b from-red-500/10 to-red-500/5 backdrop-blur-xl border-red-500/30 rounded-xl shadow-[0_0_32px_rgba(239,68,68,0.15),0_0_48px_rgba(239,68,68,0.1),0_0_64px_rgba(239,68,68,0.05),inset_0_1px_0_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(239,68,68,0.25),0_0_60px_rgba(239,68,68,0.15),0_0_80px_rgba(239,68,68,0.1),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-red-500/20 p-6">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center flex-shrink-0 icon-container group transition-all duration-300">
                 <Target className="h-6 w-6 text-red-400 feature-icon" />
@@ -32,7 +32,7 @@ export default function ProblemSolutionSection() {
           </div>
 
           {/* Solution - Enhanced 3D with Green Glow */}
-          <div className="w-full bg-gradient-to-b from-green-500/10 to-green-500/5 backdrop-blur-xl border-green-500/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(34,197,94,0.2),0_24px_64px_rgba(34,197,94,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(34,197,94,0.3),0_28px_72px_rgba(34,197,94,0.15),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-green-500/20 p-6">
+          <div className="w-full bg-gradient-to-b from-green-500/10 to-green-500/5 backdrop-blur-xl border-green-500/30 rounded-xl shadow-[0_0_32px_rgba(34,197,94,0.15),0_0_48px_rgba(34,197,94,0.1),0_0_64px_rgba(34,197,94,0.05),inset_0_1px_0_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(34,197,94,0.25),0_0_60px_rgba(34,197,94,0.15),0_0_80px_rgba(34,197,94,0.1),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-green-500/20 p-6">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0 icon-container group transition-all duration-300">
                 <CheckCircle className="h-6 w-6 text-green-400 feature-icon" />
