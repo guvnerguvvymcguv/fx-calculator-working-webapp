@@ -31,7 +31,6 @@ export default function AdminDashboard() {
   const [calculationCountLoading, setCalculationCountLoading] = useState(false);
   const [processingUpdate, setProcessingUpdate] = useState(false);
   const [successMessageType, setSuccessMessageType] = useState<'checkout' | 'seat_update' | null>(null);
-  const [monthlyReportsEnabled, setMonthlyReportsEnabled] = useState(false);
   const [clientDataEnabled, setClientDataEnabled] = useState(false);
   const [testingReport, setTestingReport] = useState(false);
   const [monthlyReportSchedule, setMonthlyReportSchedule] = useState<any>(null);
@@ -686,7 +685,6 @@ setUserCalculationCounts(counts);
     }
 
     setCompanyData(company);
-    setMonthlyReportsEnabled(company?.monthly_reports_enabled || false);
     setClientDataEnabled(company?.client_data_enabled || false);
 
     // Fetch ALL team members (including inactive for seat count)
