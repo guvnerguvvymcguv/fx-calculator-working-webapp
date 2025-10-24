@@ -326,7 +326,7 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
           
           <div className="mb-8">
             {/* Mock Historical Rates Modal - Matching MockCalculator Aesthetic */}
-            <div className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20 max-w-5xl mx-auto" style={{ color: '#C7B3FF' }}>
+            <div className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20 max-w-5xl mx-auto" style={{ color: '#C7B3FF' }}>
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 border-b border-white/20">
                 <div className="flex items-center gap-2">
