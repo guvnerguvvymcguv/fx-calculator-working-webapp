@@ -43,7 +43,7 @@ body {
 .animated-gradient-card {
   position: relative;
   border-radius: 0.75rem;
-  padding: 4px; /* Increased from 3px to 4px for more visible border */
+  padding: 4px;
   background: linear-gradient(
     90deg,
     rgba(168, 85, 247, 0.6),
@@ -52,25 +52,26 @@ body {
   );
   background-size: 200% 200%;
   animation: rotate-gradient 3s ease infinite;
-  /* Smooth transitions for all properties including shadows */
-  transition: all 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
-  /* Enhanced 3D depth with layered shadows */
+  /* Smooth transitions for all properties - critical for fade effects */
+  transition: all 0.3s ease-in-out;
+  /* Gentler base glow - starts subtle */
   box-shadow: 
     0 4px 8px rgba(0, 0, 0, 0.4),
     0 8px 20px rgba(0, 0, 0, 0.3),
-    0 16px 40px rgba(0, 0, 0, 0.2),
+    0 0 24px rgba(168, 85, 247, 0.1),
+    0 0 32px rgba(59, 130, 246, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .animated-gradient-card:hover {
   animation-play-state: paused;
   transform: translateY(-4px);
-  /* Enhanced hover shadows for floating effect with smooth fade-in */
+  /* Gentler hover glow - less intense, smooth fade-in */
   box-shadow: 
     0 8px 16px rgba(0, 0, 0, 0.5),
-    0 16px 32px rgba(168, 85, 247, 0.3),
-    0 24px 48px rgba(59, 130, 246, 0.2),
-    0 0 30px rgba(168, 85, 247, 0.2),
+    0 16px 32px rgba(0, 0, 0, 0.2),
+    0 0 32px rgba(168, 85, 247, 0.2),
+    0 0 48px rgba(59, 130, 246, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
