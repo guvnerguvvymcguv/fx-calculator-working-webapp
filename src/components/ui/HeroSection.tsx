@@ -29,7 +29,7 @@ export function HeroSection({ onSignUp, isAuthenticated, userRole, onNavigate }:
   return (
     <section className="relative min-h-screen flex items-center justify-center px-4 py-20 pt-32">
       <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-start">
-        <div className="space-y-8 flex flex-col justify-center min-h-[60vh]">
+        <div className="space-y-8 flex flex-col justify-center min-h-[60vh] animate-fade-in-up">
           <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
             <span className="bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">
               Empower Your Junior Brokers
@@ -56,7 +56,7 @@ export function HeroSection({ onSignUp, isAuthenticated, userRole, onNavigate }:
           </div>
         </div>
         
-        <div className="lg:pl-8">
+        <div className="lg:pl-8 animate-fade-in-up-delayed">
           <MockCalculator />
         </div>
       </div>

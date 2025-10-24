@@ -27,6 +27,27 @@ body {
   50% { opacity: 0.7; }
 }
 
+/* Subtle fade-in and slide-up animation for hero section */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-fade-in-up-delayed {
+  opacity: 0;
+  animation: fade-in-up 0.8s ease-out 0.2s forwards;
+}
+
 /* Animated Gradient Border Cards */
 @keyframes rotate-gradient {
   0% {
