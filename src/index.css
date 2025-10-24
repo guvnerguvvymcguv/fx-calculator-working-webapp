@@ -52,7 +52,8 @@ body {
   );
   background-size: 200% 200%;
   animation: rotate-gradient 3s ease infinite;
-  transition: all 0.3s ease;
+  /* Smooth transitions for all properties including shadows */
+  transition: all 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
   /* Enhanced 3D depth with layered shadows */
   box-shadow: 
     0 4px 8px rgba(0, 0, 0, 0.4),
@@ -64,7 +65,7 @@ body {
 .animated-gradient-card:hover {
   animation-play-state: paused;
   transform: translateY(-4px);
-  /* Enhanced hover shadows for floating effect */
+  /* Enhanced hover shadows for floating effect with smooth fade-in */
   box-shadow: 
     0 8px 16px rgba(0, 0, 0, 0.5),
     0 16px 32px rgba(168, 85, 247, 0.3),
