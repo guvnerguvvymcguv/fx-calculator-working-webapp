@@ -33,7 +33,6 @@ export default function AdminDashboard() {
   const [successMessageType, setSuccessMessageType] = useState<'checkout' | 'seat_update' | null>(null);
   const [monthlyReportsEnabled, setMonthlyReportsEnabled] = useState(false);
   const [clientDataEnabled, setClientDataEnabled] = useState(false);
-  const [savingReportSettings, setSavingReportSettings] = useState(false);
   const [testingReport, setTestingReport] = useState(false);
   const [monthlyReportSchedule, setMonthlyReportSchedule] = useState<any>(null);
   const [editingMonthlyReportSchedule, setEditingMonthlyReportSchedule] = useState(false);
@@ -806,37 +805,6 @@ setUserCalculationCounts(counts);
     navigate('/login');
   };
 
-  const handleToggleMonthlyReports = async () => {
-    setSavingReportSettings(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('company_id')
-        .eq('id', user.id)
-        .single();
-        
-      if (!profile?.company_id) return;
-      
-      const { error } = await supabase
-        .from('companies')
-        .update({ monthly_reports_enabled: !monthlyReportsEnabled })
-        .eq('id', profile.company_id);
-        
-      if (error) throw error;
-      
-      setMonthlyReportsEnabled(!monthlyReportsEnabled);
-      alert(`Monthly reports ${!monthlyReportsEnabled ? 'enabled' : 'disabled'} successfully!`);
-    } catch (error) {
-      console.error('Error updating monthly reports setting:', error);
-      alert('Failed to update settings. Please try again.');
-    } finally {
-      setSavingReportSettings(false);
-    }
-  };
-
   const handleTestReport = async () => {
     if (!confirm('This will generate and send a test report for the LAST 30 DAYS to all admins. Continue?')) {
       return;
@@ -913,7 +881,7 @@ setUserCalculationCounts(counts);
         .from('monthly_report_schedule')
         .upsert({
           company_id: profile.company_id,
-          enabled: monthlyReportsEnabled,
+          enabled: true, // Always enabled when saving a schedule
           day_of_month: parseInt(monthlyReportDay),
           hour: parseInt(monthlyReportHour),
           timezone: 'Europe/London',
