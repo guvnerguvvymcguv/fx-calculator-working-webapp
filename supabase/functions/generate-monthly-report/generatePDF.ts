@@ -183,57 +183,58 @@ function addCoverPage(doc: jsPDF, data: PDFData) {
 }
 
 function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: number) {
+  // Use EXACT same pattern as cover page boxes
   const containerStartY = 15;
-  const containerPadding = 10;
-  const contentX = 20;
-  const labelX = 25;
-  const valueX = 90;
+  const containerPadding = 10; // Same as cover page (boxY = summaryBoxY + 10)
+  const contentX = 20; // Same as cover page
+  const labelX = 25; // Same as cover page
+  const valueX = 90; // Same as cover page
 
+  // Calculate dynamic box height based on number of currency pairs
   const numPairs = Object.keys(client.stats.currencyPairs).length;
-  
-  const contentHeight = 
-    10 +
-    8 +
-    10 +
-    8 +
-    12 +
-    7 +
-    (numPairs * 7) +
-    10 +
-    (8 * 8);
-  
+  const contentHeight =
+    10 + // Company name
+    8 +  // Broker line
+    10 + // "SUMMARY" header
+    12 + // Space after header
+    7 +  // "Currency Pairs Traded:" label
+    (numPairs * 7) + // Currency pairs list
+    10 + // Space after pairs
+    (8 * 8); // 8 stat lines with 8mm spacing each
+
   const boxHeight = contentHeight + (containerPadding * 2);
 
   drawGlassmorphicBox(doc, 10, containerStartY, 190, boxHeight);
 
-  let yPos = containerStartY + containerPadding;
+  // Use absolute positioning pattern like cover page
+  const boxY = containerStartY + containerPadding;
 
+  // Company name
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(24);
   doc.setTextColor(...COLORS.primary);
-  doc.text(client.clientName.toUpperCase(), contentX, yPos);
+  doc.text(client.clientName.toUpperCase(), contentX, boxY);
 
-  yPos += 10;
+  // Broker
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.textSecondary);
-  doc.text(`Broker: ${client.broker}`, contentX, yPos);
+  doc.text(`Broker: ${client.broker}`, contentX, boxY + 10);
 
-  yPos += 8;
-
+  // SUMMARY header
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...COLORS.primary);
-  doc.text('SUMMARY', contentX, yPos);
+  doc.text('SUMMARY', contentX, boxY + 18);
 
-  yPos += 12;
-
+  // Currency Pairs Traded (starts at boxY + 30)
+  let currencyPairsY = boxY + 30;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Currency Pairs Traded:', labelX, yPos);
+  doc.text('Currency Pairs Traded:', labelX, currencyPairsY);
 
-  yPos += 7;
+  currencyPairsY += 7;
   const sortedPairs = Object.entries(client.stats.currencyPairs)
     .sort(([, a], [, b]) => (b as number) - (a as number));
 
@@ -241,48 +242,50 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   sortedPairs.forEach(([pair, count]) => {
     const percentage = ((count as number / client.stats.totalCalculations) * 100).toFixed(1);
     doc.setTextColor(...COLORS.textMuted);
-    doc.text(`${pair}:`, labelX, yPos);
+    doc.text(`${pair}:`, labelX, currencyPairsY);
     doc.setTextColor(...COLORS.text);
-    doc.text(`${count} calculations (${percentage}%)`, 50, yPos);
-    yPos += 7;
+    doc.text(`${count} calculations (${percentage}%)`, 50, currencyPairsY);
+    currencyPairsY += 7;
   });
 
-  yPos += 10;
+  // Stats section - use absolute positioning like cover page (boxY + offset)
+  const statsStartY = currencyPairsY + 10; // 10mm space after currency pairs
 
   doc.setFontSize(11);
-  
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Trades Per Year:', labelX, yPos);
-  doc.setTextColor(...COLORS.text);
-  doc.text(client.stats.tradesPerYear.toString(), valueX, yPos);
-  yPos += 8;
 
+  // Trades Per Year
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Trades Per Month:', labelX, yPos);
+  doc.text('Trades Per Year:', labelX, statsStartY);
   doc.setTextColor(...COLORS.text);
-  doc.text(`~${client.stats.tradesPerMonth}`, valueX, yPos);
-  yPos += 8;
+  doc.text(client.stats.tradesPerYear.toString(), valueX, statsStartY);
 
+  // Trades Per Month (statsStartY + 8)
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Monthly Trade Volume:', labelX, yPos);
+  doc.text('Trades Per Month:', labelX, statsStartY + 8);
+  doc.setTextColor(...COLORS.text);
+  doc.text(`~${client.stats.tradesPerMonth}`, valueX, statsStartY + 8);
+
+  // Monthly Trade Volume (statsStartY + 16)
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Monthly Trade Volume:', labelX, statsStartY + 16);
   doc.setTextColor(...COLORS.text);
   doc.text(
     `~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
       maximumFractionDigits: 0,
     })}`,
     valueX,
-    yPos
+    statsStartY + 16
   );
-  yPos += 8;
 
+  // Average % Savings (statsStartY + 24)
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Average % Savings:', labelX, yPos);
+  doc.text('Average % Savings:', labelX, statsStartY + 24);
   doc.setTextColor(...COLORS.text);
-  doc.text(`${client.stats.avgPercentageSavings.toFixed(2)}%`, valueX, yPos);
-  yPos += 8;
+  doc.text(`${client.stats.avgPercentageSavings.toFixed(2)}%`, valueX, statsStartY + 24);
 
+  // Combined Annual Savings (statsStartY + 32) - use accent color like cover page
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Combined Annual Savings:', labelX, yPos);
+  doc.text('Combined Annual Savings:', labelX, statsStartY + 32);
   doc.setTextColor(...COLORS.accent);
   doc.text(
     `£${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
@@ -290,22 +293,22 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
       maximumFractionDigits: 2,
     })}`,
     valueX,
-    yPos
+    statsStartY + 32
   );
-  yPos += 8;
 
+  // Average Trade Value (statsStartY + 40)
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Average Trade Value:', labelX, yPos);
+  doc.text('Average Trade Value:', labelX, statsStartY + 40);
   doc.setTextColor(...COLORS.text);
   doc.text(
     `£${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
     valueX,
-    yPos
+    statsStartY + 40
   );
-  yPos += 8;
 
+  // Average Savings Per Trade (statsStartY + 48)
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Average Savings Per Trade:', labelX, yPos);
+  doc.text('Average Savings Per Trade:', labelX, statsStartY + 48);
   doc.setTextColor(...COLORS.text);
   doc.text(
     `£${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
@@ -313,12 +316,12 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
       maximumFractionDigits: 2,
     })}`,
     valueX,
-    yPos
+    statsStartY + 48
   );
-  yPos += 8;
 
+  // Average PIPs (statsStartY + 56)
   doc.setTextColor(...COLORS.textMuted);
-  doc.text('Average PIPs:', labelX, yPos);
+  doc.text('Average PIPs:', labelX, statsStartY + 56);
   doc.setTextColor(...COLORS.text);
-  doc.text(`+${client.stats.avgPips.toFixed(0)}`, valueX, yPos);
+  doc.text(`+${client.stats.avgPips.toFixed(0)}`, valueX, statsStartY + 56);
 }
