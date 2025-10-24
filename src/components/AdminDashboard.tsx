@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check, AlertCircle, LogOut, FileText, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import MonthlyReportScheduler from './MonthlyReportScheduler';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -36,6 +35,10 @@ export default function AdminDashboard() {
   const [clientDataEnabled, setClientDataEnabled] = useState(false);
   const [savingReportSettings, setSavingReportSettings] = useState(false);
   const [testingReport, setTestingReport] = useState(false);
+  const [monthlyReportSchedule, setMonthlyReportSchedule] = useState<any>(null);
+  const [editingMonthlyReportSchedule, setEditingMonthlyReportSchedule] = useState(false);
+  const [monthlyReportDay, setMonthlyReportDay] = useState('1');
+  const [monthlyReportHour, setMonthlyReportHour] = useState('9');
   const [metrics, setMetrics] = useState({
     totalSeats: 0,
     usedSeats: 0,
@@ -180,7 +183,37 @@ setUserCalculationCounts(counts);
     checkSalesforceConnection();
     fetchWeeklyExportSchedule();
     fetchMonthlyExportSchedule();
+    fetchMonthlyReportSchedule();
   }, [dateRange]);
+
+  const fetchMonthlyReportSchedule = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.company_id) return;
+
+      const { data: schedule } = await supabase
+        .from('monthly_report_schedule')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .maybeSingle();
+
+      if (schedule) {
+        setMonthlyReportSchedule(schedule);
+        setMonthlyReportDay(schedule.day_of_month?.toString() || '1');
+        setMonthlyReportHour(schedule.hour?.toString() || '9');
+      }
+    } catch (error) {
+      console.error('Error fetching monthly report schedule:', error);
+    }
+  };
 
   const checkSalesforceConnection = async () => {
     try {
@@ -863,6 +896,43 @@ setUserCalculationCounts(counts);
     }
   };
 
+  const saveMonthlyReportSchedule = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.company_id) return;
+
+      const { error } = await supabase
+        .from('monthly_report_schedule')
+        .upsert({
+          company_id: profile.company_id,
+          enabled: monthlyReportsEnabled,
+          day_of_month: parseInt(monthlyReportDay),
+          hour: parseInt(monthlyReportHour),
+          timezone: 'Europe/London',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'company_id'
+        });
+
+      if (error) throw error;
+
+      await fetchMonthlyReportSchedule();
+      setEditingMonthlyReportSchedule(false);
+      alert(`Monthly report schedule saved successfully!`);
+    } catch (error) {
+      console.error('Error saving monthly report schedule:', error);
+      alert('Failed to save schedule. Please try again.');
+    }
+  };
+
   const handleExportClick = async () => {
     // Check if Salesforce is connected first
     const { data: { user } } = await supabase.auth.getUser();
@@ -1256,68 +1326,129 @@ setUserCalculationCounts(counts);
                   </div>
                 </div>
 
-                {/* Report Details */}
+                {/* Schedule and Test Button Side-by-Side */}
                 {monthlyReportsEnabled && (
-                  <div className="p-4 bg-purple-900/20 border border-purple-800/30 rounded-lg">
-                    <h4 className="text-white font-medium mb-3 flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-400" />
-                      Active - Next report scheduled
-                    </h4>
-                    <div className="space-y-2 text-sm text-gray-300">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Send Date:</span>
-                        <span className="text-white">1st of every month at 9:00 AM</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Recipients:</span>
-                        <span className="text-white">All company admins</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Report Period:</span>
-                        <span className="text-white">Previous month's activity</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Format:</span>
-                        <span className="text-white">PDF attachment via email</span>
-                      </div>
+                  <div className="flex gap-6">
+                    {/* LEFT SIDE - Schedule Details (matching Weekly Export style) */}
+                    <div className="flex-1">
+                      {!editingMonthlyReportSchedule && monthlyReportSchedule ? (
+                        <div className="flex items-center gap-4">
+                          <Clock className="h-5 w-5 text-purple-400" />
+                          <span className="text-white font-medium">
+                            Active - Day {monthlyReportSchedule.day_of_month} at {monthlyReportSchedule.hour.toString().padStart(2, '0')}:00
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingMonthlyReportSchedule(true)}
+                            className="text-gray-400 hover:text-white"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : !editingMonthlyReportSchedule ? (
+                        <div className="flex items-center gap-4">
+                          <Clock className="h-5 w-5 text-purple-400" />
+                          <Button
+                            size="sm"
+                            onClick={() => setEditingMonthlyReportSchedule(true)}
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            Set Schedule
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Clock className="h-5 w-5 text-purple-400" />
+                          <span className="text-gray-400">Day</span>
+                          <select
+                            value={monthlyReportDay}
+                            onChange={(e) => setMonthlyReportDay(e.target.value)}
+                            className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            {Array.from({ length: 28 }, (_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="text-gray-400">at</span>
+                          <select
+                            value={monthlyReportHour}
+                            onChange={(e) => setMonthlyReportHour(e.target.value)}
+                            className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                          >
+                            {Array.from({ length: 24 }, (_, i) => (
+                              <option key={i} value={i}>
+                                {i.toString().padStart(2, '0')}:00
+                              </option>
+                            ))}
+                          </select>
+                          <Button
+                            size="sm"
+                            onClick={saveMonthlyReportSchedule}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingMonthlyReportSchedule(false);
+                              if (monthlyReportSchedule) {
+                                setMonthlyReportDay(monthlyReportSchedule.day_of_month?.toString() || '1');
+                                setMonthlyReportHour(monthlyReportSchedule.hour?.toString() || '9');
+                              }
+                            }}
+                            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* RIGHT SIDE - Test Button */}
+                    <div className="flex items-center">
+                      <Button
+                        onClick={handleTestReport}
+                        disabled={testingReport}
+                        variant="outline"
+                        className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
+                      >
+                        {testingReport ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Test Report
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 )}
 
-                {/* Test Button */}
-                <div className="flex justify-end pt-4 border-t border-gray-700">
-                  <Button
-                    onClick={handleTestReport}
-                    disabled={testingReport || !monthlyReportsEnabled}
-                    variant="outline"
-                    className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
-                  >
-                    {testingReport ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2" />
-                        Generating Test Report...
-                      </>
-                    ) : (
-                      <>
-                        <Mail className="h-4 w-4 mr-2" />
-                        Send Test Report
-                      </>
-                    )}
-                  </Button>
-                </div>
+                {/* Info text */}
+                {monthlyReportsEnabled && (
+                  <p className="text-xs text-gray-500">
+                    All admin users will receive the monthly client report at the scheduled time
+                  </p>
+                )}
 
                 {!monthlyReportsEnabled && (
                   <p className="text-xs text-gray-500 text-center">
-                    Enable monthly reports to test the feature
+                    Enable monthly reports to configure scheduling
                   </p>
                 )}
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Monthly Report Scheduler */}
-        <MonthlyReportScheduler />
 
         {/* Weekly Export Schedule */}
         <Card className="bg-gray-900/50 border-gray-800 mb-6">
