@@ -190,19 +190,22 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   const labelX = 25; // Same as cover page
   const valueX = 90; // Same as cover page
 
-  // Calculate dynamic box height based on number of currency pairs
+  // Calculate where the last line of text will be
   const numPairs = Object.keys(client.stats.currencyPairs).length;
-  const contentHeight =
-    10 + // Company name
-    8 +  // Broker line
-    10 + // "SUMMARY" header
-    12 + // Space after header
-    7 +  // "Currency Pairs Traded:" label
-    (numPairs * 7) + // Currency pairs list
-    10 + // Space after pairs
-    (8 * 8); // 8 stat lines with 8mm spacing each
 
-  const boxHeight = contentHeight + (containerPadding * 2);
+  // Starting from boxY (which is containerStartY + containerPadding):
+  // Company name at: boxY + 0
+  // Broker at: boxY + 10
+  // SUMMARY at: boxY + 18
+  // Currency Pairs Traded at: boxY + 30
+  // Currency pairs list at: boxY + 37 to boxY + 37 + (numPairs-1) * 7
+  // Last currency pair at: boxY + 37 + (numPairs-1) * 7 = boxY + 30 + (numPairs * 7)
+  // Stats start at: boxY + 30 + (numPairs * 7) + 10 = boxY + 40 + (numPairs * 7)
+  // Last stat (Average PIPs) at: statsStartY + 56
+
+  const lastLineY = 40 + (numPairs * 7) + 56; // Offset from boxY
+  const contentHeight = lastLineY;
+  const boxHeight = contentHeight + (containerPadding * 2); // Equal padding top and bottom
 
   drawGlassmorphicBox(doc, 10, containerStartY, 190, boxHeight);
 
