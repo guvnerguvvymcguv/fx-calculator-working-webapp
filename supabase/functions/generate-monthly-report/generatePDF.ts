@@ -185,7 +185,7 @@ function addCoverPage(doc: jsPDF, data: PDFData) {
 function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: number) {
   // Use EXACT same pattern as cover page boxes
   const containerStartY = 15;
-  const containerPadding = 10; // Same as cover page (boxY = summaryBoxY + 10)
+  const containerPadding = 14; // Increased padding for more breathing room (was 10)
   const contentX = 20; // Same as cover page
   const labelX = 25; // Same as cover page
   const valueX = 90; // Same as cover page
@@ -195,15 +195,13 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
 
   // Starting from boxY (which is containerStartY + containerPadding):
   // Company name at: boxY + 0
-  // Broker at: boxY + 10
-  // SUMMARY at: boxY + 18
-  // Currency Pairs Traded at: boxY + 30
-  // Currency pairs list at: boxY + 37 to boxY + 37 + (numPairs-1) * 7
-  // Last currency pair at: boxY + 37 + (numPairs-1) * 7 = boxY + 30 + (numPairs * 7)
-  // Stats start at: boxY + 30 + (numPairs * 7) + 10 = boxY + 40 + (numPairs * 7)
+  // SUMMARY at: boxY + 12 (removed Broker line, moved SUMMARY up)
+  // Currency Pairs Traded at: boxY + 24
+  // Currency pairs list ends at: boxY + 24 + (numPairs * 7)
+  // Stats start at: boxY + 24 + (numPairs * 7) + 10 = boxY + 34 + (numPairs * 7)
   // Last stat (Average PIPs) at: statsStartY + 56
 
-  const lastLineY = 40 + (numPairs * 7) + 56; // Offset from boxY
+  const lastLineY = 34 + (numPairs * 7) + 56; // = 90 + (numPairs * 7)
   const contentHeight = lastLineY;
   const boxHeight = contentHeight + (containerPadding * 2); // Equal padding top and bottom
 
@@ -218,20 +216,14 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   doc.setTextColor(...COLORS.primary);
   doc.text(client.clientName.toUpperCase(), contentX, boxY);
 
-  // Broker
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.textSecondary);
-  doc.text(`Broker: ${client.broker}`, contentX, boxY + 10);
-
-  // SUMMARY header
+  // SUMMARY header (removed Broker line)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...COLORS.primary);
-  doc.text('SUMMARY', contentX, boxY + 18);
+  doc.text('SUMMARY', contentX, boxY + 12);
 
-  // Currency Pairs Traded (starts at boxY + 30)
-  let currencyPairsY = boxY + 30;
+  // Currency Pairs Traded (starts at boxY + 24)
+  let currencyPairsY = boxY + 24;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.textMuted);
