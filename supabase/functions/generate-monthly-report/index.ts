@@ -26,29 +26,55 @@ serve(async (req) => {
   try {
     console.log('🚀 Starting monthly client report generation...');
 
-    // Get request body to check for company_id (test mode)
+    // Get request body to check for company_id and scheduled mode
     const requestBody = req.method === 'POST' ? await req.json().catch(() => ({})) : {};
-    const testCompanyId = requestBody.company_id;
+    const { company_id, scheduled } = requestBody;
 
     console.log('Request body:', requestBody);
-    console.log('Test company ID:', testCompanyId);
+    console.log('Company ID:', company_id);
+    console.log('Scheduled mode:', scheduled);
+
+    // Determine which date range to use
+    const isTestMode = company_id && !scheduled;
+
+    let startDate: Date;
+    let endDate: Date;
+
+    if (isTestMode) {
+      // TEST MODE: Use last 30 days
+      const now = new Date();
+      endDate = now;
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 30);
+      console.log('🧪 TEST MODE: Last 30 days');
+    } else {
+      // PRODUCTION/SCHEDULED MODE: Use previous month
+      const now = new Date();
+      const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+      lastDayLastMonth.setHours(23, 59, 59, 999);
+
+      startDate = firstDayLastMonth;
+      endDate = lastDayLastMonth;
+      console.log('🚀 PRODUCTION MODE: Previous month');
+    }
 
     // If test mode, get the specific company
     let companies;
     let companiesError;
 
-    if (testCompanyId) {
+    if (company_id) {
       // TEST MODE: Get specific company for testing
-      console.log('Test mode - fetching company:', testCompanyId);
+      console.log('Test mode - fetching company:', company_id);
       const { data, error } = await supabase
         .from('companies')
         .select('id, name, stripe_customer_id, monthly_reports_enabled, client_data_enabled')
-        .eq('id', testCompanyId)
+        .eq('id', company_id)
         .single();
-      
+
       companies = data ? [data] : [];
       companiesError = error;
-      
+
       console.log('Test company data:', companies);
     } else {
       // PRODUCTION MODE: Get all companies with reports enabled
@@ -58,7 +84,7 @@ serve(async (req) => {
         .select('id, name, stripe_customer_id, monthly_reports_enabled, client_data_enabled')
         .eq('client_data_enabled', true)
         .eq('monthly_reports_enabled', true);
-      
+
       companies = data;
       companiesError = error;
     }
@@ -71,13 +97,13 @@ serve(async (req) => {
     if (!companies || companies.length === 0) {
       console.log('No companies have monthly reports enabled or no activity');
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           success: true,
-          message: testCompanyId ? 'Company not found or reports not enabled' : 'No companies to process' 
+          message: company_id ? 'Company not found or reports not enabled' : 'No companies to process'
         }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
@@ -101,7 +127,7 @@ serve(async (req) => {
           continue;
         }
 
-        if (!company.monthly_reports_enabled && !testCompanyId) {
+        if (!company.monthly_reports_enabled && !company_id) {
           console.log(`Monthly reports not enabled for ${company.name} - skipping`);
           results.push({
             company: company.name,
@@ -111,34 +137,21 @@ serve(async (req) => {
           continue;
         }
 
-        // Get date range - use LAST 30 DAYS for test mode, PREVIOUS MONTH for production
-        const now = new Date();
-        let firstDay, lastDay, monthName;
+        // Use the dates calculated at the top
+        const firstDay = new Date(startDate);
+        firstDay.setHours(0, 0, 0, 0);
 
-        if (testCompanyId) {
-          // TEST MODE: Use last 30 days from today
-          lastDay = new Date(); // Today
-          lastDay.setHours(23, 59, 59, 999); // End of today
+        const lastDay = new Date(endDate);
+        lastDay.setHours(23, 59, 59, 999);
 
-          firstDay = new Date(); // Start from today
-          firstDay.setDate(firstDay.getDate() - 30); // Go back 30 days
-          firstDay.setHours(0, 0, 0, 0); // Start of that day
-
+        let monthName: string;
+        if (isTestMode) {
           monthName = `Last 30 Days (${firstDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${lastDay.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
-
-          console.log('🧪 TEST MODE: Using LAST 30 DAYS data');
         } else {
-          // PRODUCTION MODE: Use previous month
-          firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-          lastDay.setHours(23, 59, 59, 999);
-
           monthName = firstDay.toLocaleDateString('en-GB', {
             month: 'long',
             year: 'numeric'
           });
-
-          console.log('🚀 PRODUCTION MODE: Using PREVIOUS month data');
         }
 
         console.log(`Date range: ${firstDay.toISOString()} to ${lastDay.toISOString()}`);
@@ -244,12 +257,17 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: testCompanyId ? 'Test report generated successfully' : 'Monthly reports generated successfully',
+        message: company_id ? 'Test report generated successfully' : 'Monthly reports generated successfully',
+        mode: isTestMode ? 'test' : 'production',
+        dateRange: {
+          start: startDate.toISOString(),
+          end: endDate.toISOString()
+        },
         results: results,
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
 
