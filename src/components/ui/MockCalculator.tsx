@@ -7,7 +7,7 @@ export function MockCalculator() {
   const today = new Date().toLocaleDateString('en-US');
   
   return (
-    <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl max-w-lg mx-auto" style={{ color: '#C7B3FF' }}>
+    <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20 max-w-lg mx-auto" style={{ color: '#C7B3FF' }}>
       <CardHeader className="text-center pb-3">
         <div className="flex items-center justify-center gap-2 mb-2">
           <TrendingUp className="h-6 w-6 text-purple-400" />

@@ -1,5 +1,4 @@
 import { Button } from '../../components/ui/button';
-import { Card } from '../../components/ui/card';
 import { ArrowRight } from 'lucide-react';
 import { MockCalculator } from './MockCalculator.tsx';
 
@@ -58,9 +57,7 @@ export function HeroSection({ onSignUp, isAuthenticated, userRole, onNavigate }:
         </div>
         
         <div className="lg:pl-8">
-          <Card className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl shadow-2xl p-6 hover:scale-105 transition-transform duration-300">
-            <MockCalculator />
-          </Card>
+          <MockCalculator />
         </div>
       </div>
     </section>

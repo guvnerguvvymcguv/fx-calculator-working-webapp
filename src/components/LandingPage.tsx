@@ -9,8 +9,11 @@ import { supabase } from '../lib/supabase';
 import { Navbar } from './ui/Navbar';
 import { HeroSection } from './ui/HeroSection';
 import ProblemSolutionSection from "./ui/ProblemSolutionSection";
+import { USPSection } from './ui/USPSection';
 import { FeaturesGrid } from './ui/FeaturesGrid';
+import { HowItWorksSection } from './ui/HowItWorksSection';
 import PricingSection from "./ui/PricingSection";
+import { FAQSection } from './ui/FAQSection';
 import { Footer } from './ui/Footer';
 import { MockCalculator } from './ui/MockCalculator';
 import { HistoricalChart } from './ui/HistoricalChart';
@@ -156,6 +159,9 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
         onNavigate={handleAuthenticatedNavigation}
       />
 
+      {/* USP Section - Key value proposition */}
+      <USPSection />
+
       {/* Problem & Solution Section */}
       <ProblemSolutionSection />
 
@@ -280,6 +286,9 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
           </div>
         </div>
       </section>
+
+      {/* How It Works Section */}
+      <HowItWorksSection />
 
       {/* Demo Section */}
       <section className="py-20 px-4">
@@ -551,6 +560,9 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
 
       {/* Pricing Section */}
       <PricingSection />
+
+      {/* FAQ Section */}
+      <FAQSection />
 
       {/* Footer */}
       <Footer onLogin={handleLogin} />
