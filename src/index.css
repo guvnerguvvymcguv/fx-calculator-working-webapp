@@ -65,14 +65,35 @@ body {
 }
 
 .animated-gradient-card-content {
-  background: rgba(255, 255, 255, 0.05); /* Solid background like original */
+  background: #10051A; /* Solid dark background matching the page */
   backdrop-filter: blur(12px);
   border-radius: 0.625rem;
   height: 100%;
   width: 100%;
   transition: background 0.3s ease;
+  /* Add a subtle overlay for the glassmorphic effect */
+  position: relative;
 }
 
-.animated-gradient-card:hover .animated-gradient-card-content {
+.animated-gradient-card-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.625rem;
+  transition: background 0.3s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.animated-gradient-card-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+.animated-gradient-card:hover .animated-gradient-card-content::before {
   background: rgba(255, 255, 255, 0.08);
 }
