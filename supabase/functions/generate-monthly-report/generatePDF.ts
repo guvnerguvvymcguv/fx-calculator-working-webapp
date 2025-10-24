@@ -223,21 +223,23 @@ function drawDividerLine(doc: jsPDF, x: number, y: number, width: number) {
 }
 
 function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: number) {
-  // Box dimensions - equal padding on all sides
+  // Box dimensions - equal padding on all sides (matching title page)
   const containerStartY = 15;
-  const containerPadding = 8; // Equal padding all sides (24px ≈ 8mm)
-  const contentX = 18; // Left margin for content (inside container with padding)
+  const containerPadding = 10; // Generous padding like title page (30px ≈ 10mm)
+  const contentX = 20; // Left margin matching title page
+  const labelX = 25; // Indented labels (like title page)
+  const valueX = 90; // Value position (matching title page alignment)
 
   // Calculate the number of currency pairs to determine box height
   const numPairs = Object.keys(client.stats.currencyPairs).length;
   
-  // Dynamic height calculation:
-  // Header: 10mm (company name) + 10mm (broker line) + 12mm (spacing)
-  // SUMMARY: 8mm (header) + 8mm (spacing)
-  // Currency Pairs: 6mm (header) + (numPairs * 5mm) + 4mm (spacing)
-  // Stats: 8 lines * 6mm each
+  // Dynamic height calculation with generous spacing (matching title page):
+  // Header: 12mm (company name) + 8mm (broker line) + 10mm (spacing before SUMMARY)
+  // SUMMARY: 8mm (header) + 12mm (spacing after header)
+  // Currency Pairs: 7mm (header line) + (numPairs * 7mm per pair) + 10mm (spacing after)
+  // Stats: 8 lines * 8mm each (generous line height like title page)
   // Total content + top padding + bottom padding
-  const contentHeight = 10 + 10 + 12 + 8 + 8 + 6 + (numPairs * 5) + 4 + (8 * 6);
+  const contentHeight = 12 + 8 + 10 + 8 + 12 + 7 + (numPairs * 7) + 10 + (8 * 8);
   const boxHeight = contentHeight + (containerPadding * 2);
 
   // Draw the main glassmorphic container for the entire client section
@@ -247,111 +249,129 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   let yPos = containerStartY + containerPadding;
 
   // Client header (Company name)
-  doc.setFont('helvetica', 'bold'); // Bold for company name
-  doc.setFontSize(24); // Larger font for company names
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(24);
   doc.setTextColor(...COLORS.primary); // Vibrant purple for client name
   doc.text(client.clientName.toUpperCase(), contentX, yPos);
 
-  yPos += 10;
-  doc.setFont('helvetica', 'normal'); // Regular font for metadata
+  yPos += 12; // More spacing after company name
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.textSecondary); // Light gray for broker
   doc.text(`Broker: ${client.broker}`, contentX, yPos);
 
-  // Add spacing before SUMMARY section
-  yPos += 12;
+  // Add spacing before SUMMARY section (matching title page)
+  yPos += 10;
 
   // SUMMARY section
-  doc.setFont('helvetica', 'bold'); // Bold for section headers
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
   doc.text('SUMMARY', contentX, yPos);
 
-  yPos += 8; // Space after header
+  yPos += 12; // Generous space after header (matching title page)
 
-  // Currency Pairs Traded - NO indentation
-  doc.setFont('helvetica', 'normal'); // Regular font for content
+  // Currency Pairs Traded - using gray for label, white for value
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(...COLORS.text); // White for labels
-  doc.text('Currency Pairs Traded:', contentX, yPos);
+  doc.setTextColor(...COLORS.textMuted); // Soft gray for label
+  doc.text('Currency Pairs Traded:', labelX, yPos);
 
-  yPos += 6;
+  yPos += 7; // Generous spacing
   const sortedPairs = Object.entries(client.stats.currencyPairs)
     .sort(([, a], [, b]) => (b as number) - (a as number));
 
-  doc.setFontSize(11);
+  doc.setFontSize(10); // Slightly smaller for pair details
   sortedPairs.forEach(([pair, count]) => {
     const percentage = ((count as number / client.stats.totalCalculations) * 100).toFixed(1);
+    doc.setTextColor(...COLORS.textMuted); // Gray for pair name
+    doc.text(`${pair}:`, labelX, yPos);
     doc.setTextColor(...COLORS.text); // White for values
-    doc.text(`${pair}: ${count} calculations (${percentage}%)`, contentX, yPos);
-    yPos += 5;
+    doc.text(`${count} calculations (${percentage}%)`, valueX - 40, yPos);
+    yPos += 7; // Matching title page line spacing
   });
 
-  yPos += 4;
+  yPos += 10; // Generous spacing before stats (matching title page)
 
-  // Single column layout for all stats - NO indentation
-  doc.setTextColor(...COLORS.text);
+  // Single column layout for all stats with label-value pattern (matching title page)
+  doc.setFontSize(11);
   
-  doc.text(
-    `Trades Per Year: ${client.stats.tradesPerYear}`,
-    contentX,
-    yPos
-  );
-  yPos += 6;
+  // Trades Per Year
+  doc.setTextColor(...COLORS.textMuted); // Gray for label
+  doc.text('Trades Per Year:', labelX, yPos);
+  doc.setTextColor(...COLORS.text); // White for value
+  doc.text(client.stats.tradesPerYear.toString(), valueX, yPos);
+  yPos += 8; // Generous line spacing
 
-  doc.text(
-    `Trades Per Month: ~${client.stats.tradesPerMonth}`,
-    contentX,
-    yPos
-  );
-  yPos += 6;
+  // Trades Per Month
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Trades Per Month:', labelX, yPos);
+  doc.setTextColor(...COLORS.text);
+  doc.text(`~${client.stats.tradesPerMonth}`, valueX, yPos);
+  yPos += 8;
 
+  // Monthly Trade Volume
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Monthly Trade Volume:', labelX, yPos);
+  doc.setTextColor(...COLORS.text);
   doc.text(
-    `Monthly Trade Volume: ~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
+    `~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
       maximumFractionDigits: 0,
     })}`,
-    contentX,
+    valueX,
     yPos
   );
-  yPos += 6;
+  yPos += 8;
 
-  doc.text(
-    `Average % Savings: ${client.stats.avgPercentageSavings.toFixed(2)}%`,
-    contentX,
-    yPos
-  );
-  yPos += 6;
+  // Average % Savings
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Average % Savings:', labelX, yPos);
+  doc.setTextColor(...COLORS.text);
+  doc.text(`${client.stats.avgPercentageSavings.toFixed(2)}%`, valueX, yPos);
+  yPos += 8;
 
+  // Combined Annual Savings (use green accent like title page)
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Combined Annual Savings:', labelX, yPos);
+  doc.setTextColor(...COLORS.accent); // Green for savings amounts
   doc.text(
-    `Combined Annual Savings: £${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
+    `£${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`,
-    contentX,
+    valueX,
     yPos
   );
-  yPos += 6;
+  yPos += 8;
 
+  // Average Trade Value
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Average Trade Value:', labelX, yPos);
+  doc.setTextColor(...COLORS.text);
   doc.text(
-    `Average Trade Value: £${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
-    contentX,
+    `£${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
+    valueX,
     yPos
   );
-  yPos += 6;
+  yPos += 8;
 
+  // Average Savings Per Trade
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Average Savings Per Trade:', labelX, yPos);
+  doc.setTextColor(...COLORS.text);
   doc.text(
-    `Average Savings Per Trade: £${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
+    `£${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`,
-    contentX,
+    valueX,
     yPos
   );
-  yPos += 6;
+  yPos += 8;
 
-  doc.text(
-    `Average PIPs: +${client.stats.avgPips.toFixed(0)}`,
-    contentX,
-    yPos
-  );
+  // Average PIPs
+  doc.setTextColor(...COLORS.textMuted);
+  doc.text('Average PIPs:', labelX, yPos);
+  doc.setTextColor(...COLORS.text);
+  doc.text(`+${client.stats.avgPips.toFixed(0)}`, valueX, yPos);
 }
