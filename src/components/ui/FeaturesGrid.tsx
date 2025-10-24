@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card } from '../../components/ui/card';
+import { AnimatedCard } from '../../components/ui/AnimatedCard';
 import { 
   Zap, 
   Calculator, 
@@ -70,33 +70,34 @@ export function FeaturesGrid() {
             const IconComponent = feature.icon;
             
             return (
-              <Card 
-                key={index}
-                className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-6 hover:bg-white/10 transition-all duration-200"
-              >
-                <div className={`w-12 h-12 ${feature.iconBgColor} rounded-lg flex items-center justify-center mb-4`}>
-                  <IconComponent className={`h-6 w-6 ${feature.iconColor}`} />
+              <AnimatedCard key={index}>
+                <div className="p-6">
+                  <div className={`w-12 h-12 ${feature.iconBgColor} rounded-lg flex items-center justify-center mb-4`}>
+                    <IconComponent className={`h-6 w-6 ${feature.iconColor}`} />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3 text-purple-200">{feature.title}</h3>
+                  <p className="text-purple-200/70">
+                    {feature.description}
+                  </p>
                 </div>
-                <h3 className="text-xl font-semibold mb-3 text-purple-200">{feature.title}</h3>
-                <p className="text-purple-200/70">
-                  {feature.description}
-                </p>
-              </Card>
+              </AnimatedCard>
             );
           })}
         </div>
         
         {/* Fifth feature spanning full width */}
         <div className="mt-8">
-          <Card className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-6 hover:bg-white/10 transition-all duration-200">
-            <div className={`w-12 h-12 ${features[4].iconBgColor} rounded-lg flex items-center justify-center mb-4`}>
-              <TrendingUp className={`h-6 w-6 ${features[4].iconColor}`} />
+          <AnimatedCard>
+            <div className="p-6">
+              <div className={`w-12 h-12 ${features[4].iconBgColor} rounded-lg flex items-center justify-center mb-4`}>
+                <TrendingUp className={`h-6 w-6 ${features[4].iconColor}`} />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-purple-200">{features[4].title}</h3>
+              <p className="text-purple-200/70">
+                {features[4].description}
+              </p>
             </div>
-            <h3 className="text-xl font-semibold mb-3 text-purple-200">{features[4].title}</h3>
-            <p className="text-purple-200/70">
-              {features[4].description}
-            </p>
-          </Card>
+          </AnimatedCard>
         </div>
       </div>
     </section>

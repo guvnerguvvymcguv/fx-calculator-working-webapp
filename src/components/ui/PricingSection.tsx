@@ -1,4 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { AnimatedCard } from '../../components/ui/AnimatedCard';
+import { CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { CheckCircle, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +23,8 @@ export default function PricingSection() {
         
         <div className="grid md:grid-cols-3 gap-8">
           {/* Standard Plan */}
-          <Card className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-8">
+          <AnimatedCard>
+            <div className="p-8">
             <CardHeader className="text-center pb-6">
               <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="h-8 w-8 text-purple-400" />
@@ -57,10 +59,12 @@ export default function PricingSection() {
                 Get Started
               </Button>
             </CardContent>
-          </Card>
+            </div>
+          </AnimatedCard>
 
           {/* Team Plan - 15-29 accounts */}
-          <Card className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-8 relative">
+          <AnimatedCard className="relative">
+            <div className="p-8">
             <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
               <span className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
                 10% Discount
@@ -100,10 +104,12 @@ export default function PricingSection() {
                 Get Started
               </Button>
             </CardContent>
-          </Card>
+            </div>
+          </AnimatedCard>
 
           {/* Enterprise Plan - 30+ accounts */}
-          <Card className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-8 relative">
+          <AnimatedCard className="relative">
+            <div className="p-8">
             <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
               <span className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
                 20% Discount
@@ -143,7 +149,7 @@ export default function PricingSection() {
                 Get Started
               </Button>
             </CardContent>
-          </Card>
+          </AnimatedCard>
         </div>
 
         <div className="text-center mt-12">

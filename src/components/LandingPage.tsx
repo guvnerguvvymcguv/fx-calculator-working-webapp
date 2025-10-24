@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Play, X, Calendar, Search, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
+import { AnimatedCard } from './ui/AnimatedCard';
 import { supabase } from '../lib/supabase';
 
 // Import our custom hooks and components
@@ -173,7 +174,8 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
           
           <div className="grid md:grid-cols-2 gap-8 mb-12">
             {/* Company Finder Add-on */}
-            <div className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-8 hover:bg-white/10 transition-all duration-200">
+            <AnimatedCard>
+              <div className="p-8">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                   <Search className="h-6 w-6 text-blue-400" />
@@ -216,10 +218,12 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
                   <span className="text-purple-200/90 text-sm">Build and manage your leads pipeline</span>
                 </div>
               </div>
-            </div>
+              </div>
+            </AnimatedCard>
 
             {/* Client Data Tracking Add-on */}
-            <div className="bg-white/5 backdrop-blur-md border-white/20 rounded-xl p-8 hover:bg-white/10 transition-all duration-200">
+            <AnimatedCard>
+              <div className="p-8">
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
                   <TrendingUp className="h-6 w-6 text-purple-400" />
@@ -262,7 +266,8 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
                   <span className="text-purple-200/90 text-sm">Historical data for year-over-year comparison</span>
                 </div>
               </div>
-            </div>
+              </div>
+            </AnimatedCard>
           </div>
 
           <div className="text-center">
