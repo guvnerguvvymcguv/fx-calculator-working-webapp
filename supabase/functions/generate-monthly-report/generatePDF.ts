@@ -213,14 +213,25 @@ function addCoverPage(doc: jsPDF, data: PDFData) {
   });
 }
 
+/**
+ * Helper function to draw a divider line between sections
+ */
+function drawDividerLine(doc: jsPDF, x: number, y: number, width: number) {
+  doc.setDrawColor(139, 92, 246); // Purple color with reduced opacity effect
+  doc.setLineWidth(0.2);
+  doc.line(x, y, x + width, y);
+}
+
 function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: number) {
   // Calculate total height needed for the glassmorphic container
   const containerStartY = 15;
-  const containerPadding = 6; // Padding inside container (24px ≈ 6mm)
+  const containerPadding = 8; // Padding inside container (24px ≈ 8mm)
+  const contentX = 15; // Left margin for content (inside container)
+  const indentX = 20; // Indented content
 
   // Draw the main glassmorphic container for the entire client section
-  // We'll draw it to fill most of the page
-  drawGlassmorphicBox(doc, 10, containerStartY, 190, 265);
+  // Reduced height since we're removing calculations section
+  drawGlassmorphicBox(doc, 10, containerStartY, 190, 150);
 
   // Content starts with padding inside the container
   let yPos = containerStartY + containerPadding;
@@ -229,192 +240,113 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   doc.setFont('helvetica', 'bold'); // Bold for company name
   doc.setFontSize(24); // Larger font for company names
   doc.setTextColor(...COLORS.primary); // Vibrant purple for client name
-  doc.text(client.clientName.toUpperCase(), 15, yPos);
+  doc.text(client.clientName.toUpperCase(), contentX, yPos);
 
   yPos += 8;
   doc.setFont('helvetica', 'normal'); // Regular font for metadata
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.textSecondary); // Light gray for metadata
-  doc.text(`Calculations This Month: ${client.stats.totalCalculations}`, 15, yPos);
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.text); // White for values
+  doc.text(`Calculations This Month: ${client.stats.totalCalculations}`, contentX, yPos);
 
-  yPos += 5;
-  doc.text(`Broker: ${client.broker}`, 15, yPos);
+  yPos += 6;
+  doc.setTextColor(...COLORS.textSecondary); // Light gray for metadata
+  doc.text(`Broker: ${client.broker}`, contentX, yPos);
+
+  // Add spacing before TRADING PROFILE section
+  yPos += 10;
 
   // TRADING PROFILE section
   doc.setFont('helvetica', 'bold'); // Bold for section headers
   doc.setFontSize(16);
   doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
-  doc.text('TRADING PROFILE', 15, yPos);
+  doc.text('TRADING PROFILE', contentX, yPos);
 
-  yPos += 10;
+  yPos += 6; // Space after header
+
   doc.setFont('helvetica', 'normal'); // Regular font for content
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.textMuted); // Muted gray for labels
-  doc.text('Currency Pairs Traded:', 20, yPos);
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.text); // White for labels
+  doc.text('Currency Pairs Traded:', indentX, yPos);
 
   yPos += 6;
   const sortedPairs = Object.entries(client.stats.currencyPairs)
     .sort(([, a], [, b]) => (b as number) - (a as number));
 
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   sortedPairs.forEach(([pair, count]) => {
     const percentage = ((count as number / client.stats.totalCalculations) * 100).toFixed(1);
-    doc.setTextColor(...COLORS.textMuted); // Muted gray for labels
-    doc.text(`${pair}:`, 25, yPos);
     doc.setTextColor(...COLORS.text); // White for values
-    doc.text(`${count} calculations (${percentage}%)`, 50, yPos);
+    doc.text(`  ${pair}: ${count} calculations (${percentage}%)`, indentX, yPos);
     yPos += 5;
   });
 
   yPos += 4;
-  doc.setFontSize(10);
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Volume:', 20, yPos);
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.text);
+  doc.text('Volume:', indentX, yPos);
 
   yPos += 6;
-  doc.setFontSize(9);
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Trades Per Year:', 25, yPos);
+  doc.setFontSize(11);
   doc.setTextColor(...COLORS.text);
-  doc.text(client.stats.tradesPerYear.toString(), 75, yPos);
+  doc.text(`  Trades Per Year: ${client.stats.tradesPerYear}`, indentX, yPos);
 
   yPos += 5;
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Trades Per Month:', 25, yPos);
-  doc.setTextColor(...COLORS.text);
-  doc.text(`~${client.stats.tradesPerMonth}`, 75, yPos);
+  doc.text(`  Trades Per Month: ~${client.stats.tradesPerMonth}`, indentX, yPos);
 
   yPos += 5;
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Avg Trade Value:', 25, yPos);
-  doc.setTextColor(...COLORS.text);
   doc.text(
-    `£${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
-    75,
+    `  Avg Trade Value: £${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
+    indentX,
     yPos
   );
 
   yPos += 5;
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Monthly Trade Volume:', 25, yPos);
-  doc.setTextColor(...COLORS.text);
   doc.text(
-    `~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
+    `  Monthly Trade Volume: ~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
       maximumFractionDigits: 0,
     })}`,
-    75,
+    indentX,
     yPos
   );
+
+  // Add divider line between sections
+  yPos += 8;
+  drawDividerLine(doc, contentX, yPos, 170);
+  yPos += 8;
 
   // MONTHLY SUMMARY section
   doc.setFont('helvetica', 'bold'); // Bold for section headers
   doc.setFontSize(16);
   doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
-  doc.text('MONTHLY SUMMARY', 15, yPos);
+  doc.text('MONTHLY SUMMARY', contentX, yPos);
 
-  yPos += 10;
+  yPos += 6; // Space after header
   doc.setFont('helvetica', 'normal'); // Regular font for content
-  doc.setFontSize(9);
-  doc.setTextColor(...COLORS.textMuted); // Muted gray for labels
-  doc.text('Average Savings/Trade:', 20, yPos);
-  doc.setTextColor(...COLORS.accent); // Green for savings
+  doc.setFontSize(11);
+  doc.setTextColor(...COLORS.text); // White for labels
+
   doc.text(
-    `£${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
+    `Average Savings/Trade: £${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`,
-    75,
+    indentX,
     yPos
   );
 
-  yPos += 5;
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Combined Annual Savings:', 20, yPos);
-  doc.setTextColor(...COLORS.accent);
+  yPos += 6;
   doc.text(
-    `£${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
+    `Combined Annual Savings: £${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`,
-    75,
+    indentX,
     yPos
   );
 
-  yPos += 5;
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Average % Savings:', 20, yPos);
-  doc.setTextColor(...COLORS.accent);
-  doc.text(`${client.stats.avgPercentageSavings.toFixed(2)}%`, 75, yPos);
+  yPos += 6;
+  doc.text(`Average % Savings: ${client.stats.avgPercentageSavings.toFixed(2)}%`, indentX, yPos);
 
-  yPos += 5;
-  doc.setTextColor(...COLORS.textMuted);
-  doc.text('Average PIPs Added:', 20, yPos);
-  doc.setTextColor(...COLORS.text); // White for regular values
-  doc.text(`+${client.stats.avgPips.toFixed(0)}`, 75, yPos);
-
-  yPos += 12;
-
-  // CALCULATIONS LIST section
-  doc.setFont('helvetica', 'bold'); // Bold for section headers
-  doc.setFontSize(16);
-  doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
-  doc.text(`${monthName.toUpperCase()} CALCULATIONS`, 15, yPos);
-
-  yPos += 10;
-
-  // Show each calculation (limit to first 3 to avoid overflow)
-  const maxCalcs = Math.min(client.calculations.length, 3);
-  doc.setFont('helvetica', 'normal'); // Regular font for calculations
-  client.calculations.slice(0, maxCalcs).forEach((calc: any, index: number) => {
-    if (yPos > 265) {
-      doc.addPage();
-      addDarkBackground(doc); // Add dark background to new page
-      // Draw glassmorphic container on continuation page
-      drawGlassmorphicBox(doc, 10, 15, 190, 265);
-      yPos = 25;
-    }
-
-    const calcDate = new Date(calc.created_at);
-    const dateStr = calcDate.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    doc.setFontSize(10);
-    doc.setTextColor(...COLORS.primary); // Vibrant purple for calc header
-    doc.text(`Calc ${index + 1} - ${dateStr}`, 20, yPos);
-
-    yPos += 6;
-    doc.setFontSize(8);
-
-    const calcDetails = [
-      ['Pair:', calc.currency_pair],
-      ['Their Rate:', calc.competitor_rate?.toFixed(4)],
-      ['Our Rate:', calc.your_rate?.toFixed(4)],
-      ['Amount:', `£${calc.amount_to_buy?.toLocaleString()}`],
-      ['Savings:', `£${calc.savings_per_trade?.toLocaleString('en-GB', { maximumFractionDigits: 2 })}`],
-    ];
-
-    calcDetails.forEach(([label, value]) => {
-      doc.setTextColor(...COLORS.textMuted); // Muted gray for labels
-      doc.text(label, 25, yPos);
-      doc.setTextColor(...COLORS.text); // White for values
-      doc.text(value, 60, yPos);
-      yPos += 4;
-    });
-
-    yPos += 3;
-  });
-
-  if (client.calculations.length > maxCalcs) {
-    doc.setFontSize(9);
-    doc.setTextColor(...COLORS.textSecondary); // Light gray for overflow message
-    doc.text(
-      `... and ${client.calculations.length - maxCalcs} more calculations`,
-      20,
-      yPos
-    );
-  }
+  yPos += 6;
+  doc.text(`Average PIPs Added: +${client.stats.avgPips.toFixed(0)}`, indentX, yPos);
 }
