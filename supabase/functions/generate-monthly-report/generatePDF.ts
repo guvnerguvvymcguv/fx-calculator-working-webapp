@@ -45,29 +45,11 @@ interface PDFData {
   }>;
 }
 
-/**
- * Add dark background to the current page
- * jsPDF doesn't support page background color, so we draw a filled rectangle
- */
 function addDarkBackground(doc: jsPDF) {
   doc.setFillColor(...COLORS.background);
-  doc.rect(0, 0, 210, 297, 'F'); // A4 dimensions in mm
+  doc.rect(0, 0, 210, 297, 'F');
 }
 
-/**
- * Draw a glassmorphic container
- * Since jsPDF doesn't support backdrop-filter, we simulate the glass effect with:
- * - Semi-transparent dark background
- * - Subtle purple border
- * - Rounded corners (simulated with border)
- *
- * @param doc - jsPDF document
- * @param x - X position
- * @param y - Y position
- * @param width - Container width
- * @param height - Container height
- * @param opacity - Opacity level (0-1), default 0.7
- */
 function drawGlassmorphicBox(
   doc: jsPDF,
   x: number,
@@ -76,24 +58,19 @@ function drawGlassmorphicBox(
   height: number,
   opacity: number = 0.7
 ) {
-  // Save current state
   const currentFillColor = doc.getFillColor();
   const currentDrawColor = doc.getDrawColor();
 
-  // Draw semi-transparent background (glassmorphic effect)
-  // Note: jsPDF doesn't support transparency, so we use a darker shade to simulate it
   doc.setFillColor(...COLORS.glassBg);
-  doc.roundedRect(x, y, width, height, 3, 3, 'F'); // 3mm radius for rounded corners
+  doc.roundedRect(x, y, width, height, 3, 3, 'F');
 
-  // Draw subtle purple border
   doc.setDrawColor(...COLORS.glassBorder);
-  doc.setLineWidth(0.3); // Thin border
-  doc.roundedRect(x, y, width, height, 3, 3, 'S'); // 3mm radius for rounded corners
+  doc.setLineWidth(0.3);
+  doc.roundedRect(x, y, width, height, 3, 3, 'S');
 
-  // Restore previous colors
   doc.setFillColor(currentFillColor);
   doc.setDrawColor(currentDrawColor);
-  doc.setLineWidth(0.2); // Reset line width
+  doc.setLineWidth(0.2);
 }
 
 export async function generatePDF(data: PDFData): Promise<Uint8Array> {
@@ -103,57 +80,51 @@ export async function generatePDF(data: PDFData): Promise<Uint8Array> {
     format: 'a4',
   });
 
-  // Page 1: Cover & Summary
   addDarkBackground(doc);
   addCoverPage(doc, data);
 
-  // Pages 2+: Per-client breakdowns
   data.clients.forEach((client, index) => {
     doc.addPage();
     addDarkBackground(doc);
     addClientPage(doc, client, data.monthName, index);
   });
 
-  // Convert to Uint8Array
   const pdfBlob = doc.output('arraybuffer');
   return new Uint8Array(pdfBlob);
 }
 
 function addCoverPage(doc: jsPDF, data: PDFData) {
-  // Header - SpreadChecker branding
-  doc.setFont('helvetica', 'bold'); // Bold font for title
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(32);
-  doc.setTextColor(...COLORS.text); // White text for main title
+  doc.setTextColor(...COLORS.text);
   doc.text('SPREAD CHECKER', 20, 30);
 
-  doc.setFont('helvetica', 'bold'); // Bold for subtitle
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.setTextColor(...COLORS.text); // White text
+  doc.setTextColor(...COLORS.text);
   doc.text('Client Data Report', 20, 45);
 
-  doc.setFont('helvetica', 'normal'); // Regular font for metadata
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(...COLORS.textSecondary); // Light gray for metadata
+  doc.setTextColor(...COLORS.textSecondary);
   doc.text(`Period: ${data.monthName}`, 20, 55);
   doc.text(`Company: ${data.companyName}`, 20, 62);
   doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 20, 69);
 
-  // MONTHLY SUMMARY - Glassmorphic container
   const summaryBoxY = 80;
   const summaryBoxHeight = 60;
   drawGlassmorphicBox(doc, 15, summaryBoxY, 180, summaryBoxHeight);
 
-  // Summary content (with padding inside glass box)
-  const boxY = summaryBoxY + 10; // Add top padding
-  doc.setFont('helvetica', 'bold'); // Bold for section header
+  const boxY = summaryBoxY + 10;
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
+  doc.setTextColor(...COLORS.primary);
   doc.text('MONTHLY SUMMARY', 20, boxY);
 
   doc.setFontSize(11);
-  doc.setTextColor(...COLORS.textMuted); // Muted gray for labels
+  doc.setTextColor(...COLORS.textMuted);
   doc.text('Clients with Activity:', 25, boxY + 12);
-  doc.setTextColor(...COLORS.text); // White for values
+  doc.setTextColor(...COLORS.text);
   doc.text(data.summary.totalClients.toString(), 90, boxY + 12);
 
   doc.setTextColor(...COLORS.textMuted);
@@ -163,7 +134,7 @@ function addCoverPage(doc: jsPDF, data: PDFData) {
 
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Combined Monthly Savings:', 25, boxY + 28);
-  doc.setTextColor(...COLORS.accent); // Green for savings amounts
+  doc.setTextColor(...COLORS.accent);
   doc.text(
     `£${data.summary.combinedMonthlySavings.toLocaleString('en-GB', {
       minimumFractionDigits: 2,
@@ -185,132 +156,113 @@ function addCoverPage(doc: jsPDF, data: PDFData) {
     boxY + 36
   );
 
-  // CURRENCY PAIR DISTRIBUTION - Glassmorphic container
-  const pairBoxY = summaryBoxY + summaryBoxHeight + 10; // 10mm space after summary box
+  const pairBoxY = summaryBoxY + summaryBoxHeight + 10;
   const sortedPairs = Object.entries(data.summary.currencyPairDistribution)
     .sort(([, a], [, b]) => b - a);
 
-  const pairBoxHeight = Math.max(40, sortedPairs.length * 7 + 25); // Dynamic height based on pairs
+  const pairBoxHeight = Math.max(40, sortedPairs.length * 7 + 25);
   drawGlassmorphicBox(doc, 15, pairBoxY, 180, pairBoxHeight);
 
-  // Currency pair content (with padding inside glass box)
-  const pairY = pairBoxY + 10; // Add top padding
-  doc.setFont('helvetica', 'bold'); // Bold for section header
+  const pairY = pairBoxY + 10;
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
+  doc.setTextColor(...COLORS.primary);
   doc.text('CURRENCY PAIR DISTRIBUTION', 20, pairY);
 
   let pairTextY = pairY + 12;
-  doc.setFont('helvetica', 'normal'); // Regular font for content
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   sortedPairs.forEach(([pair, count]) => {
     const percentage = ((count / data.summary.totalCalculations) * 100).toFixed(1);
-    doc.setTextColor(...COLORS.textMuted); // Muted gray for labels
+    doc.setTextColor(...COLORS.textMuted);
     doc.text(`${pair}:`, 25, pairTextY);
-    doc.setTextColor(...COLORS.text); // White for values
+    doc.setTextColor(...COLORS.text);
     doc.text(`${count} calculations (${percentage}%)`, 50, pairTextY);
     pairTextY += 7;
   });
 }
 
-/**
- * Helper function to draw a divider line between sections
- */
-function drawDividerLine(doc: jsPDF, x: number, y: number, width: number) {
-  doc.setDrawColor(139, 92, 246); // Purple color with reduced opacity effect
-  doc.setLineWidth(0.2);
-  doc.line(x, y, x + width, y);
-}
-
 function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: number) {
-  // Box dimensions - equal padding on all sides (matching title page)
   const containerStartY = 15;
-  const containerPadding = 10; // Generous padding like title page (30px ≈ 10mm)
-  const contentX = 20; // Left margin matching title page
-  const labelX = 25; // Indented labels (like title page)
-  const valueX = 90; // Value position (matching title page alignment)
+  const containerPadding = 10;
+  const contentX = 20;
+  const labelX = 25;
+  const valueX = 90;
 
-  // Calculate the number of currency pairs to determine box height
   const numPairs = Object.keys(client.stats.currencyPairs).length;
   
-  // Dynamic height calculation with generous spacing (matching title page):
-  // Header: 12mm (company name) + 8mm (broker line) + 10mm (spacing before SUMMARY)
-  // SUMMARY: 8mm (header) + 12mm (spacing after header)
-  // Currency Pairs: 7mm (header line) + (numPairs * 7mm per pair) + 10mm (spacing after)
-  // Stats: 8 lines * 8mm each (generous line height like title page)
-  // Total content + top padding + bottom padding
-  const contentHeight = 12 + 8 + 10 + 8 + 12 + 7 + (numPairs * 7) + 10 + (8 * 8);
+  const contentHeight = 
+    10 +
+    8 +
+    10 +
+    8 +
+    12 +
+    7 +
+    (numPairs * 7) +
+    10 +
+    (8 * 8);
+  
   const boxHeight = contentHeight + (containerPadding * 2);
 
-  // Draw the main glassmorphic container for the entire client section
   drawGlassmorphicBox(doc, 10, containerStartY, 190, boxHeight);
 
-  // Content starts with padding inside the container
   let yPos = containerStartY + containerPadding;
 
-  // Client header (Company name)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(24);
-  doc.setTextColor(...COLORS.primary); // Vibrant purple for client name
+  doc.setTextColor(...COLORS.primary);
   doc.text(client.clientName.toUpperCase(), contentX, yPos);
 
-  yPos += 12; // More spacing after company name
+  yPos += 10;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(...COLORS.textSecondary); // Light gray for broker
+  doc.setTextColor(...COLORS.textSecondary);
   doc.text(`Broker: ${client.broker}`, contentX, yPos);
 
-  // Add spacing before SUMMARY section (matching title page)
-  yPos += 10;
+  yPos += 8;
 
-  // SUMMARY section
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
+  doc.setTextColor(...COLORS.primary);
   doc.text('SUMMARY', contentX, yPos);
 
-  yPos += 12; // Generous space after header (matching title page)
+  yPos += 12;
 
-  // Currency Pairs Traded - using gray for label, white for value
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(...COLORS.textMuted); // Soft gray for label
+  doc.setTextColor(...COLORS.textMuted);
   doc.text('Currency Pairs Traded:', labelX, yPos);
 
-  yPos += 7; // Generous spacing
+  yPos += 7;
   const sortedPairs = Object.entries(client.stats.currencyPairs)
     .sort(([, a], [, b]) => (b as number) - (a as number));
 
-  doc.setFontSize(10); // Slightly smaller for pair details
+  doc.setFontSize(10);
   sortedPairs.forEach(([pair, count]) => {
     const percentage = ((count as number / client.stats.totalCalculations) * 100).toFixed(1);
-    doc.setTextColor(...COLORS.textMuted); // Gray for pair name
+    doc.setTextColor(...COLORS.textMuted);
     doc.text(`${pair}:`, labelX, yPos);
-    doc.setTextColor(...COLORS.text); // White for values
-    doc.text(`${count} calculations (${percentage}%)`, valueX - 40, yPos);
-    yPos += 7; // Matching title page line spacing
+    doc.setTextColor(...COLORS.text);
+    doc.text(`${count} calculations (${percentage}%)`, 50, yPos);
+    yPos += 7;
   });
 
-  yPos += 10; // Generous spacing before stats (matching title page)
+  yPos += 10;
 
-  // Single column layout for all stats with label-value pattern (matching title page)
   doc.setFontSize(11);
   
-  // Trades Per Year
-  doc.setTextColor(...COLORS.textMuted); // Gray for label
+  doc.setTextColor(...COLORS.textMuted);
   doc.text('Trades Per Year:', labelX, yPos);
-  doc.setTextColor(...COLORS.text); // White for value
+  doc.setTextColor(...COLORS.text);
   doc.text(client.stats.tradesPerYear.toString(), valueX, yPos);
-  yPos += 8; // Generous line spacing
+  yPos += 8;
 
-  // Trades Per Month
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Trades Per Month:', labelX, yPos);
   doc.setTextColor(...COLORS.text);
   doc.text(`~${client.stats.tradesPerMonth}`, valueX, yPos);
   yPos += 8;
 
-  // Monthly Trade Volume
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Monthly Trade Volume:', labelX, yPos);
   doc.setTextColor(...COLORS.text);
@@ -323,17 +275,15 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   );
   yPos += 8;
 
-  // Average % Savings
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Average % Savings:', labelX, yPos);
   doc.setTextColor(...COLORS.text);
   doc.text(`${client.stats.avgPercentageSavings.toFixed(2)}%`, valueX, yPos);
   yPos += 8;
 
-  // Combined Annual Savings (use green accent like title page)
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Combined Annual Savings:', labelX, yPos);
-  doc.setTextColor(...COLORS.accent); // Green for savings amounts
+  doc.setTextColor(...COLORS.accent);
   doc.text(
     `£${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
       minimumFractionDigits: 2,
@@ -344,7 +294,6 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   );
   yPos += 8;
 
-  // Average Trade Value
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Average Trade Value:', labelX, yPos);
   doc.setTextColor(...COLORS.text);
@@ -355,7 +304,6 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   );
   yPos += 8;
 
-  // Average Savings Per Trade
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Average Savings Per Trade:', labelX, yPos);
   doc.setTextColor(...COLORS.text);
@@ -369,7 +317,6 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   );
   yPos += 8;
 
-  // Average PIPs
   doc.setTextColor(...COLORS.textMuted);
   doc.text('Average PIPs:', labelX, yPos);
   doc.setTextColor(...COLORS.text);
