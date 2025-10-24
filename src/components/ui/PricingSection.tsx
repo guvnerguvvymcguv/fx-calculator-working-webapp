@@ -149,6 +149,7 @@ export default function PricingSection() {
                 Get Started
               </Button>
             </CardContent>
+            </div>
           </AnimatedCard>
         </div>
 
