@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Users, Calculator, TrendingUp, UserCheck, Calendar, Download, X, Clock, Edit2, ArrowLeft, Settings, Check, AlertCircle, LogOut, FileText, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import MonthlyReportScheduler from './MonthlyReportScheduler';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -1314,6 +1315,9 @@ setUserCalculationCounts(counts);
             )}
           </CardContent>
         </Card>
+
+        {/* Monthly Report Scheduler */}
+        <MonthlyReportScheduler />
 
         {/* Weekly Export Schedule */}
         <Card className="bg-gray-900/50 border-gray-800 mb-6">
