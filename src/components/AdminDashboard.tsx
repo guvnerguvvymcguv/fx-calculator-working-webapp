@@ -1240,211 +1240,135 @@ setUserCalculationCounts(counts);
         {/* Monthly Client Reports */}
         <Card className="bg-gray-900/50 border-gray-800 mt-8 mb-8">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
                 <FileText className="h-6 w-6 text-purple-400" />
                 <CardTitle className="text-xl text-white">Monthly Client Reports</CardTitle>
               </div>
+              <p className="text-sm text-gray-400 ml-9">
+                Receive a comprehensive PDF report on the 1st of every month with detailed insights about your clients' trading activity, 
+                currency pair usage, average trade values, and savings performance.
+              </p>
             </div>
           </CardHeader>
           <CardContent>
             {!clientDataEnabled ? (
               // LOCKED STATE - Add-on not purchased
-              <div className="space-y-4">
-                {/* Description */}
-                <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <Mail className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
+              <div className="flex items-center justify-between p-6 bg-amber-900/20 border border-amber-600/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-amber-900/30 flex items-center justify-center">
+                    <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
                   <div>
-                    <p className="text-white font-medium mb-1">Automated Client Intelligence Reports</p>
-                    <p className="text-sm text-gray-400">
-                      Receive a comprehensive PDF report on the 1st of every month with detailed insights about your clients' trading activity, 
-                      currency pair usage, average trade values, and savings performance.
-                    </p>
+                    <p className="text-white font-semibold">Premium Feature</p>
+                    <p className="text-sm text-gray-400">Upgrade your subscription to unlock automated monthly client reports</p>
                   </div>
                 </div>
-
-                {/* Locked Banner */}
-                <div className="flex items-center justify-between p-6 bg-amber-900/20 border border-amber-600/30 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-amber-900/30 flex items-center justify-center">
-                      <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white font-semibold">Premium Feature</p>
-                      <p className="text-sm text-gray-400">Upgrade your subscription to unlock automated monthly client reports</p>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => navigate('/admin/account')}
-                    className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
-                  >
-                    Upgrade Now
-                  </Button>
-                </div>
+                <Button
+                  onClick={() => navigate('/admin/account')}
+                  className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+                >
+                  Upgrade Now
+                </Button>
               </div>
             ) : (
               // UNLOCKED STATE - Add-on purchased
-              <div className="space-y-6">
-                {/* Description */}
-                <div className="flex items-start gap-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                  <Mail className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-white font-medium mb-1">Automated Client Intelligence Reports</p>
-                    <p className="text-sm text-gray-400">
-                      Receive a comprehensive PDF report on the 1st of every month with detailed insights about your clients' trading activity, 
-                      currency pair usage, average trade values, and savings performance.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Toggle Section */}
-                <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg">
-                  <div>
-                    <p className="text-white font-medium">Monthly Reports</p>
-                    <p className="text-sm text-gray-400">
-                      {monthlyReportsEnabled 
-                        ? 'Reports will be sent to all company admins on the 1st of each month'
-                        : 'Enable to receive monthly PDF reports via email'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={monthlyReportsEnabled}
-                        onChange={handleToggleMonthlyReports}
-                        disabled={savingReportSettings}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-                    </label>
-                    <span className={`text-sm font-medium ${monthlyReportsEnabled ? 'text-green-400' : 'text-gray-400'}`}>
-                      {monthlyReportsEnabled ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Schedule and Test Button Side-by-Side */}
-                {monthlyReportsEnabled && (
-                  <div className="flex gap-6">
-                    {/* LEFT SIDE - Schedule Details (matching Weekly Export style) */}
-                    <div className="flex-1">
-                      {!editingMonthlyReportSchedule && monthlyReportSchedule ? (
-                        <div className="flex items-center gap-4">
-                          <Clock className="h-5 w-5 text-purple-400" />
-                          <span className="text-white font-medium">
-                            Active - Day {monthlyReportSchedule.day_of_month} at {monthlyReportSchedule.hour.toString().padStart(2, '0')}:00
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingMonthlyReportSchedule(true)}
-                            className="text-gray-400 hover:text-white"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : !editingMonthlyReportSchedule ? (
-                        <div className="flex items-center gap-4">
-                          <Clock className="h-5 w-5 text-purple-400" />
-                          <Button
-                            size="sm"
-                            onClick={() => setEditingMonthlyReportSchedule(true)}
-                            className="bg-purple-600 hover:bg-purple-700"
-                          >
-                            Set Schedule
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 text-purple-400" />
-                          <span className="text-gray-400">Day</span>
-                          <select
-                            value={monthlyReportDay}
-                            onChange={(e) => setMonthlyReportDay(e.target.value)}
-                            className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            {Array.from({ length: 28 }, (_, i) => (
-                              <option key={i + 1} value={i + 1}>
-                                {i + 1}
-                              </option>
-                            ))}
-                          </select>
-                          <span className="text-gray-400">at</span>
-                          <select
-                            value={monthlyReportHour}
-                            onChange={(e) => setMonthlyReportHour(e.target.value)}
-                            className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            {Array.from({ length: 24 }, (_, i) => (
-                              <option key={i} value={i}>
-                                {i.toString().padStart(2, '0')}:00
-                              </option>
-                            ))}
-                          </select>
-                          <Button
-                            size="sm"
-                            onClick={saveMonthlyReportSchedule}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingMonthlyReportSchedule(false);
-                              if (monthlyReportSchedule) {
-                                setMonthlyReportDay(monthlyReportSchedule.day_of_month?.toString() || '1');
-                                setMonthlyReportHour(monthlyReportSchedule.hour?.toString() || '9');
-                              }
-                            }}
-                            className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* RIGHT SIDE - Test Button */}
-                    <div className="flex items-center">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Clock className="h-5 w-5 text-purple-400" />
+                  <span className="text-gray-300">Monthly Client Reports:</span>
+                  {!editingMonthlyReportSchedule && monthlyReportSchedule ? (
+                    <>
+                      <span className="text-white font-medium">
+                        Active - Day {monthlyReportSchedule.day_of_month} at {monthlyReportSchedule.hour.toString().padStart(2, '0')}:00
+                      </span>
                       <Button
-                        onClick={handleTestReport}
-                        disabled={testingReport}
-                        variant="outline"
-                        className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setEditingMonthlyReportSchedule(true)}
+                        className="text-gray-400 hover:text-white"
                       >
-                        {testingReport ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send Test Report
-                          </>
-                        )}
+                        <Edit2 className="h-4 w-4" />
                       </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Info text */}
-                {monthlyReportsEnabled && (
-                  <p className="text-xs text-gray-500">
-                    All admin users will receive the monthly client report at the scheduled time
-                  </p>
-                )}
-
-                {!monthlyReportsEnabled && (
-                  <p className="text-xs text-gray-500 text-center">
-                    Enable monthly reports to configure scheduling
-                  </p>
-                )}
+                    </>
+                  ) : !editingMonthlyReportSchedule ? (
+                    <Button
+                      size="sm"
+                      onClick={() => setEditingMonthlyReportSchedule(true)}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      Set Schedule
+                    </Button>
+                  ) : (
+                    <>
+                      <span className="text-gray-400">Day</span>
+                      <select
+                        value={monthlyReportDay}
+                        onChange={(e) => setMonthlyReportDay(e.target.value)}
+                        className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                      >
+                        {Array.from({ length: 28 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {i + 1}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-gray-400">at</span>
+                      <select
+                        value={monthlyReportHour}
+                        onChange={(e) => setMonthlyReportHour(e.target.value)}
+                        className="bg-gray-800 border border-gray-700 text-white px-3 py-1 rounded text-sm"
+                      >
+                        {Array.from({ length: 24 }, (_, i) => (
+                          <option key={i} value={i}>
+                            {i.toString().padStart(2, '0')}:00
+                          </option>
+                        ))}
+                      </select>
+                      <Button
+                        size="sm"
+                        onClick={saveMonthlyReportSchedule}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingMonthlyReportSchedule(false);
+                          if (monthlyReportSchedule) {
+                            setMonthlyReportDay(monthlyReportSchedule.day_of_month?.toString() || '1');
+                            setMonthlyReportHour(monthlyReportSchedule.hour?.toString() || '9');
+                          }
+                        }}
+                        className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <Button
+                  onClick={handleTestReport}
+                  disabled={testingReport}
+                  variant="outline"
+                  className="border-purple-600 text-purple-300 hover:bg-purple-900/30"
+                >
+                  {testingReport ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400 mr-2" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Send Test Report
+                    </>
+                  )}
+                </Button>
               </div>
             )}
           </CardContent>
