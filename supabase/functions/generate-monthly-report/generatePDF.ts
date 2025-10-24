@@ -223,18 +223,18 @@ function drawDividerLine(doc: jsPDF, x: number, y: number, width: number) {
 }
 
 function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: number) {
-  // Calculate total height needed for the glassmorphic container
+  // Box dimensions - equal padding top and bottom
   const containerStartY = 15;
-  const containerPadding = 8; // Padding inside container (24px ≈ 8mm)
-  const contentX = 15; // Left margin for content (inside container)
-  const indentX = 20; // Indented content
+  const containerPadding = 8; // Equal padding all sides (24px ≈ 8mm)
+  const contentX = 18; // Left margin for content (inside container with padding)
+  const indentX = 23; // Indented content
 
   // Draw the main glassmorphic container for the entire client section
-  // Reduced height since we're removing calculations section
-  drawGlassmorphicBox(doc, 10, containerStartY, 190, 150);
+  // Height adjusted to fit content with equal padding
+  drawGlassmorphicBox(doc, 10, containerStartY, 190, 140);
 
   // Content starts with padding inside the container
-  let yPos = containerStartY + containerPadding;
+  let yPos = containerStartY + containerPadding + 2; // Extra 2mm for better centering
 
   // Client header (Company name)
   doc.setFont('helvetica', 'bold'); // Bold for company name
@@ -242,27 +242,24 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   doc.setTextColor(...COLORS.primary); // Vibrant purple for client name
   doc.text(client.clientName.toUpperCase(), contentX, yPos);
 
-  yPos += 8;
+  yPos += 10;
   doc.setFont('helvetica', 'normal'); // Regular font for metadata
   doc.setFontSize(11);
-  doc.setTextColor(...COLORS.text); // White for values
-  doc.text(`Calculations This Month: ${client.stats.totalCalculations}`, contentX, yPos);
-
-  yPos += 6;
-  doc.setTextColor(...COLORS.textSecondary); // Light gray for metadata
+  doc.setTextColor(...COLORS.textSecondary); // Light gray for broker
   doc.text(`Broker: ${client.broker}`, contentX, yPos);
 
-  // Add spacing before TRADING PROFILE section
-  yPos += 10;
+  // Add spacing before SUMMARY section
+  yPos += 12;
 
-  // TRADING PROFILE section
+  // SUMMARY section (renamed from TRADING PROFILE and MONTHLY SUMMARY)
   doc.setFont('helvetica', 'bold'); // Bold for section headers
   doc.setFontSize(16);
   doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
-  doc.text('TRADING PROFILE', contentX, yPos);
+  doc.text('SUMMARY', contentX, yPos);
 
-  yPos += 6; // Space after header
+  yPos += 8; // Space after header
 
+  // Currency Pairs Traded
   doc.setFont('helvetica', 'normal'); // Regular font for content
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.text); // White for labels
@@ -281,72 +278,71 @@ function addClientPage(doc: jsPDF, client: any, monthName: string, pageIndex: nu
   });
 
   yPos += 4;
-  doc.setFontSize(11);
+
+  // Two-column layout for stats
+  const col1X = indentX;
+  const col2X = 110;
+
+  // Row 1: Trades Per Year | Combined Annual Savings
   doc.setTextColor(...COLORS.text);
-  doc.text('Volume:', indentX, yPos);
-
-  yPos += 6;
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.text);
-  doc.text(`  Trades Per Year: ${client.stats.tradesPerYear}`, indentX, yPos);
-
-  yPos += 5;
-  doc.text(`  Trades Per Month: ~${client.stats.tradesPerMonth}`, indentX, yPos);
-
-  yPos += 5;
   doc.text(
-    `  Avg Trade Value: £${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
-    indentX,
+    `Trades Per Year: ${client.stats.tradesPerYear}`,
+    col1X,
     yPos
   );
-
-  yPos += 5;
-  doc.text(
-    `  Monthly Trade Volume: ~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
-      maximumFractionDigits: 0,
-    })}`,
-    indentX,
-    yPos
-  );
-
-  // Add divider line between sections
-  yPos += 8;
-  drawDividerLine(doc, contentX, yPos, 170);
-  yPos += 8;
-
-  // MONTHLY SUMMARY section
-  doc.setFont('helvetica', 'bold'); // Bold for section headers
-  doc.setFontSize(16);
-  doc.setTextColor(...COLORS.primary); // Vibrant purple for headers
-  doc.text('MONTHLY SUMMARY', contentX, yPos);
-
-  yPos += 6; // Space after header
-  doc.setFont('helvetica', 'normal'); // Regular font for content
-  doc.setFontSize(11);
-  doc.setTextColor(...COLORS.text); // White for labels
-
-  doc.text(
-    `Average Savings/Trade: £${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`,
-    indentX,
-    yPos
-  );
-
-  yPos += 6;
   doc.text(
     `Combined Annual Savings: £${client.stats.combinedAnnualSavings.toLocaleString('en-GB', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`,
-    indentX,
+    col2X,
     yPos
   );
 
   yPos += 6;
-  doc.text(`Average % Savings: ${client.stats.avgPercentageSavings.toFixed(2)}%`, indentX, yPos);
+
+  // Row 2: Trades Per Month | Average Trade Value
+  doc.text(
+    `Trades Per Month: ~${client.stats.tradesPerMonth}`,
+    col1X,
+    yPos
+  );
+  doc.text(
+    `Average Trade Value: £${client.stats.avgTradeValue.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`,
+    col2X,
+    yPos
+  );
 
   yPos += 6;
-  doc.text(`Average PIPs Added: +${client.stats.avgPips.toFixed(0)}`, indentX, yPos);
+
+  // Row 3: Monthly Trade Volume | Average Savings Per Trade
+  doc.text(
+    `Monthly Trade Volume: ~£${client.stats.monthlyTradeVolume.toLocaleString('en-GB', {
+      maximumFractionDigits: 0,
+    })}`,
+    col1X,
+    yPos
+  );
+  doc.text(
+    `Average Savings Per Trade: £${client.stats.avgSavingsPerTrade.toLocaleString('en-GB', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`,
+    col2X,
+    yPos
+  );
+
+  yPos += 6;
+
+  // Row 4: Average % Savings | Average PIPs
+  doc.text(
+    `Average % Savings: ${client.stats.avgPercentageSavings.toFixed(2)}%`,
+    col1X,
+    yPos
+  );
+  doc.text(
+    `Average PIPs: +${client.stats.avgPips.toFixed(0)}`,
+    col2X,
+    yPos
+  );
 }
