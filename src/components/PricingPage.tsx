@@ -52,8 +52,8 @@ const PricingPage = () => {
             <div 
               className="absolute top-1 bottom-1 bg-purple-600 rounded-md transition-all duration-300 ease-in-out shadow-[0_2px_8px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]"
               style={{ 
-                width: isAnnual ? 'calc(50% + 40px)' : 'calc(50% - 32px)',
-                left: isAnnual ? 'calc(50% - 40px)' : '0.25rem'
+                width: isAnnual ? 'calc(50% + 36px)' : 'calc(50% - 32px)',
+                left: isAnnual ? 'calc(50% - 36px)' : '0.25rem'
               }}
             />
             
