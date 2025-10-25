@@ -168,7 +168,7 @@ const { error: profileError } = await supabase.functions.invoke(
         </button>
         
         <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
+          <Card className="w-full max-w-md bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-white">
                 Accept Invitation
@@ -241,7 +241,7 @@ const { error: profileError } = await supabase.functions.invoke(
         </button>
         
         <div className="min-h-screen flex items-center justify-center p-4">
-          <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
+          <Card className="w-full max-w-md bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-white">
                 Invalid Invitation
@@ -405,7 +405,7 @@ const { error: profileError } = await supabase.functions.invoke(
       </button>
       
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl bg-gradient-to-b from-purple-500/10 to-purple-500/5 backdrop-blur-xl border-purple-500/30 rounded-xl shadow-[0_0_32px_rgba(168,85,247,0.15),0_0_48px_rgba(168,85,247,0.1),0_0_64px_rgba(168,85,247,0.05),inset_0_1px_0_rgba(255,255,255,0.1)] border-t-purple-500/20">
+        <Card className="w-full max-w-2xl bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-white">
               {step === 1 && "Company Information"}
