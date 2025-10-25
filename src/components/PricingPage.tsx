@@ -48,14 +48,12 @@ const PricingPage = () => {
         {/* Monthly/Annual Toggle - Slight delay */}
         <div className="flex justify-center mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
           <div className="bg-gray-900/50 rounded-lg p-1 flex relative">
-            {/* Sliding background indicator */}
+            {/* Sliding background indicator - dynamically resizes */}
             <div 
-              className={`absolute top-1 bottom-1 bg-purple-600 rounded-md transition-all duration-300 ease-in-out ${
-                isAnnual ? 'translate-x-full' : 'translate-x-0'
-              }`}
+              className="absolute top-1 bottom-1 bg-purple-600 rounded-md transition-all duration-300 ease-in-out"
               style={{ 
-                width: 'calc(50% - 0.25rem)',
-                left: '0.25rem'
+                width: isAnnual ? '152px' : '88px',
+                left: isAnnual ? 'calc(88px + 0.5rem)' : '0.25rem'
               }}
             />
             
