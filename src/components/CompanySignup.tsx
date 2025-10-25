@@ -427,7 +427,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Acme Trading Ltd"
-                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/40 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200 focus:ring-0 focus:ring-offset-0"
                   />
                 </div>
                 
@@ -437,7 +437,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={companyDomain}
                     onChange={(e) => setCompanyDomain(e.target.value)}
                     placeholder="acmetrading.com"
-                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/40 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200 focus:ring-0 focus:ring-offset-0"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Used to verify employee email addresses
@@ -455,7 +455,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={adminName}
                     onChange={(e) => setAdminName(e.target.value)}
                     placeholder="John Smith"
-                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/40 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200 focus:ring-0 focus:ring-offset-0"
                   />
                 </div>
                 
@@ -466,7 +466,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                     placeholder="john@acmetrading.com"
-                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/40 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200 focus:ring-0 focus:ring-offset-0"
                   />
                 </div>
                 
@@ -477,7 +477,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     placeholder="Create a secure password"
-                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/40 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200 focus:ring-0 focus:ring-offset-0"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Must be 8+ characters with uppercase, lowercase, numbers, and special characters
