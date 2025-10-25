@@ -47,10 +47,10 @@ const PricingPage = () => {
 
         {/* Monthly/Annual Toggle - Slight delay */}
         <div className="flex justify-center mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
-          <div className="bg-gray-900/50 rounded-lg p-1 flex relative">
+          <div className="bg-gray-900/50 rounded-lg p-1 flex relative shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_1px_rgba(0,0,0,0.2)] border border-white/10">
             {/* Sliding background indicator - dynamically resizes */}
             <div 
-              className="absolute top-1 bottom-1 bg-purple-600 rounded-md transition-all duration-300 ease-in-out"
+              className="absolute top-1 bottom-1 bg-purple-600 rounded-md transition-all duration-300 ease-in-out shadow-[0_2px_8px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]"
               style={{ 
                 width: isAnnual ? 'calc(50% + 32px)' : 'calc(50% - 32px)',
                 left: isAnnual ? 'calc(50% - 32px)' : '0.25rem'
@@ -357,7 +357,7 @@ const PricingPage = () => {
         <div className="text-center mt-8 animate-fade-in-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
           <Button 
             onClick={() => navigate(`/signup?plan=${isAnnual ? 'annual' : 'monthly'}`)}
-            className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition duration-200 shadow-lg"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-4 text-lg rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
           >
             Start Free Trial
          </Button>
