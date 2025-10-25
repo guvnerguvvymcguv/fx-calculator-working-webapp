@@ -334,15 +334,15 @@ const PricingPage = () => {
             </div>
           </div>
 
-          {/* Add-ons Note */}
-          <div className="bg-purple-900/20 border border-purple-600/30 rounded-lg p-6 text-center">
+          {/* Add-ons Note - 3D Purple Styling */}
+          <div className="mt-8 mb-8 bg-gradient-to-b from-purple-500/10 to-purple-500/5 backdrop-blur-xl border-purple-500/30 rounded-xl shadow-[0_0_32px_rgba(168,85,247,0.15),0_0_48px_rgba(168,85,247,0.1),0_0_64px_rgba(168,85,247,0.05),inset_0_1px_0_rgba(255,255,255,0.1)] border-t-purple-500/20 p-6 text-center">
             <p className="text-purple-200">
               <span className="font-semibold">All add-ons are per-seat pricing.</span> Select them during checkout or add them later from your account settings.
             </p>
           </div>
         </div>
 
-        <div className="text-center">
+        <div className="text-center mt-8">
           <Button 
             onClick={() => navigate(`/signup?plan=${isAnnual ? 'annual' : 'monthly'}`)}
             className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition duration-200 shadow-lg"
