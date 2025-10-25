@@ -35,7 +35,8 @@ const PricingPage = () => {
       </button>
       
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
+        {/* Header - First to animate */}
+        <div className="text-center mb-12 animate-fade-in-up">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">
             Simple, Transparent Pricing
           </h1>
@@ -44,8 +45,8 @@ const PricingPage = () => {
           </p>
         </div>
 
-        {/* Monthly/Annual Toggle */}
-        <div className="flex justify-center mb-12">
+        {/* Monthly/Annual Toggle - Slight delay */}
+        <div className="flex justify-center mb-12 animate-fade-in-up" style={{ animationDelay: '0.1s', opacity: 0 }}>
           <div className="bg-gray-900/50 rounded-lg p-1 flex">
             <button
               onClick={() => setIsAnnual(false)}
@@ -73,7 +74,8 @@ const PricingPage = () => {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-12">
+        {/* Pricing Cards - Staggered animation */}
+        <div className="grid md:grid-cols-3 gap-8 mb-12 animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: 0 }}>
           {/* Small Teams */}
           <AnimatedCard>
             <div className="p-6">
@@ -208,7 +210,7 @@ const PricingPage = () => {
         </div>
 
         {/* Add-ons Section */}
-        <div className="mt-16 mb-12">
+        <div className="mt-16 mb-12 animate-fade-in-up" style={{ animationDelay: '0.3s', opacity: 0 }}>
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">
               Supercharge with Add-ons
@@ -342,7 +344,8 @@ const PricingPage = () => {
           </div>
         </div>
 
-        <div className="text-center mt-8">
+        {/* CTA Button - Last to animate */}
+        <div className="text-center mt-8 animate-fade-in-up" style={{ animationDelay: '0.4s', opacity: 0 }}>
           <Button 
             onClick={() => navigate(`/signup?plan=${isAnnual ? 'annual' : 'monthly'}`)}
             className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition duration-200 shadow-lg"
