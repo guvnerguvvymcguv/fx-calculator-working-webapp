@@ -405,7 +405,7 @@ const { error: profileError } = await supabase.functions.invoke(
       </button>
       
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl bg-gray-900/90 border-gray-800">
+        <Card className="w-full max-w-2xl bg-gradient-to-b from-purple-500/10 to-purple-500/5 backdrop-blur-xl border-purple-500/30 rounded-xl shadow-[0_0_32px_rgba(168,85,247,0.15),0_0_48px_rgba(168,85,247,0.1),0_0_64px_rgba(168,85,247,0.05),inset_0_1px_0_rgba(255,255,255,0.1)] border-t-purple-500/20">
           <CardHeader>
             <CardTitle className="text-3xl font-bold text-white">
               {step === 1 && "Company Information"}
@@ -427,7 +427,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Acme Trading Ltd"
-                    className="mt-2 bg-gray-800 border-gray-700 text-white"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
                   />
                 </div>
                 
@@ -437,7 +437,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={companyDomain}
                     onChange={(e) => setCompanyDomain(e.target.value)}
                     placeholder="acmetrading.com"
-                    className="mt-2 bg-gray-800 border-gray-700 text-white"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Used to verify employee email addresses
@@ -455,7 +455,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={adminName}
                     onChange={(e) => setAdminName(e.target.value)}
                     placeholder="John Smith"
-                    className="mt-2 bg-gray-800 border-gray-700 text-white"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
                   />
                 </div>
                 
@@ -466,7 +466,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
                     placeholder="john@acmetrading.com"
-                    className="mt-2 bg-gray-800 border-gray-700 text-white"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
                   />
                 </div>
                 
@@ -477,7 +477,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
                     placeholder="Create a secure password"
-                    className="mt-2 bg-gray-800 border-gray-700 text-white"
+                    className="mt-2 bg-gray-950/50 border border-transparent focus:border-white/20 hover:border-white/20 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-all duration-200"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Must be 8+ characters with uppercase, lowercase, numbers, and special characters
@@ -491,7 +491,7 @@ const { error: profileError } = await supabase.functions.invoke(
               <>
                 <div className="space-y-4">
                   {/* Admin Seats */}
-                  <div className="p-4 bg-gray-800 rounded-lg">
+                  <div className="p-4 bg-gray-900/50 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_1px_rgba(0,0,0,0.2)] border border-purple-500/20">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Shield className="h-5 w-5 text-purple-400" />
@@ -525,7 +525,7 @@ const { error: profileError } = await supabase.functions.invoke(
                   </div>
                   
                   {/* Junior Seats */}
-                  <div className="p-4 bg-gray-800 rounded-lg">
+                  <div className="p-4 bg-gray-900/50 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_1px_rgba(0,0,0,0.2)] border border-purple-500/20">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Users className="h-5 w-5 text-blue-400" />
@@ -560,7 +560,7 @@ const { error: profileError } = await supabase.functions.invoke(
                 </div>
                 
                 {/* Pricing Summary */}
-                <div className="p-4 bg-purple-900/30 border border-purple-500/30 rounded-lg">
+                <div className="p-4 bg-purple-900/30 border border-purple-500/30 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)] ">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Total Seats</span>
@@ -639,7 +639,7 @@ const { error: profileError } = await supabase.functions.invoke(
                 {step < 3 ? (
                   <Button
                     onClick={handleNext}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-2 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
                   >
                     Next
                   </Button>
@@ -647,7 +647,7 @@ const { error: profileError } = await supabase.functions.invoke(
                   <Button
                     onClick={handleCheckout}
                     disabled={isLoading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-2 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isLoading ? 'Creating Account...' : 'Start Free Trial'}
                   </Button>
