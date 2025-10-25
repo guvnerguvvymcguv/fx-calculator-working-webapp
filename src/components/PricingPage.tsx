@@ -53,7 +53,7 @@ const PricingPage = () => {
               className="absolute top-1 bottom-1 bg-purple-600 rounded-md transition-all duration-300 ease-in-out"
               style={{ 
                 width: isAnnual ? 'calc(50% + 32px)' : '88px',
-                left: isAnnual ? 'calc(50% - 32px)' : 'calc(50% - 44px - 0.25rem)'
+                left: isAnnual ? 'calc(50% - 32px)' : '0.25rem'
               }}
             />
             
