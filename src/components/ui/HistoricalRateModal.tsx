@@ -218,7 +218,7 @@ export function HistoricalRateModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 w-full max-w-5xl max-h-[90vh] overflow-auto" style={{ color: '#C7B3FF', backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
+      <div className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 w-full max-w-5xl max-h-[90vh] overflow-auto" style={{ color: '#C7B3FF' }}>
         {/* Header */}
         <div className="p-6 border-b border-white/20 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">Historical Exchange Rates</h2>
