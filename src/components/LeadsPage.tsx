@@ -152,7 +152,7 @@ export default function LeadsPage() {
     }
   };
 
-  // Search for companies
+  // Search for companies - using same logic as Calculator page
   const handleCompanySearch = async () => {
     if (companySearchTerm.length < 2) {
       return;
@@ -161,39 +161,70 @@ export default function LeadsPage() {
     setIsSearching(true);
     
     try {
-      // Call the same API we use in calculator
-      const response = await fetch('/api/find-similar-companies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyName: companySearchTerm,
-          userId: currentUser.id,
-          excludeCompanies: shownCompanies, // Exclude companies already shown
-          limit: 10,
-          offset: currentOffset // Pass pagination offset
-        })
+      // Get companies already in My Leads to exclude them
+      const companiesInMyLeads = leads.map(lead => lead.custom_name);
+      
+      // Build exclusion list: shown companies + companies in My Leads
+      const excludeCompanies = [
+        ...shownCompanies,
+        ...companiesInMyLeads
+      ];
+      
+      console.log('Calling google-competitor-search API with:', {
+        companyName: companySearchTerm,
+        excludeCompanies,
+        attempt: currentOffset / 5 + 1
       });
+      
+      // Call the same Supabase Edge Function used in Calculator
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-competitor-search`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            companyName: companySearchTerm,
+            limit: 5,
+            excludeCompanies
+          })
+        }
+      );
 
       const data = await response.json();
+      console.log('API response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Failed to find similar companies');
+      }
+
       if (data.similarCompanies && data.similarCompanies.length > 0) {
-        setCompanySearchResults(prev => [...prev, ...data.similarCompanies]); // Append to existing results
-        // Track all shown companies
-        const newShownCompanies = data.similarCompanies.map((c: any) => c.name);
-        setShownCompanies(prev => [...prev, ...newShownCompanies]);
+        // Add new companies to shown list
+        const newCompanyNames = data.similarCompanies.map((c: any) => c.name);
+        setShownCompanies(prev => [...prev, ...newCompanyNames]);
+        
+        // Append to existing results (not replace)
+        setCompanySearchResults(prev => [...prev, ...data.similarCompanies]);
         setHasSearched(true);
-        setTotalMatches(data.totalMatches || 0);
-        setHasMoreResults(data.hasMore || false);
-        setCurrentOffset(prev => prev + 10); // Increment offset for next page
+        setCurrentOffset(prev => prev + 5);
+        setTotalMatches(prev => prev + data.similarCompanies.length);
+        setHasMoreResults(true); // Allow searching for more
       } else {
-        if (hasSearched) {
-          alert('No more similar companies found. You\'ve seen all companies that match well enough!');
-        } else {
+        // No more companies found
+        setHasMoreResults(false);
+        if (!hasSearched) {
           alert('No similar companies found. Try a different company name.');
+        } else {
+          alert('No more similar companies found. All companies that match well enough have been shown!');
         }
       }
+      
     } catch (error) {
-      console.error('Search error:', error);
-      alert('Failed to search companies. Please try again.');
+      console.error('Error finding similar companies:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to find similar companies. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsSearching(false);
     }
@@ -373,7 +404,7 @@ export default function LeadsPage() {
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/')}
-                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
               >
                 <Home className="h-4 w-4 mr-2" />
                 Home
@@ -382,7 +413,7 @@ export default function LeadsPage() {
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/calculator')}
-                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
               >
                 <TrendingUp className="h-4 w-4 mr-2" />
                 Calculator
@@ -392,7 +423,7 @@ export default function LeadsPage() {
                 <Button 
                   variant="ghost" 
                   onClick={() => navigate('/admin')}
-                  className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                  className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
                 >
                   <LayoutDashboard className="h-4 w-4 mr-2" />
                   Dashboard
@@ -402,7 +433,7 @@ export default function LeadsPage() {
               <Button 
                 onClick={handleSignOut}
                 variant="ghost"
-                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
               >
                 Sign Out
               </Button>
@@ -437,7 +468,7 @@ export default function LeadsPage() {
           <div className="max-w-7xl mx-auto">
           {/* Company Search Section - Feature Gated */}
           {!companyFinderEnabled ? (
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-8">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 mb-8">
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <div className="w-16 h-16 bg-purple-600/20 rounded-full flex items-center justify-center mb-4">
@@ -453,7 +484,7 @@ export default function LeadsPage() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-8">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 mb-8">
               <CardContent className="pt-6">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -467,19 +498,30 @@ export default function LeadsPage() {
                     <Input
                       placeholder="Search for UK companies to add..."
                       value={companySearchTerm}
-                      onChange={(e) => setCompanySearchTerm(e.target.value)}
+                      onChange={(e) => {
+                        setCompanySearchTerm(e.target.value);
+                        // Reset search results when user changes the search term
+                        if (hasSearched && e.target.value !== companySearchTerm) {
+                          setCompanySearchResults([]);
+                          setShownCompanies([]);
+                          setHasSearched(false);
+                          setCurrentOffset(0);
+                          setTotalMatches(0);
+                          setHasMoreResults(false);
+                        }
+                      }}
                       onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
+                        if (e.key === 'Enter' && companySearchTerm.length >= 2) {
                           handleCompanySearch();
                         }
                       }}
-                      className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                      className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                     />
                   </div>
                   <Button
                     onClick={handleCompanySearch}
                     disabled={isSearching || companySearchTerm.length < 2}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 whitespace-nowrap"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-6 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0 whitespace-nowrap"
                   >
                     {isSearching ? (
                       <>
@@ -525,14 +567,14 @@ export default function LeadsPage() {
                           </div>
                           
                           {isCompanyInLeads(company.name) ? (
-                            <span className="px-4 py-2 bg-green-600/30 text-green-200 rounded-lg text-sm font-medium whitespace-nowrap">
-                              ✓ Already in list
+                            <span className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] text-sm whitespace-nowrap cursor-default">
+                              ✓ Added
                             </span>
                           ) : (
                             <Button
                               onClick={() => handleAddFromSearch(company.name)}
                               size="sm"
-                              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap"
                             >
                               Add to List
                             </Button>
@@ -564,7 +606,7 @@ export default function LeadsPage() {
                   </div>
                 )}
 
-                {companySearchTerm.length >= 2 && !isSearching && companySearchResults.length === 0 && (
+                {companySearchTerm.length >= 2 && !isSearching && companySearchResults.length === 0 && hasSearched && (
                   <p className="text-sm text-purple-300/60 text-center py-4">
                     No companies found. Try a different search term.
                   </p>
@@ -585,7 +627,7 @@ export default function LeadsPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300">
               <CardContent className="pt-6">
                 <div className="text-center">
                   <p className="text-sm text-purple-300 mb-1">Total Leads</p>
@@ -594,45 +636,45 @@ export default function LeadsPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300">
               <CardContent className="pt-6">
                 <div className="text-center">
                   <p className="text-sm text-purple-300 mb-1">Contacted</p>
-                  <p className="text-3xl font-bold text-green-400">{stats.contacted}</p>
+                  <p className="text-3xl font-bold text-purple-100">{stats.contacted}</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300">
               <CardContent className="pt-6">
                 <div className="text-center">
                   <p className="text-sm text-purple-300 mb-1">Not Contacted</p>
-                  <p className="text-3xl font-bold text-yellow-400">{stats.notContacted}</p>
+                  <p className="text-3xl font-bold text-purple-100">{stats.notContacted}</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300">
               <CardContent className="pt-6">
                 <div className="text-center">
                   <p className="text-sm text-purple-300 mb-1">From Calculator</p>
-                  <p className="text-3xl font-bold text-blue-400">{stats.fromCalculator}</p>
+                  <p className="text-3xl font-bold text-purple-100">{stats.fromCalculator}</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300">
               <CardContent className="pt-6">
                 <div className="text-center">
                   <p className="text-sm text-purple-300 mb-1">From Search</p>
-                  <p className="text-3xl font-bold text-purple-400">{stats.fromSearch}</p>
+                  <p className="text-3xl font-bold text-purple-100">{stats.fromSearch}</p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Filters */}
-          <Card className="bg-white/10 backdrop-blur-md border-white/20 mb-6">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 mb-6">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row gap-4">
                 {/* Search */}
@@ -642,7 +684,7 @@ export default function LeadsPage() {
                     placeholder="Search companies..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                    className="pl-10 bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   />
                 </div>
 
@@ -650,28 +692,25 @@ export default function LeadsPage() {
                 <div className="flex gap-2">
                   <Button
                     onClick={() => setFilterStatus('all')}
-                    variant={filterStatus === 'all' ? 'default' : 'outline'}
-                    className={filterStatus === 'all' 
-                      ? 'bg-purple-600 hover:bg-purple-700 text-white' 
-                      : 'border-white/20 text-purple-200 hover:bg-white/10'}
+                    className={filterStatus === 'all'
+                      ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default'
+                      : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 border transition-all duration-200'}
                   >
                     All ({stats.total})
                   </Button>
                   <Button
                     onClick={() => setFilterStatus('contacted')}
-                    variant={filterStatus === 'contacted' ? 'default' : 'outline'}
-                    className={filterStatus === 'contacted' 
-                      ? 'bg-green-600 hover:bg-green-700 text-white' 
-                      : 'border-white/20 text-purple-200 hover:bg-white/10'}
+                    className={filterStatus === 'contacted'
+                      ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default'
+                      : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 border transition-all duration-200'}
                   >
                     Contacted ({stats.contacted})
                   </Button>
                   <Button
                     onClick={() => setFilterStatus('not_contacted')}
-                    variant={filterStatus === 'not_contacted' ? 'default' : 'outline'}
-                    className={filterStatus === 'not_contacted' 
-                      ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
-                      : 'border-white/20 text-purple-200 hover:bg-white/10'}
+                    className={filterStatus === 'not_contacted'
+                      ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default'
+                      : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 border transition-all duration-200'}
                   >
                     Not Contacted ({stats.notContacted})
                   </Button>
@@ -682,7 +721,7 @@ export default function LeadsPage() {
 
           {/* Bulk Actions Bar */}
           {selectedLeads.size > 0 && (
-            <Card className="bg-purple-600/20 backdrop-blur-md border-purple-400/30 mb-6">
+            <Card className="bg-purple-600/20 backdrop-blur-md border-purple-400/30 rounded-xl shadow-xl mb-6">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
