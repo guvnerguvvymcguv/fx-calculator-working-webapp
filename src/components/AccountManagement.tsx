@@ -753,7 +753,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
           <Button
             onClick={() => navigate('/admin')}
             variant="outline"
-            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+            className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
@@ -766,7 +766,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
         {/* Add-on Success Banner */}
         {showAddonSuccess && (
-          <Card className="bg-green-900/20 border-green-600/30 mb-6">
+          <Card className="bg-green-900/20 border border-green-600/30 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-green-600/40 transition-all duration-300 mb-6">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-green-400" />
@@ -780,7 +780,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
         {/* Pending Cancellation Banner */}
         {company?.cancel_at_period_end && (
-          <Card className="bg-amber-900/20 border-amber-600/30 mb-6">
+          <Card className="bg-amber-900/20 border border-amber-600/30 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-amber-600/40 transition-all duration-300 mb-6">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -796,7 +796,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                   size="sm"
                   onClick={handleReactivateSubscription}
                   disabled={reactivating}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   {reactivating ? 'Reactivating...' : 'Reactivate Subscription'}
@@ -808,7 +808,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
         {/* Trial Status Notice */}
         {company?.isInTrial && (
-          <Card className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 border-purple-700 mb-6">
+          <Card className="bg-gradient-to-r from-purple-900/50 to-blue-900/50 border border-purple-700 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-purple-600 transition-all duration-300 mb-6">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -823,7 +823,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                 <Button
                   size="sm"
                   onClick={() => navigate('/checkout')}
-                  className="bg-purple-600 hover:bg-purple-700"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
                 >
                   Upgrade Now
                 </Button>
@@ -834,7 +834,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
         {/* Subscription Type Notice */}
         {!company?.isInTrial && company?.subscription_type && !company?.cancel_at_period_end && (
-          <Card className="bg-gray-900/50 border-gray-800 mb-6">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-purple-400" />
@@ -852,7 +852,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
         )}
 
         {/* Seat Management */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardHeader>
             <CardTitle className="text-xl text-white flex items-center gap-2">
               <Users className="h-5 w-5 text-purple-400" />
@@ -873,7 +873,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                     variant="outline"
                     onClick={() => handleSeatChange('admin', -1)}
                     disabled={seatChanges.adminSeats <= 1}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -884,7 +884,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                     size="sm"
                     variant="outline"
                     onClick={() => handleSeatChange('admin', 1)}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -903,7 +903,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                     variant="outline"
                     onClick={() => handleSeatChange('junior', -1)}
                     disabled={seatChanges.juniorSeats <= 0}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -914,7 +914,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                     size="sm"
                     variant="outline"
                     onClick={() => handleSeatChange('junior', 1)}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -972,7 +972,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                   <Button
                     onClick={handleSaveChanges}
                     disabled={saving}
-                    className="w-full mt-4 bg-purple-600 hover:bg-purple-700"
+                    className="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
                   >
                     {saving ? 'Processing...' : 
                      (totalNewSeats > company.currentTotalSeats && company.subscription_status === 'active') ? 
@@ -986,7 +986,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
         {/* Add-ons Management */}
         {!company?.isInTrial && company?.subscription_status === 'active' && (
-          <Card className="bg-gray-900/50 border-gray-800 mb-6">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
             <CardHeader>
               <CardTitle className="text-xl text-white flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-purple-400" />
@@ -1020,7 +1020,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                     <Button
                       onClick={() => handleUpgradeAddon('company_finder')}
                       size="sm"
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
                     >
                       Upgrade Now
                     </Button>
@@ -1060,7 +1060,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                     <Button
                       onClick={() => handleUpgradeAddon('client_data')}
                       size="sm"
-                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
                     >
                       Upgrade Now
                     </Button>
@@ -1089,7 +1089,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
         )}
 
         {/* Current Team Members */}
-        <Card className="bg-gray-900/50 border-gray-800">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
           <CardHeader>
             <CardTitle className="text-xl text-white">Current Team Members</CardTitle>
           </CardHeader>
@@ -1165,7 +1165,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
 
         {/* Cancel Subscription Section - Only show if not already cancelling */}
         {(company?.isInTrial || (company?.subscription_active && !company?.cancel_at_period_end)) && (
-          <Card className="bg-red-900/10 border-red-900/30 mt-8">
+          <Card className="bg-red-900/10 border border-red-900/30 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-red-900/40 transition-all duration-300 mt-8">
             <CardHeader>
               <CardTitle className="text-lg text-red-300">
                 {company?.isInTrial ? 'Cancel Trial' : 'Cancel Subscription'}
@@ -1186,7 +1186,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                 <Button
                   onClick={() => setShowCancelModal(true)}
                   variant="outline"
-                  className="border-red-600 text-red-400 hover:bg-red-900/20"
+                  className="border-red-600 text-red-400 hover:text-red-300 hover:bg-red-900/20 hover:border-red-500 transition-all duration-200"
                 >
                   {company?.isInTrial ? 'Cancel Trial' : 'Cancel Subscription'}
                 </Button>

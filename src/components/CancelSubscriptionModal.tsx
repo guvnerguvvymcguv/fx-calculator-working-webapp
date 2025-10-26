@@ -107,7 +107,7 @@ onClose();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md bg-gray-900 border-gray-700">
+      <Card className="w-full max-w-md bg-[#1a1625] border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
         <CardHeader className="relative">
           <button
             onClick={resetModal}
@@ -189,14 +189,14 @@ onClose();
                 <Button
                   onClick={resetModal}
                   variant="outline"
-                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                  className="flex-1 text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                 >
                   {subscriptionType === 'trial' ? 'Keep Trial' : 'Keep Subscription'}
                 </Button>
                 <Button
                   onClick={() => setStep('confirm')}
                   disabled={!reason}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   Continue
                 </Button>
@@ -233,14 +233,14 @@ onClose();
                   onClick={() => setStep('reason')}
                   variant="outline"
                   disabled={cancelling}
-                  className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                  className="flex-1 text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Go Back
                 </Button>
                 <Button
                   onClick={handleCancel}
                   disabled={cancelling}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   {cancelling ? 'Cancelling...' : (subscriptionType === 'trial' ? 'Cancel Trial' : 'Cancel Subscription')}
                 </Button>
