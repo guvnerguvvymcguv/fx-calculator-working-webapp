@@ -655,9 +655,8 @@ export default function CalculatorPage() {
               {/* Results Display */}
               {calculator.results && (
                 <>
-                  <div className="p-6 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg border border-purple-400/30">
+                  <div className="p-6 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg border border-purple-400/30 hover:border-purple-400/50 transition-all duration-300">
                     <h3 className="text-lg font-semibold text-purple-200 mb-4 flex items-center gap-2">
-                      <DollarSign className="h-5 w-5" />
                       Calculation Results
                     </h3>
                     
@@ -740,7 +739,7 @@ export default function CalculatorPage() {
                       <Button 
                         onClick={handleFindSimilarCompanies}
                         disabled={findingCompanies}
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-blue-400/60 transition-all duration-200"
+                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                       >
                         {findingCompanies ? (
                           <>
@@ -764,7 +763,7 @@ export default function CalculatorPage() {
 
                   {/* Similar Companies Results */}
                   {similarCompanies.length > 0 && (
-                    <div className="p-6 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-400/30">
+                    <div className="p-6 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg border border-purple-400/30 hover:border-purple-400/50 transition-all duration-300">
                       <h3 className="text-lg font-semibold text-purple-200 mb-4 flex items-center gap-2">
                         <TrendingUp className="h-5 w-5" />
                         Similar Companies (Showing {similarCompanies.length} of {totalMatches})
@@ -794,14 +793,14 @@ export default function CalculatorPage() {
                                 <p className="text-sm text-purple-200 mt-2 italic">"{company.reasoning}"</p>
                               </div>
                               {isCompanyAdded(company.name) ? (
-                                <span className="px-4 py-2 bg-green-600/30 text-green-200 rounded-lg text-sm font-medium whitespace-nowrap">
+                                <span className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] text-sm whitespace-nowrap cursor-default">
                                   ✓ Added
                                 </span>
                               ) : (
                                 <Button
                                   onClick={() => handleAddLead(company.name)}
                                   size="sm"
-                                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap"
                                 >
                                   Add to List
                                 </Button>
