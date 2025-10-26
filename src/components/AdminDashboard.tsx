@@ -1075,14 +1075,14 @@ setUserCalculationCounts(counts);
             <Button
               onClick={() => navigate('/admin/account')}
               variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="border-white/20 text-purple-200 hover:bg-white/10 transition-all duration-200"
             >
               <Settings className="h-4 w-4 mr-2" />
               Account Management
             </Button>
             <Button
               onClick={() => navigate('/calculator')}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
             >
               <Calculator className="h-4 w-4 mr-2" />
               Use Calculator
@@ -1090,7 +1090,7 @@ setUserCalculationCounts(counts);
             <Button
               onClick={handleSignOut}
               variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="border-white/20 text-purple-200 hover:bg-white/10 hover:border-red-400/30 hover:text-red-300 transition-all duration-200"
             >
               Sign Out
             </Button>
@@ -1150,7 +1150,7 @@ setUserCalculationCounts(counts);
         )}
 
         {/* Date Range Filter */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] border-t-white/30 mb-6">
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
               <Calendar className="h-5 w-5 text-purple-400" />
@@ -1204,7 +1204,7 @@ setUserCalculationCounts(counts);
         </Card>
 
         {/* Monthly Client Reports */}
-        <Card className="bg-gray-900/50 border-gray-800 mt-8 mb-8">
+        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30 mt-8 mb-8">
           <CardHeader>
             <div>
               <div className="flex items-center gap-3 mb-2">
@@ -1341,7 +1341,7 @@ setUserCalculationCounts(counts);
         </Card>
 
         {/* Weekly Export Schedule */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30 mb-6">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -1433,7 +1433,7 @@ setUserCalculationCounts(counts);
         </Card>
 
         {/* Monthly Export Schedule */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30 mb-6">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -1669,33 +1669,37 @@ setUserCalculationCounts(counts);
 
         {/* Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gray-900/50 border-gray-800">
+          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Total Seats</CardTitle>
-              <Users className="h-4 w-4 text-purple-400" />
+              <CardTitle className="text-sm font-medium text-purple-200">Total Seats</CardTitle>
+              <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <Users className="h-4 w-4 text-purple-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-3xl font-bold text-white mb-1">
                 {metrics.usedSeats} / {metrics.totalSeats}
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-sm text-purple-200/70">
                 {metrics.availableSeats} available
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900/50 border-gray-800">
+          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Period Calculations</CardTitle>
-              <Calculator className="h-4 w-4 text-purple-400" />
+              <CardTitle className="text-sm font-medium text-purple-200">Period Calculations</CardTitle>
+              <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Calculator className="h-4 w-4 text-blue-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{metrics.periodCalculations}</div>
-              <p className="text-xs text-gray-400 mt-1">
+              <div className="text-3xl font-bold text-white mb-1">{metrics.periodCalculations}</div>
+              <p className="text-sm">
                 <span className={
                   metrics.periodCalculations > metrics.previousPeriodCalculations ? 'text-green-400' : 
                   metrics.periodCalculations < metrics.previousPeriodCalculations ? 'text-red-400' : 
-                  'text-gray-400'
+                  'text-purple-200/70'
                 }>
                   {calculatePercentageChange()} vs previous
                 </span>
@@ -1703,33 +1707,37 @@ setUserCalculationCounts(counts);
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900/50 border-gray-800">
+          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Avg Trade Value</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-400" />
+              <CardTitle className="text-sm font-medium text-purple-200">Avg Trade Value</CardTitle>
+              <div className="h-8 w-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                <TrendingUp className="h-4 w-4 text-green-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">
+              <div className="text-3xl font-bold text-white mb-1">
                 {formatCurrency(metrics.avgTradeValue)}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Per calculation</p>
+              <p className="text-sm text-purple-200/70">Per calculation</p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900/50 border-gray-800">
+          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Active Users</CardTitle>
-              <UserCheck className="h-4 w-4 text-purple-400" />
+              <CardTitle className="text-sm font-medium text-purple-200">Active Users</CardTitle>
+              <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <UserCheck className="h-4 w-4 text-purple-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{metrics.activeUsers}</div>
-              <p className="text-xs text-gray-400 mt-1">In period</p>
+              <div className="text-3xl font-bold text-white mb-1">{metrics.activeUsers}</div>
+              <p className="text-sm text-purple-200/70">In period</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Team Members */}
-        <Card className="bg-gray-900/50 border-gray-800">
+        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] border-t-white/30">
           <CardHeader className="flex justify-between items-center">
             <CardTitle className="text-xl text-white">Team Members</CardTitle>
             <Button
@@ -1743,35 +1751,35 @@ setUserCalculationCounts(counts);
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left py-3 px-4 text-gray-400">Name</th>
-                    <th className="text-left py-3 px-4 text-gray-400">Email</th>
-                    <th className="text-left py-3 px-4 text-gray-400">Role</th>
-                    <th className="text-left py-3 px-4 text-gray-400">Last Active</th>
-                    <th className="text-left py-3 px-4 text-gray-400">Weekly Activity</th>
-                    <th className="text-left py-3 px-4 text-gray-400">Actions</th>
+                  <tr className="border-b border-white/10 bg-white/5">
+                    <th className="text-left py-3 px-4 text-purple-200 font-medium">Name</th>
+                    <th className="text-left py-3 px-4 text-purple-200 font-medium">Email</th>
+                    <th className="text-left py-3 px-4 text-purple-200 font-medium">Role</th>
+                    <th className="text-left py-3 px-4 text-purple-200 font-medium">Last Active</th>
+                    <th className="text-left py-3 px-4 text-purple-200 font-medium">Weekly Activity</th>
+                    <th className="text-left py-3 px-4 text-purple-200 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {teamMembers.map((member) => (
-                    <tr key={member.id} className="border-b border-gray-800">
+                    <tr key={member.id} className="border-b border-white/5 hover:bg-white/5 transition-colors duration-200">
                       <td className="py-3 px-4 text-white">
                         {member.full_name || 'N/A'}
                       </td>
-                      <td className="py-3 px-4 text-gray-300">{member.email}</td>
+                      <td className="py-3 px-4 text-purple-200/80">{member.email}</td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded text-xs ${
+                        <span className={`px-2 py-1 rounded-md text-xs font-medium ${
                           member.role_type === 'admin' 
-                            ? 'bg-purple-600 text-white' 
-                            : 'bg-blue-600 text-white'
+                            ? 'bg-purple-500/20 text-purple-300' 
+                            : 'bg-blue-500/20 text-blue-300'
                         }`}>
                           {member.role_type}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-gray-300">
+                      <td className="py-3 px-4 text-purple-200/80">
                         {formatLastActive(member.lastActive)}
                       </td>
-                      <td className="py-3 px-4 text-gray-300">
+                      <td className="py-3 px-4 text-purple-200/80">
                         ↗ {member.weeklyActivity} calculations
                       </td>
                       <td className="py-3 px-4">
@@ -1779,7 +1787,7 @@ setUserCalculationCounts(counts);
                           size="sm"
                           variant="outline"
                           onClick={() => navigate(`/admin/user/${member.id}`)}
-                          className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                          className="border-white/20 text-purple-200 hover:bg-white/10 transition-all duration-200"
                         >
                           View Activity
                         </Button>
