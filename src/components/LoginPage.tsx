@@ -115,7 +115,7 @@ const LoginPage = () => {
       </button>
 
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
+        <Card className="w-full max-w-md bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20">
           <CardContent className="p-8">
             <div className="text-center mb-8">
               <h1 className="text-3xl font-bold text-white mb-2">Spread Checker</h1>
@@ -124,13 +124,22 @@ const LoginPage = () => {
             
             {/* Login Type Toggle */}
             <div className="flex justify-center mb-6">
-              <div className="bg-gray-800 p-1 rounded-lg flex">
+              <div className="bg-gray-900/50 rounded-lg p-1 flex relative shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_1px_rgba(0,0,0,0.2)] border border-white/10">
+                {/* Sliding background indicator */}
+                <div 
+                  className="absolute top-1 bottom-1 bg-purple-600 rounded-md transition-all duration-300 ease-in-out shadow-[0_2px_8px_rgba(168,85,247,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]"
+                  style={{ 
+                    width: 'calc(50% - 4px)',
+                    left: loginType === 'admin' ? 'calc(50% + 2px)' : '0.25rem'
+                  }}
+                />
+                
                 <button
                   type="button"
                   onClick={() => setLoginType('user')}
-                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`relative z-10 px-6 py-2 rounded-md transition-all duration-300 ${
                     loginType === 'user'
-                      ? 'bg-purple-600 text-white'
+                      ? 'text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
@@ -139,9 +148,9 @@ const LoginPage = () => {
                 <button
                   type="button"
                   onClick={() => setLoginType('admin')}
-                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`relative z-10 px-6 py-2 rounded-md transition-all duration-300 ${
                     loginType === 'admin'
-                      ? 'bg-purple-600 text-white'
+                      ? 'text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
