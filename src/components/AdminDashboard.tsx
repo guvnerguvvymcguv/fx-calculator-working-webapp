@@ -1075,7 +1075,7 @@ setUserCalculationCounts(counts);
             <Button
               onClick={() => navigate('/admin/account')}
               variant="outline"
-              className="border-white/20 text-purple-200 hover:bg-white/10 transition-all duration-200"
+              className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
             >
               <Settings className="h-4 w-4 mr-2" />
               Account Management
@@ -1090,7 +1090,7 @@ setUserCalculationCounts(counts);
             <Button
               onClick={handleSignOut}
               variant="outline"
-              className="border-white/20 text-purple-200 hover:bg-white/10 hover:border-red-400/30 hover:text-red-300 transition-all duration-200"
+              className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
             >
               Sign Out
             </Button>
@@ -1150,7 +1150,7 @@ setUserCalculationCounts(counts);
         )}
 
         {/* Date Range Filter */}
-        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] border-t-white/30 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardContent className="p-4">
             <div className="flex items-center gap-4">
               <Calendar className="h-5 w-5 text-purple-400" />
@@ -1163,8 +1163,8 @@ setUserCalculationCounts(counts);
                     variant={dateRange === range ? 'default' : 'outline'}
                     onClick={() => setDateRange(range)}
                     className={dateRange === range 
-                      ? 'bg-purple-600 hover:bg-purple-700' 
-                      : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                      ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default' 
+                      : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                   >
                     {range === 'today' ? 'Today' :
                      range === 'last7days' ? 'Last 7 Days' :
@@ -1182,7 +1182,7 @@ setUserCalculationCounts(counts);
                   size="sm"
                   variant="outline"
                   onClick={handleExportClick}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                  className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Export Data
@@ -1204,7 +1204,7 @@ setUserCalculationCounts(counts);
         </Card>
 
         {/* Monthly Client Reports */}
-        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30 mt-8 mb-8">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mt-8 mb-8">
           <CardHeader>
             <div>
               <div className="flex items-center gap-3 mb-2">
@@ -1341,7 +1341,7 @@ setUserCalculationCounts(counts);
         </Card>
 
         {/* Weekly Export Schedule */}
-        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -1433,7 +1433,7 @@ setUserCalculationCounts(counts);
         </Card>
 
         {/* Monthly Export Schedule */}
-        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -1669,7 +1669,7 @@ setUserCalculationCounts(counts);
 
         {/* Metrics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-purple-200">Total Seats</CardTitle>
               <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
@@ -1686,7 +1686,7 @@ setUserCalculationCounts(counts);
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-purple-200">Period Calculations</CardTitle>
               <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
@@ -1707,7 +1707,7 @@ setUserCalculationCounts(counts);
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-purple-200">Avg Trade Value</CardTitle>
               <div className="h-8 w-8 rounded-lg bg-green-500/20 flex items-center justify-center">
@@ -1722,7 +1722,7 @@ setUserCalculationCounts(counts);
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/30">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-purple-200">Active Users</CardTitle>
               <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
@@ -1737,12 +1737,12 @@ setUserCalculationCounts(counts);
         </div>
 
         {/* Team Members */}
-        <Card className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] border-t-white/30">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
           <CardHeader className="flex justify-between items-center">
             <CardTitle className="text-xl text-white">Team Members</CardTitle>
             <Button
               onClick={() => navigate('/admin/invite')}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
             >
               Invite Members
             </Button>
@@ -1787,7 +1787,7 @@ setUserCalculationCounts(counts);
                           size="sm"
                           variant="outline"
                           onClick={() => navigate(`/admin/user/${member.id}`)}
-                          className="border-white/20 text-purple-200 hover:bg-white/10 transition-all duration-200"
+                          className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                         >
                           View Activity
                         </Button>
