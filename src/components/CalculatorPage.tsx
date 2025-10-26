@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Calculator, TrendingUp, DollarSign, History, Home, LayoutDashboard, Users, Globe } from 'lucide-react';
+import { Calculator, TrendingUp, History, Home, LayoutDashboard, Users, Globe } from 'lucide-react';
 
 // Import our custom hooks and constants
 import { useFXCalculator } from '../hooks/useFXCalculator';
