@@ -402,7 +402,7 @@ export default function CalculatorPage() {
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/')}
-                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
               >
                 <Home className="h-4 w-4 mr-2" />
                 Home
@@ -411,7 +411,7 @@ export default function CalculatorPage() {
               <Button 
                 variant="ghost" 
                 onClick={() => navigate('/leads')}
-                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
               >
                 <Users className="h-4 w-4 mr-2" />
                 My Leads
@@ -421,7 +421,7 @@ export default function CalculatorPage() {
                 <Button 
                   variant="ghost" 
                   onClick={() => navigate('/admin')}
-                  className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                  className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
                 >
                   <LayoutDashboard className="h-4 w-4 mr-2" />
                   Dashboard
@@ -431,7 +431,7 @@ export default function CalculatorPage() {
               <Button 
                 onClick={handleSignOut}
                 variant="ghost"
-                className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
               >
                 Sign Out
               </Button>
@@ -442,7 +442,7 @@ export default function CalculatorPage() {
 
       <div className="p-4 pt-32 flex items-center justify-center">
         <div className="w-full max-w-2xl">
-          <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl" style={{ color: '#C7B3FF' }}>
+          <Card className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300" style={{ color: '#C7B3FF' }}>
             <CardHeader className="text-center pb-6">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp className="h-8 w-8 text-purple-400" />
@@ -515,7 +515,7 @@ export default function CalculatorPage() {
                   }
                   onChange={(e) => calculator.setYourRate(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                  className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Enter your rate"
                 />
               </div>
@@ -531,7 +531,7 @@ export default function CalculatorPage() {
                   value={calculator.competitorRate}
                   onChange={(e) => calculator.setCompetitorRate(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                  className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Enter competitor rate"
                 />
               </div>
@@ -568,7 +568,7 @@ export default function CalculatorPage() {
                   value={calculator.competitorName}
                   onChange={(e) => calculator.setCompetitorName(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                  className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Enter competitor name"
                 />
               </div>
@@ -594,7 +594,7 @@ export default function CalculatorPage() {
                   value={calculator.tradeAmount}
                   onChange={(e) => calculator.setTradeAmount(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                  className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Enter amount to buy"
                 />
               </div>
@@ -610,7 +610,7 @@ export default function CalculatorPage() {
                   value={calculator.tradesPerYear}
                   onChange={(e) => calculator.setTradesPerYear(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="bg-white/10 border-white/20 text-purple-100 placeholder:text-purple-300/60"
+                  className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Enter number of trades per year"
                 />
               </div>
@@ -631,10 +631,10 @@ export default function CalculatorPage() {
                         onChange={() => calculator.setSelectedPips(pips)}
                         className="sr-only"
                       />
-                      <div className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      <div className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                         calculator.selectedPips === pips
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-white/10 text-purple-200 hover:bg-white/20'
+                          ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default'
+                          : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 border'
                       }`}>
                         {pips === 0 ? 'None' : `${pips} pips`}
                       </div>
@@ -646,7 +646,7 @@ export default function CalculatorPage() {
               {/* Calculate Button */}
               <Button 
                 onClick={handleCalculate}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-purple-400/60 hover:shadow-[0_0_20px_rgba(147,51,234,0.6)] transition-all duration-200"
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
               >
                 <Calculator className="mr-2 h-5 w-5" />
                 Calculate Savings
@@ -827,7 +827,7 @@ export default function CalculatorPage() {
                   setNoMoreCompanies(false);
                 }}
                 variant="outline"
-                className="w-full border-white/20 text-purple-200 hover:bg-white/10"
+                className="w-full bg-transparent hover:bg-white/10 border border-transparent hover:border-white/20 text-purple-200 hover:text-white transition-all duration-200"
               >
                 Reset Calculator
               </Button>
