@@ -1528,7 +1528,7 @@ setUserCalculationCounts(counts);
         {/* Export Modal */}
         {showExportModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <Card className="bg-gray-900 border-gray-800 w-full max-w-2xl">
+            <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 w-full max-w-2xl">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl text-white">Export to Salesforce</CardTitle>
                 <Button
@@ -1549,8 +1549,8 @@ setUserCalculationCounts(counts);
                       variant={exportDateRange === 'today' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('today')}
                       className={exportDateRange === 'today' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       Today
                     </Button>
@@ -1558,8 +1558,8 @@ setUserCalculationCounts(counts);
                       variant={exportDateRange === 'thisWeek' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('thisWeek')}
                       className={exportDateRange === 'thisWeek' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       This Week
                     </Button>
@@ -1567,8 +1567,8 @@ setUserCalculationCounts(counts);
                       variant={exportDateRange === 'thisMonth' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('thisMonth')}
                       className={exportDateRange === 'thisMonth' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       This Month
                     </Button>
@@ -1576,8 +1576,8 @@ setUserCalculationCounts(counts);
                       variant={exportDateRange === 'custom' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('custom')}
                       className={exportDateRange === 'custom' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       Custom
                     </Button>
@@ -1610,7 +1610,7 @@ setUserCalculationCounts(counts);
                       size="sm"
                       variant="outline"
                       onClick={handleSelectAll}
-                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                      className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                     >
                       {selectedUsers.length === teamMembers.length ? 'Deselect All' : 'Select All'}
                     </Button>
@@ -1650,14 +1650,14 @@ setUserCalculationCounts(counts);
                   <Button
                     variant="outline"
                     onClick={() => setShowExportModal(false)}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleExportToSalesforce}
                     disabled={exporting || selectedUsers.length === 0}
-                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                   >
                     {exporting ? 'Exporting...' : 'Send to Salesforce'}
                   </Button>

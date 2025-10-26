@@ -350,7 +350,7 @@ export default function UserActivity() {
         {/* Export Modal */}
         {showExportModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <Card className="bg-gray-900 border-gray-800 w-full max-w-md">
+            <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 w-full max-w-md">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl text-white">
                   Export {userData?.full_name || userData?.email}'s Data
