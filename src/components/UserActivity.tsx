@@ -261,7 +261,7 @@ export default function UserActivity() {
             <Button
               onClick={() => navigate('/admin')}
               variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
@@ -282,7 +282,7 @@ export default function UserActivity() {
             <Button
               onClick={handleExportClick}
               variant="outline"
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
             >
               <Download className="h-4 w-4 mr-2" />
               Export to Salesforce
@@ -296,8 +296,8 @@ export default function UserActivity() {
             onClick={() => setViewType('daily')}
             variant={viewType === 'daily' ? 'default' : 'outline'}
             className={viewType === 'daily' 
-              ? 'bg-purple-600 hover:bg-purple-700' 
-              : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+              ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default' 
+              : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
           >
             Daily
           </Button>
@@ -305,8 +305,8 @@ export default function UserActivity() {
             onClick={() => setViewType('weekly')}
             variant={viewType === 'weekly' ? 'default' : 'outline'}
             className={viewType === 'weekly' 
-              ? 'bg-purple-600 hover:bg-purple-700' 
-              : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+              ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default' 
+              : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
           >
             Weekly
           </Button>
@@ -314,20 +314,20 @@ export default function UserActivity() {
             onClick={() => setViewType('monthly')}
             variant={viewType === 'monthly' ? 'default' : 'outline'}
             className={viewType === 'monthly' 
-              ? 'bg-purple-600 hover:bg-purple-700' 
-              : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+              ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default' 
+              : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
           >
             Monthly
           </Button>
         </div>
 
         {/* Date Navigation */}
-        <div className="flex items-center justify-between mb-6 p-4 bg-gray-900/50 rounded-lg">
+        <div className="flex items-center justify-between mb-6 p-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
           <Button
             onClick={() => changeDate('prev')}
             variant="outline"
             size="sm"
-            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+            className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
           >
             Previous
           </Button>
@@ -341,7 +341,7 @@ export default function UserActivity() {
             onClick={() => changeDate('next')}
             variant="outline"
             size="sm"
-            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+            className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
           >
             Next
           </Button>
@@ -373,8 +373,8 @@ export default function UserActivity() {
                       variant={exportDateRange === 'today' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('today')}
                       className={exportDateRange === 'today' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       Today
                     </Button>
@@ -382,8 +382,8 @@ export default function UserActivity() {
                       variant={exportDateRange === 'thisWeek' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('thisWeek')}
                       className={exportDateRange === 'thisWeek' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       This Week
                     </Button>
@@ -391,8 +391,8 @@ export default function UserActivity() {
                       variant={exportDateRange === 'thisMonth' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('thisMonth')}
                       className={exportDateRange === 'thisMonth' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       This Month
                     </Button>
@@ -400,8 +400,8 @@ export default function UserActivity() {
                       variant={exportDateRange === 'custom' ? 'default' : 'outline'}
                       onClick={() => setExportDateRange('custom')}
                       className={exportDateRange === 'custom' 
-                        ? 'bg-purple-600 hover:bg-purple-700' 
-                        : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                        ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)]' 
+                        : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                     >
                       Custom
                     </Button>
@@ -431,14 +431,14 @@ export default function UserActivity() {
                   <Button
                     variant="outline"
                     onClick={() => setShowExportModal(false)}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                    className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleExportToSalesforce}
                     disabled={exporting}
-                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                   >
                     {exporting ? 'Exporting...' : 'Send to Salesforce'}
                   </Button>
@@ -450,39 +450,39 @@ export default function UserActivity() {
 
         {/* Metrics Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <Card className="bg-gray-900/50 border-gray-800">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-400" />
-                <CardTitle className="text-sm text-gray-400">Total Calculations</CardTitle>
+                <CardTitle className="text-sm text-purple-200">Total Calculations</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-white">{metrics.totalCalculations}</div>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-purple-200/70 mt-1">
                 {viewType === 'daily' ? 'Today' : viewType === 'weekly' ? 'This week' : 'This month'}
               </p>
             </CardContent>
           </Card>
 
-          <Card className="bg-gray-900/50 border-gray-800">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-green-400" />
-                <CardTitle className="text-sm text-gray-400">Average Trade Value</CardTitle>
+                <CardTitle className="text-sm text-purple-200">Average Trade Value</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-white">
                 £{metrics.averageTradeValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </div>
-              <p className="text-xs text-gray-500 mt-1">Per calculation</p>
+              <p className="text-xs text-purple-200/70 mt-1">Per calculation</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Calculations Table */}
-<Card className="bg-gray-900/50 border-gray-800">
+<Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
   <CardHeader>
     <CardTitle className="text-xl text-white">Calculation Details</CardTitle>
   </CardHeader>
