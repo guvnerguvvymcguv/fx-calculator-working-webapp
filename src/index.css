@@ -64,7 +64,7 @@ body {
 .animated-gradient-card {
   position: relative;
   border-radius: 0.75rem;
-  padding: 4px;
+  padding: 2px;
   background: linear-gradient(
     90deg,
     rgba(168, 85, 247, 0.6),
@@ -106,7 +106,7 @@ body {
   border-radius: 0.625rem;
   height: 100%;
   width: 100%;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease-in-out;
   position: relative;
   /* Inner border highlight for top edge (light source from above) */
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -131,7 +131,7 @@ body {
     rgba(0, 0, 0, 0.02) 100%
   );
   border-radius: 0.625rem;
-  transition: all 0.3s ease;
+  transition: all 0.3s ease-in-out;
   pointer-events: none;
   z-index: 0;
 }
