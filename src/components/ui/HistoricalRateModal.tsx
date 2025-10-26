@@ -218,9 +218,9 @@ export function HistoricalRateModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-gray-900 rounded-xl w-full max-w-5xl max-h-[90vh] overflow-auto">
+      <div className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 w-full max-w-5xl max-h-[90vh] overflow-auto">
         {/* Header */}
-        <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+        <div className="p-6 border-b border-white/20 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">Historical Exchange Rates</h2>
           <button
             onClick={onClose}
@@ -263,11 +263,9 @@ export function HistoricalRateModal({
                     <button
                       key={tf}
                       onClick={() => setSelectedTimeframe(tf)}
-                      className={`px-3 py-1 rounded transition-colors ${
-                        selectedTimeframe === tf
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                      }`}
+                      className={selectedTimeframe === tf
+                        ? 'px-3 py-2 rounded-lg text-sm font-semibold bg-purple-600 text-white shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default'
+                        : 'px-3 py-2 rounded-lg text-sm text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 border transition-all duration-200'}
                     >
                       {tf}
                     </button>
@@ -302,12 +300,12 @@ export function HistoricalRateModal({
           {/* Data Source and Precision Indicators - Only show when chart is visible */}
           {!showDatePicker && chartData.length > 0 && isRealData && (
             <div className="flex flex-wrap gap-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-green-500/20 text-green-400">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-green-500/20 text-green-400 border border-green-500/30 hover:border-green-500/50 transition-colors duration-200">
                 <div className="w-2 h-2 rounded-full bg-green-400" />
                 Real Market Data
               </div>
               
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-400">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:border-blue-500/50 transition-colors duration-200">
                 <AlertCircle className="h-3 w-3" />
                 {formatDataPrecision(dataPrecision)}
               </div>
@@ -465,7 +463,7 @@ export function HistoricalRateModal({
 
           {/* Chart Container - Only show when NOT in date picker mode */}
           {!showDatePicker && (
-            <div className="bg-gray-800 rounded-lg p-4">
+            <div className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 p-4">
               <div className="relative" style={{ height: '350px' }}>
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
