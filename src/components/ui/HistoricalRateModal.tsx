@@ -218,7 +218,7 @@ export function HistoricalRateModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 w-full max-w-5xl max-h-[90vh] overflow-auto">
+      <div className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 w-full max-w-5xl max-h-[90vh] overflow-auto" style={{ color: '#C7B3FF' }}>
         {/* Header */}
         <div className="p-6 border-b border-white/20 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">Historical Exchange Rates</h2>
@@ -237,15 +237,15 @@ export function HistoricalRateModal({
             <div className="flex items-center gap-2">
               <span className="text-gray-300">Pair:</span>
               <Select value={selectedPair} onValueChange={setSelectedPair}>
-                <SelectTrigger className="w-32 bg-gray-800 border-gray-700 text-white">
+                <SelectTrigger className="w-32 bg-white/10 border-white/20 hover:border-white/40 text-purple-100 transition-colors duration-200">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
+                <SelectContent className="bg-gray-900 border-white/20">
                   {CURRENCY_PAIRS.map((pair) => (
                     <SelectItem 
                       key={pair.value} 
                       value={pair.value}
-                      className="text-gray-300 hover:bg-gray-700"
+                      className="text-purple-100 hover:bg-white/20 transition-colors duration-200"
                     >
                       {pair.label}
                     </SelectItem>
@@ -281,7 +281,7 @@ export function HistoricalRateModal({
                 setSearchedRate(null); // Clear any previous search when toggling
               }}
               variant="outline"
-              className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+              className="bg-white/10 border-white/20 hover:border-white/40 text-purple-100 transition-colors duration-200"
             >
               {showDatePicker ? (
                 <>
@@ -313,7 +313,7 @@ export function HistoricalRateModal({
           )}
 
           {/* Instructions */}
-          <div className="bg-gray-800/50 rounded-lg p-3">
+          <div className="bg-white/10 border-white/20 hover:border-white/40 rounded-lg p-3 transition-colors duration-200">
             <p className="text-sm text-gray-400 flex items-start gap-2">
               <span className="text-purple-400">💡</span>
               <span>
@@ -463,7 +463,7 @@ export function HistoricalRateModal({
 
           {/* Chart Container - Only show when NOT in date picker mode */}
           {!showDatePicker && (
-            <div className="bg-white/10 backdrop-blur-md border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 p-4">
+            <div className="bg-white/10 border-white/20 hover:border-white/40 rounded-lg p-4 transition-colors duration-200">
               <div className="relative" style={{ height: '350px' }}>
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">

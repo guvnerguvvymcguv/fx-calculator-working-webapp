@@ -462,12 +462,12 @@ export default function CalculatorPage() {
                   Currency Pair
                 </Label>
                 <Select value={selectedPair} onValueChange={setSelectedPair}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                  <SelectTrigger className="bg-white/10 border-white/20 hover:border-white/40 text-purple-100 transition-colors duration-200">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
+                  <SelectContent className="bg-gray-900 border-white/20">
                     {FX_PAIRS.map((pair) => (
-                      <SelectItem key={pair.value} value={pair.value} className="text-gray-300 hover:bg-gray-700">
+                      <SelectItem key={pair.value} value={pair.value} className="text-purple-100 hover:bg-white/20 transition-colors duration-200">
                         {pair.label}
                       </SelectItem>
                     ))}
