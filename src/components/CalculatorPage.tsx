@@ -476,7 +476,7 @@ export default function CalculatorPage() {
               </div>
 
               {/* Live Rate Display */}
-              <div className="p-4 bg-white/5 rounded-lg border border-white/20">
+              <div className="p-4 bg-white/5 rounded-lg border border-white/20 hover:border-white/40 transition-colors duration-200">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className={`h-5 w-5 ${liveRates.isFlashing ? 'text-green-400' : 'text-purple-400'}`} />
                   <Label className="text-sm font-medium text-purple-200">
@@ -578,7 +578,7 @@ export default function CalculatorPage() {
                 <Label className="text-sm font-medium text-purple-200">
                   Comparison Date
                 </Label>
-                <div className="bg-white/5 border-white/20 text-purple-100 p-3 rounded-lg">
+                <div className="bg-white/5 border border-white/20 hover:border-white/40 text-purple-100 p-3 rounded-lg transition-colors duration-200">
                   {calculator.comparisonDate}
                 </div>
               </div>
@@ -616,7 +616,7 @@ export default function CalculatorPage() {
               </div>
 
               {/* Pip Selection */}
-              <div className="p-4 bg-white/5 rounded-lg border border-white/20">
+              <div className="p-4 bg-white/5 rounded-lg border border-white/20 hover:border-white/40 transition-colors duration-200">
                 <Label className="text-sm font-medium text-purple-200 mb-3 block">
                   Inflate Your Margin (Pips)
                 </Label>
