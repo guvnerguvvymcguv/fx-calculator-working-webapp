@@ -30,7 +30,6 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<'admin' | 'junior' | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showHistoricalModal, setShowHistoricalModal] = useState(false);
 
   // Check user role when authenticated
   useEffect(() => {
@@ -273,21 +272,19 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
             Access historical exchange rate data to compare with clients historical buys.
           </p>
           
+          <div className="mb-8">
+            <MockHistoricalRates />
+          </div>
+          
           <Button 
-            onClick={() => setShowHistoricalModal(true)}
+            onClick={handleSignUp}
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-4 text-lg rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
           >
-            <TrendingUp className="mr-2 h-5 w-5" />
-            View Historical Rates Demo
+            <Play className="mr-2 h-5 w-5" />
+            Sign Up Now
           </Button>
         </div>
       </section>
-
-      {/* Mock Historical Rates Modal */}
-      <MockHistoricalRates 
-        isOpen={showHistoricalModal}
-        onClose={() => setShowHistoricalModal(false)}
-      />
 
       {/* Pricing Section */}
       <PricingSection />

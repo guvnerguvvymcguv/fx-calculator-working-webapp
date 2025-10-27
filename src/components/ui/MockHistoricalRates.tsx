@@ -6,12 +6,11 @@ import { HistoricalChart } from './HistoricalChart';
 import { useHistoricalRates } from '../../hooks/useHistoricalRates';
 
 interface MockHistoricalRatesProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export function MockHistoricalRates({ isOpen, onClose }: MockHistoricalRatesProps) {
-  if (!isOpen) return null;
+export function MockHistoricalRates({ isOpen = true, onClose = () => {} }: MockHistoricalRatesProps) {
 
   const [selectedPair] = useState('GBPUSD');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -109,8 +108,7 @@ export function MockHistoricalRates({ isOpen, onClose }: MockHistoricalRatesProp
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="backdrop-blur-md border border-white/20 rounded-xl shadow-xl hover:border-white/30 transition-all duration-300 w-full max-w-5xl max-h-[90vh] overflow-auto" style={{ color: '#C7B3FF', backgroundColor: '#291e31' }}>
+    <div className="bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20 max-w-5xl mx-auto border" style={{ color: '#C7B3FF' }}>
         {/* Header */}
         <div className="p-6 border-b border-white/20 flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">Historical Exchange Rates</h2>
