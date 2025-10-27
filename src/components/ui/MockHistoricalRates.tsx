@@ -6,11 +6,10 @@ import { HistoricalChart } from './HistoricalChart';
 import { useHistoricalRates } from '../../hooks/useHistoricalRates';
 
 interface MockHistoricalRatesProps {
-  isOpen?: boolean;
   onClose?: () => void;
 }
 
-export function MockHistoricalRates({ isOpen = true, onClose = () => {} }: MockHistoricalRatesProps) {
+export function MockHistoricalRates({ onClose = () => {} }: MockHistoricalRatesProps) {
   const [selectedPair] = useState('GBPUSD');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
