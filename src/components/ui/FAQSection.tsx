@@ -8,18 +8,6 @@ interface FAQItem {
 
 const faqs: FAQItem[] = [
   {
-    question: "How accurate are the live FX rates?",
-    answer: "Our live FX rates are sourced from TraderMade API and update in real-time. We provide institutional-grade exchange rates with minute-level precision, ensuring you always have the most accurate data for your client conversations."
-  },
-  {
-    question: "Can I access historical rate data?",
-    answer: "Yes! SpreadChecker includes historical FX rate data going back to October 2024, with minute-level precision. This allows you to compare clients' past purchases with the rates they could have received, demonstrating potential savings over time."
-  },
-  {
-    question: "Is my client information secure?",
-    answer: "Absolutely. All client data is encrypted and stored securely in our Supabase database with enterprise-grade security. We're fully GDPR compliant, and your data never leaves our secure infrastructure. Only authorized team members from your company can access your client information."
-  },
-  {
     question: "How does the 2-month free trial work?",
     answer: "Your 2-month free trial gives you full access to all features with no credit card required. During this period, you can onboard your team, integrate with Salesforce, and start closing deals. After the trial, your subscription begins based on your selected plan."
   },
