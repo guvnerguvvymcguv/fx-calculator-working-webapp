@@ -327,12 +327,12 @@ export function HistoricalRateModal({
 
           {/* Date/Time Picker - Only show when showDatePicker is true */}
           {showDatePicker && (
-            <div className="bg-gray-800 rounded-lg p-4 space-y-4">
+            <div className="border border-white/20 hover:border-white/40 rounded-lg p-4 space-y-4 transition-colors duration-200" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Calendar */}
                 <div>
                   <h3 className="text-gray-300 mb-2">Select Date</h3>
-                  <div className="bg-gray-900 rounded-lg p-3">
+                  <div className="bg-gray-950/50 border border-white/0 rounded-lg p-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]">
                     {/* Month Navigation */}
                     <div className="flex items-center justify-between mb-3">
                       <button
@@ -382,7 +382,7 @@ export function HistoricalRateModal({
                                   !isAvailable
                                     ? 'text-gray-600 cursor-not-allowed opacity-50'
                                     : isSelected
-                                    ? 'bg-purple-600 text-white'
+                                    ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default'
                                     : isTodayDate
                                     ? 'bg-gray-700 text-white border border-purple-500'
                                     : 'text-gray-300 hover:bg-gray-700'
@@ -425,7 +425,7 @@ export function HistoricalRateModal({
                         type="text"
                         value={selectedTime}
                         onChange={(e) => setSelectedTime(e.target.value)}
-                        className="bg-gray-900 border-gray-700 text-white"
+                        className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                         placeholder="09:00"
                       />
                     </div>
@@ -433,7 +433,7 @@ export function HistoricalRateModal({
                     <Button
                       onClick={handleFindRate}
                       disabled={isSearching || !isDateAvailable(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
                     >
                       <Search className="h-4 w-4 mr-2" />
                       {isSearching ? 'Searching...' : 'Find Rate'}
@@ -449,7 +449,7 @@ export function HistoricalRateModal({
                         </div>
                         <Button
                           onClick={handleUseRate}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
                         >
                           Use This Rate
                         </Button>
