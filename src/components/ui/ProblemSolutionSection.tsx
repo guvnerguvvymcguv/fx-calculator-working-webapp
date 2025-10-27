@@ -20,7 +20,7 @@ export default function ProblemSolutionSection() {
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-red-300 mb-3">The Pain Point</h3>
                 <p className="text-purple-200/80">
-                  Junior brokers often fluff rate comparisons on calls, leading to lost deals and frustrated clients.
+                  Brokers often fluff rate comparisons on calls, leading to lost deals and frustrated clients.
                 </p>
               </div>
             </div>

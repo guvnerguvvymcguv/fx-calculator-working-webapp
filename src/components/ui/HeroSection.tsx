@@ -32,7 +32,7 @@ export function HeroSection({ onSignUp, isAuthenticated, userRole, onNavigate }:
         <div className="space-y-8 flex flex-col justify-center min-h-[60vh] animate-fade-in-up">
           <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
             <span className="bg-gradient-to-r from-purple-300 to-blue-300 bg-clip-text text-transparent">
-              Empower Your Junior Brokers
+              Empower Your Brokers
             </span>
             <br />
             <span className="text-purple-200">

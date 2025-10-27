@@ -120,13 +120,13 @@ export default function InviteMembers() {
       : companyData.availableJuniorSeats;
     
     if (availableForRole === 0) {
-      alert(`No ${roleType === 'admin' ? 'admin' : 'junior broker'} seats available. Please upgrade your subscription to add more seats.`);
+      alert(`No ${roleType === 'admin' ? 'admin' : 'broker'} seats available. Please upgrade your subscription to add more seats.`);
       setLoading(false);
       return;
     }
     
     if (validEmails.length > availableForRole) {
-      alert(`You only have ${availableForRole} ${roleType === 'admin' ? 'admin' : 'junior broker'} seat${availableForRole === 1 ? '' : 's'} available`);
+      alert(`You only have ${availableForRole} ${roleType === 'admin' ? 'admin' : 'broker'} seat${availableForRole === 1 ? '' : 's'} available`);
       setLoading(false);
       return;
     }
@@ -154,7 +154,7 @@ export default function InviteMembers() {
             token: token,
             companyName: companyData.name || 'Spread Checker',
             inviterEmail: user?.email || 'your team',
-            role: roleType === 'admin' ? 'Admin' : 'Junior Broker',
+            role: roleType === 'admin' ? 'Admin' : 'Broker',
             inviteUrl: `https://spreadchecker.co.uk/join?token=${token}`
           }
         });
@@ -215,7 +215,7 @@ export default function InviteMembers() {
                   <p className="text-white font-semibold">Available Seats</p>
                   <p className="text-sm text-gray-400">
                     Admin: {companyData?.availableAdminSeats || 0} available | 
-                    Junior: {companyData?.availableJuniorSeats || 0} available
+                    Broker: {companyData?.availableJuniorSeats || 0} available
                   </p>
                 </div>
               </div>
@@ -242,7 +242,7 @@ export default function InviteMembers() {
                     ? 'bg-purple-600 hover:bg-purple-700' 
                     : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
                 >
-                  Junior Broker
+                  Broker
                 </Button>
                 <Button
                   type="button"
@@ -256,7 +256,7 @@ export default function InviteMembers() {
                 </Button>
               </div>
               <p className="text-sm text-gray-400 mt-2">
-                {getAvailableSeatsForRole()} {roleType === 'admin' ? 'admin' : 'junior broker'} 
+                {getAvailableSeatsForRole()} {roleType === 'admin' ? 'admin' : 'broker'} 
                 seat{getAvailableSeatsForRole() === 1 ? '' : 's'} available for invitation
               </p>
             </div>

@@ -41,7 +41,7 @@ const features: Feature[] = [
   {
     icon: Target,
     title: "Confidence Builder",
-    description: "Clear, professional presentations that help junior brokers deliver with authority.",
+    description: "Clear, professional presentations that help brokers deliver with authority.",
     iconBgColor: "bg-red-500/20",
     iconColor: "text-red-400"
   },

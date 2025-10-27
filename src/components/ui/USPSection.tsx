@@ -15,7 +15,7 @@ export function USPSection() {
                 Close More FX Deals with Real-Time Pitch Intelligence
               </h2>
               <p className="text-center text-purple-200/80 mb-12 text-lg">
-                Everything junior brokers need to win deals faster
+                Everything brokers need to win deals faster
               </p>
               
               <div className="grid md:grid-cols-3 gap-8">
