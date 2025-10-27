@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X, Calendar, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { Button } from './button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Input } from './input';
 import { HistoricalChart } from './HistoricalChart';
 import { useHistoricalRates } from '../../hooks/useHistoricalRates';
@@ -10,16 +9,6 @@ interface MockHistoricalRatesProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-// Currency pairs configuration
-const CURRENCY_PAIRS = [
-  { value: 'GBPUSD', label: 'GBP/USD' },
-  { value: 'GBPEUR', label: 'GBP/EUR' },
-  { value: 'EURUSD', label: 'EUR/USD' },
-  { value: 'GBPNOK', label: 'GBP/NOK' },
-  { value: 'GBPSEK', label: 'GBP/SEK' },
-  { value: 'GBPAUD', label: 'GBP/AUD' }
-];
 
 export function MockHistoricalRates({ isOpen, onClose }: MockHistoricalRatesProps) {
   if (!isOpen) return null;
@@ -35,8 +24,7 @@ export function MockHistoricalRates({ isOpen, onClose }: MockHistoricalRatesProp
     chartData,
     isLoading,
     error,
-    isRealData,
-    dataPrecision
+    isRealData
   } = useHistoricalRates('GBPUSD');
 
   // Calendar helper functions
