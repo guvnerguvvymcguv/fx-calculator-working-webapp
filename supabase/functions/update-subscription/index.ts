@@ -168,8 +168,8 @@ serve(async (req) => {
     let recurringInterval;
     
     if (company.subscription_type === 'annual') {
-      // Annual: price per seat per year with 10% discount
-      const annualPricePerSeat = selectedTier.pricePerSeat * 12 * 0.9; // 10% discount
+      // Annual: price per seat per year with 20% discount
+      const annualPricePerSeat = selectedTier.pricePerSeat * 12 * 0.8; // 20% discount
       const vatAmount = Math.round(annualPricePerSeat * 100 * 0.2);
       priceWithVatPence = Math.round(annualPricePerSeat * 100) + vatAmount;
       recurringInterval = { interval: 'year' as const };

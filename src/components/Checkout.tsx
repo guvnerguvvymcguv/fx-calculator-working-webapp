@@ -134,27 +134,27 @@ export default function Checkout() {
   
   // Calculate add-on pricing based on billing period and seat count
   const calculateAddonPrice = () => {
-    const addonPricePerSeat = billingPeriod === 'monthly' ? 5 : 3; // £5/seat monthly or £3/seat annual
-    const addonSubtotal = addonPricePerSeat * totalSeats;
-    
-    if (billingPeriod === 'annual') {
-      // Annual: £3/seat/month × 12 months × 0.9 (10% discount)
-      return addonSubtotal * 12 * 0.9;
-    }
-    return addonSubtotal;
+  const addonPricePerSeat = billingPeriod === 'monthly' ? 5 : 3; // £5/seat monthly or £3/seat annual
+  const addonSubtotal = addonPricePerSeat * totalSeats;
+  
+  if (billingPeriod === 'annual') {
+  // Annual: £3/seat/month × 12 months × 0.8 (20% discount)
+  return addonSubtotal * 12 * 0.8;
+  }
+  return addonSubtotal;
   };
   
   const addonPriceEach = calculateAddonPrice();
   const totalAddonsPrice = (companyFinderEnabled ? addonPriceEach : 0) + (clientDataEnabled ? addonPriceEach : 0);
   
-  // Calculate annual price per seat (monthly price with 10% discount)
-  const annualPricePerSeat = pricePerSeat * 12 * 0.9;
+  // Calculate annual price per seat (monthly price with 20% discount)
+  const annualPricePerSeat = pricePerSeat * 12 * 0.8;
 
   const calculatePrice = () => {
     let subtotal = monthlyPrice + totalAddonsPrice;
     
     if (billingPeriod === 'annual') {
-      subtotal = (monthlyPrice * 12 * 0.9) + totalAddonsPrice; // Base seats with discount + add-ons
+      subtotal = (monthlyPrice * 12 * 0.8) + totalAddonsPrice; // Base seats with discount + add-ons
     }
     
     const vat = subtotal * 0.2; // 20% VAT
@@ -344,7 +344,7 @@ export default function Checkout() {
                 <span>
                   {billingPeriod === 'monthly' 
                     ? `£${monthlyPrice}`
-                    : `£${(monthlyPrice * 12 * 0.9).toFixed(0)}`
+                    : `£${(monthlyPrice * 12 * 0.8).toFixed(0)}`
                   }
                 </span>
               </div>
@@ -358,7 +358,7 @@ export default function Checkout() {
                     <span>
                       {billingPeriod === 'monthly' 
                         ? '£30/seat/month'
-                        : '£324/seat/year'
+                        : '£288/seat/year'
                       }
                     </span>
                   </div>
@@ -367,7 +367,7 @@ export default function Checkout() {
                     <span>
                       {billingPeriod === 'monthly' 
                         ? '£27/seat/month (10% off)'
-                        : '£291/seat/year (10% off)'
+                        : '£259/seat/year (10% off)'
                       }
                     </span>
                   </div>
@@ -376,7 +376,7 @@ export default function Checkout() {
                     <span>
                       {billingPeriod === 'monthly' 
                         ? '£24/seat/month (20% off)'
-                        : '£259/seat/year (20% off)'
+                        : '£230/seat/year (20% off)'
                       }
                     </span>
                   </div>
@@ -427,7 +427,7 @@ export default function Checkout() {
                   <p className="text-xs text-purple-400 mt-2">
                     {billingPeriod === 'monthly' 
                       ? `£5/seat/month (× ${totalSeats} seats)`
-                      : `£3/seat/month (× ${totalSeats} seats, billed annually with 10% discount)`
+                      : `£3/seat/month (× ${totalSeats} seats, billed annually with 20% discount)`
                     }
                   </p>
                 </label>
@@ -464,7 +464,7 @@ export default function Checkout() {
                   <p className="text-xs text-purple-400 mt-2">
                     {billingPeriod === 'monthly' 
                       ? `£5/seat/month (× ${totalSeats} seats)`
-                      : `£3/seat/month (× ${totalSeats} seats, billed annually with 10% discount)`
+                      : `£3/seat/month (× ${totalSeats} seats, billed annually with 20% discount)`
                     }
                   </p>
                 </label>
@@ -527,9 +527,9 @@ export default function Checkout() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-white font-semibold text-lg">Annual</h3>
-                  <p className="text-green-400 text-sm mt-1">Save 10%</p>
+                  <p className="text-green-400 text-sm mt-1">Save 20%</p>
                   <p className="text-white text-2xl font-bold mt-3">
-                    £{Math.round(monthlyPrice * 0.9)}/month
+                    £{Math.round(monthlyPrice * 0.8)}/month
                   </p>
                   <p className="text-gray-400 text-xs">Billed annually</p>
                 </div>
@@ -573,8 +573,8 @@ export default function Checkout() {
                   <span>£{(monthlyPrice * 12).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-green-400">
-                  <span>Annual discount on seats (10%)</span>
-                  <span>-£{(monthlyPrice * 12 * 0.1).toFixed(2)}</span>
+                  <span>Annual discount on seats (20%)</span>
+                  <span>-£{(monthlyPrice * 12 * 0.2).toFixed(2)}</span>
                 </div>
                 {companyFinderEnabled && (
                   <>
@@ -583,8 +583,8 @@ export default function Checkout() {
                       <span>£{(3 * totalSeats * 12).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-green-400">
-                      <span>Annual discount on add-on (10%)</span>
-                      <span>-£{(3 * totalSeats * 12 * 0.1).toFixed(2)}</span>
+                      <span>Annual discount on add-on (20%)</span>
+                      <span>-£{(3 * totalSeats * 12 * 0.2).toFixed(2)}</span>
                     </div>
                   </>
                 )}
@@ -595,8 +595,8 @@ export default function Checkout() {
                       <span>£{(3 * totalSeats * 12).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-green-400">
-                      <span>Annual discount on add-on (10%)</span>
-                      <span>-£{(3 * totalSeats * 12 * 0.1).toFixed(2)}</span>
+                      <span>Annual discount on add-on (20%)</span>
+                      <span>-£{(3 * totalSeats * 12 * 0.2).toFixed(2)}</span>
                     </div>
                   </>
                 )}

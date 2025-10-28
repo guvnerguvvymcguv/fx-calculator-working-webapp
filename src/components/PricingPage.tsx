@@ -16,11 +16,11 @@ const PricingPage = () => {
     enterprise: 24
   };
 
-  // Annual prices (10% additional discount)
+  // Annual prices (20% additional discount)
   const annualPrices = {
-    small: monthlyPrices.small * 12 * 0.9,
-    growing: monthlyPrices.growing * 12 * 0.9,
-    enterprise: monthlyPrices.enterprise * 12 * 0.9
+    small: monthlyPrices.small * 12 * 0.8,
+    growing: monthlyPrices.growing * 12 * 0.8,
+    enterprise: monthlyPrices.enterprise * 12 * 0.8
   };
 
   return (
@@ -77,7 +77,7 @@ const PricingPage = () => {
             >
               Annually
               <span className="ml-2 text-xs bg-green-600 text-white px-2 py-0.5 rounded">
-                Save 10%
+                Save 20%
               </span>
             </button>
           </div>

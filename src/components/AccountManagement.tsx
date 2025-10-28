@@ -136,7 +136,7 @@ export default function AccountManagement() {
     
     // Add add-on pricing if enabled and requested
     if (includeAddons) {
-      const addonPricePerSeat = company?.subscription_type === 'annual' ? (3 * 12 * 0.9) : 5; // £3/mo for annual (with discount), £5/mo for monthly
+      const addonPricePerSeat = company?.subscription_type === 'annual' ? (3 * 12 * 0.8) : 5; // £3/mo for annual (with 20% discount), £5/mo for monthly
       
       if (companyFinderEnabled) {
         monthlyTotal += totalSeats * addonPricePerSeat;
@@ -147,9 +147,9 @@ export default function AccountManagement() {
       }
     }
     
-    // If annual subscription, return annual price (monthly × 12 × 0.9 for 10% discount)
+    // If annual subscription, return annual price (monthly × 12 × 0.8 for 20% discount)
     if (company?.subscription_type === 'annual') {
-      return monthlyTotal * 12 * 0.9;
+      return monthlyTotal * 12 * 0.8;
     }
     
     return monthlyTotal;
@@ -158,9 +158,9 @@ export default function AccountManagement() {
   const getPricePerSeat = (totalSeats: number) => {
     const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
     
-    // If annual subscription, return annual price per seat (monthly × 12 × 0.9 for 10% discount)
+    // If annual subscription, return annual price per seat (monthly × 12 × 0.8 for 20% discount)
     if (company?.subscription_type === 'annual') {
-      return monthlyPricePerSeat * 12 * 0.9;
+      return monthlyPricePerSeat * 12 * 0.8;
     }
     
     return monthlyPricePerSeat;

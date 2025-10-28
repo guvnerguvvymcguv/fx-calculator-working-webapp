@@ -197,7 +197,7 @@ serve(async (req) => {
     const vatRate = 0.2; // 20% VAT
     
     // For annual billing
-    const annualDiscount = 0.9; // 10% discount
+    const annualDiscount = 0.8; // 20% discount
     const annualSubtotal = selectedTier.pricePerSeat * seatCount * 12 * annualDiscount;
     const annualVat = annualSubtotal * vatRate;
     const annualTotal = annualSubtotal + annualVat;
@@ -293,7 +293,7 @@ if (billingPeriod === 'monthly') {
     } else {
       // For annual subscriptions, create a recurring subscription with annual interval
       const annualPricePerSeat = selectedTier.pricePerSeat * 12; // £360/year
-      const annualPriceWithDiscount = annualPricePerSeat * 0.9; // Apply 10% discount: £324/year
+      const annualPriceWithDiscount = annualPricePerSeat * 0.8; // Apply 20% discount: £288/year
       const vatAmount = Math.round(annualPriceWithDiscount * 100 * vatRate);
       const priceWithVatPence = Math.round(annualPriceWithDiscount * 100) + vatAmount;
       
@@ -342,7 +342,7 @@ if (companyFinderEnabled) {
   const addonPricePerSeatPerMonth = 3; // £3/seat/month
   const addonPricePerSeatPerYear = addonPricePerSeatPerMonth * 12; // £36/seat/year
   const addonSubtotal = addonPricePerSeatPerYear * seatCount; // £36 × seats
-  const addonWithDiscount = addonSubtotal * 0.9; // 10% annual discount
+  const addonWithDiscount = addonSubtotal * 0.8; // 20% annual discount
   const addonVat = Math.round(addonWithDiscount * 100 * vatRate); // 20% VAT
   const addonWithVatPence = Math.round(addonWithDiscount * 100) + addonVat;
   
@@ -367,7 +367,7 @@ if (clientDataEnabled) {
   const addonPricePerSeatPerMonth = 3; // £3/seat/month
   const addonPricePerSeatPerYear = addonPricePerSeatPerMonth * 12; // £36/seat/year
   const addonSubtotal = addonPricePerSeatPerYear * seatCount; // £36 × seats
-  const addonWithDiscount = addonSubtotal * 0.9; // 10% annual discount
+  const addonWithDiscount = addonSubtotal * 0.8; // 20% annual discount
   const addonVat = Math.round(addonWithDiscount * 100 * vatRate); // 20% VAT
   const addonWithVatPence = Math.round(addonWithDiscount * 100) + addonVat;
   

@@ -88,7 +88,7 @@ serve(async (req) => {
     
     if (subscriptionType === 'annual' || company.subscription_type === 'annual') {
       // Annual subscription pro-rata calculation
-      const annualPricePerSeat = pricePerSeat * 12 * 0.9 // Annual gets 10% discount
+      const annualPricePerSeat = pricePerSeat * 12 * 0.8 // Annual gets 20% discount
       const pricePerSeatWithVat = annualPricePerSeat * 1.2 // Add 20% VAT
       proRataAmount = Math.round(seatDifference * pricePerSeatWithVat * proRataPercentage * 100) // Convert to pence
       
