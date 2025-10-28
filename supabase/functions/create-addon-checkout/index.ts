@@ -114,10 +114,10 @@ serve(async (req) => {
     let recurringInterval: 'month' | 'year'
 
     if (company.subscription_type === 'annual') {
-      // Annual: £3/seat/month = £36/seat/year with 10% discount = £32.40/seat/year
+      // Annual: £3/seat/month = £36/seat/year with 20% discount = £28.80/seat/year
       const addonPricePerSeatPerMonth = 3
       const annualPricePerSeat = addonPricePerSeatPerMonth * 12 // £36/seat/year
-      addonPricePerSeatExVat = annualPricePerSeat * 0.9 // 10% annual discount = £32.40/seat/year
+      addonPricePerSeatExVat = annualPricePerSeat * 0.8 // 20% annual discount = £28.80/seat/year
       fullPeriodPriceExVat = addonPricePerSeatExVat * seatCount
       recurringInterval = 'year'
     } else {
@@ -160,7 +160,7 @@ serve(async (req) => {
     // Calculate new total monthly price for Supabase
     // We'll fetch the current price in the webhook and add the add-on price
     const addonMonthlyPricePerSeat = company.subscription_type === 'annual' 
-      ? (3 * 12 * 0.9) / 12 // £32.40/year = £2.70/month equivalent
+      ? (3 * 12 * 0.8) / 12 // £28.80/year = £2.40/month equivalent
       : 5 // £5/month
 
     console.log('Add-on pricing for metadata:', {

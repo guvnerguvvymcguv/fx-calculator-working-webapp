@@ -293,8 +293,8 @@ const { error: profileError } = await supabase.functions.invoke(
     const pricePerSeat = basePrice * (1 - discount);
     const monthlyPrice = pricePerSeat * totalSeats;
     
-    // Calculate annual price with 10% discount
-    const annualPrice = monthlyPrice * 12 * 0.9;
+    // Calculate annual price with 20% discount
+    const annualPrice = monthlyPrice * 12 * 0.8;
     const annualMonthlyEquivalent = annualPrice / 12;
     
     return {
@@ -579,7 +579,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     {isAnnual && (
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Annual Discount</span>
-                        <span className="text-green-400">-10%</span>
+                        <span className="text-green-400">-20%</span>
                       </div>
                     )}
                     <div className="border-t border-gray-700 pt-2 flex justify-between">
@@ -617,7 +617,7 @@ const { error: profileError } = await supabase.functions.invoke(
                   </p>
                   <p className="mt-1">Volume discounts: 6-12 seats (10% off), 13+ seats (20% off)</p>
                   {isAnnual && (
-                    <p className="mt-1">Annual billing: Additional 10% discount</p>
+                    <p className="mt-1">Annual billing: Additional 20% discount</p>
                   )}
                 </div>
               </>

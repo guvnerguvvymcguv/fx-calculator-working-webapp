@@ -131,7 +131,7 @@ export default function AccountManagement() {
 
   const calculatePrice = (totalSeats: number, includeAddons: boolean = true) => {
     // Base subscription price
-    const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+    const monthlyPricePerSeat = totalSeats <= 5 ? 30 : totalSeats <= 12 ? 27 : 24;
     let monthlyTotal = totalSeats * monthlyPricePerSeat;
     
     // Add add-on pricing if enabled and requested
@@ -156,7 +156,7 @@ export default function AccountManagement() {
   };
 
   const getPricePerSeat = (totalSeats: number) => {
-    const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+    const monthlyPricePerSeat = totalSeats <= 5 ? 30 : totalSeats <= 12 ? 27 : 24;
     
     // If annual subscription, return annual price per seat (monthly × 12 × 0.8 for 20% discount)
     if (company?.subscription_type === 'annual') {
@@ -185,7 +185,7 @@ export default function AccountManagement() {
     // Check if subscription is deleted (annual cancellations)
     if (company.subscription_type === 'annual') {
       const totalSeats = company.currentTotalSeats;
-      const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+      const monthlyPricePerSeat = totalSeats <= 5 ? 30 : totalSeats <= 12 ? 27 : 24;
       const pricePerMonth = totalSeats * monthlyPricePerSeat;
   
       const { data: { session } } = await supabase.auth.getSession();
@@ -230,7 +230,7 @@ export default function AccountManagement() {
     // Check if they need to pay (grace period already used)
     if (response.data?.requiresPayment) {
       const totalSeats = response.data.seatCount || company.currentTotalSeats;
-      const monthlyPricePerSeat = totalSeats <= 14 ? 30 : totalSeats <= 29 ? 27 : 24;
+      const monthlyPricePerSeat = totalSeats <= 5 ? 30 : totalSeats <= 12 ? 27 : 24;
       const pricePerMonth = totalSeats * monthlyPricePerSeat;
       
       const checkoutResponse = await supabase.functions.invoke('create-checkout-session', {
@@ -284,7 +284,7 @@ export default function AccountManagement() {
 
     // CANCELLED ANNUAL SUBSCRIPTIONS - Create new subscription via checkout
     if (company.cancel_at_period_end && company.subscription_type === 'annual' && company.grace_period_used) {
-      const monthlyPricePerSeat = totalNewSeats <= 14 ? 30 : totalNewSeats <= 29 ? 27 : 24;
+      const monthlyPricePerSeat = totalNewSeats <= 5 ? 30 : totalNewSeats <= 12 ? 27 : 24;
       const pricePerMonth = totalNewSeats * monthlyPricePerSeat;
       
       const { data: { session } } = await supabase.auth.getSession();
@@ -363,7 +363,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'annual' && !c
 
     // CANCELLED MONTHLY SUBSCRIPTIONS (SECOND TIME) - Create new subscription via checkout
     if (company.cancel_at_period_end && company.subscription_type === 'monthly' && company.grace_period_used && seatDifference > 0) {
-      const monthlyPricePerSeat = totalNewSeats <= 14 ? 30 : totalNewSeats <= 29 ? 27 : 24;
+      const monthlyPricePerSeat = totalNewSeats <= 5 ? 30 : totalNewSeats <= 12 ? 27 : 24;
       const pricePerMonth = totalNewSeats * monthlyPricePerSeat;
       
       const { data: { session } } = await supabase.auth.getSession();
@@ -953,17 +953,17 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
                 <div className="mt-4 p-3 bg-gray-800/50 rounded">
                   <p className="text-purple-400 text-sm mb-2">Pricing Tiers:</p>
                   <div className="space-y-1 text-sm">
-                    <div className={`flex justify-between ${totalNewSeats <= 14 ? 'text-purple-300' : 'text-gray-500'}`}>
-                      <span>1-14 seats:</span>
-                      <span>£{company.subscription_type === 'annual' ? '324' : '30'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'}</span>
+                    <div className={`flex justify-between ${totalNewSeats <= 5 ? 'text-purple-300' : 'text-gray-500'}`}>
+                      <span>1-5 seats:</span>
+                      <span>£{company.subscription_type === 'annual' ? '288' : '30'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'}</span>
                     </div>
-                    <div className={`flex justify-between ${totalNewSeats >= 15 && totalNewSeats <= 29 ? 'text-purple-300' : 'text-gray-500'}`}>
-                      <span>15-29 seats:</span>
-                      <span>£{company.subscription_type === 'annual' ? '291.60' : '27'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'} (10% off)</span>
+                    <div className={`flex justify-between ${totalNewSeats >= 6 && totalNewSeats <= 12 ? 'text-purple-300' : 'text-gray-500'}`}>
+                      <span>6-12 seats:</span>
+                      <span>£{company.subscription_type === 'annual' ? '259.20' : '27'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'} (10% off)</span>
                     </div>
-                    <div className={`flex justify-between ${totalNewSeats >= 30 ? 'text-purple-300' : 'text-gray-500'}`}>
-                      <span>30+ seats:</span>
-                      <span>£{company.subscription_type === 'annual' ? '259.20' : '24'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'} (20% off)</span>
+                    <div className={`flex justify-between ${totalNewSeats >= 13 ? 'text-purple-300' : 'text-gray-500'}`}>
+                      <span>13+ seats:</span>
+                      <span>£{company.subscription_type === 'annual' ? '230.40' : '24'}/seat/{company.subscription_type === 'annual' ? 'year' : 'month'} (20% off)</span>
                     </div>
                   </div>
                 </div>
