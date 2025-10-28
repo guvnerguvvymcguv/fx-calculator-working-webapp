@@ -16,13 +16,6 @@ const PricingPage = () => {
     enterprise: 24
   };
 
-  // Annual prices (20% additional discount)
-  const annualPrices = {
-    small: monthlyPrices.small * 12 * 0.8,
-    growing: monthlyPrices.growing * 12 * 0.8,
-    enterprise: monthlyPrices.enterprise * 12 * 0.8
-  };
-
   return (
     <div className="min-h-screen bg-[#10051A] p-8 relative">
       {/* Back Button */}
