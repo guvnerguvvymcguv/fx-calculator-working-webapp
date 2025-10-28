@@ -284,9 +284,9 @@ const { error: profileError } = await supabase.functions.invoke(
     const basePrice = 30; // £30 per seat
     let discount = 0;
     
-    if (totalSeats >= 30) {
+    if (totalSeats >= 13) {
       discount = 0.20; // 20% off
-    } else if (totalSeats >= 15) {
+    } else if (totalSeats >= 6) {
       discount = 0.10; // 10% off
     }
     
@@ -529,7 +529,7 @@ const { error: profileError } = await supabase.functions.invoke(
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <Users className="h-5 w-5 text-blue-400" />
-                        <Label className="text-gray-300">Junior Broker Seats</Label>
+                        <Label className="text-gray-300">Broker Seats</Label>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -611,11 +611,11 @@ const { error: profileError } = await supabase.functions.invoke(
                 {/* Pricing info */}
                 <div className="text-xs text-gray-400 text-center">
                   <p>
-                    {pricing.totalSeats >= 30 ? '20% Enterprise discount applied' : 
-                     pricing.totalSeats >= 15 ? '10% Team discount applied' : 
+                    {pricing.totalSeats >= 13 ? '20% Enterprise discount applied' : 
+                     pricing.totalSeats >= 6 ? '10% Team discount applied' : 
                      'Standard pricing: £30 per seat/month'}
                   </p>
-                  <p className="mt-1">Volume discounts: 15+ seats (10% off), 30+ seats (20% off)</p>
+                  <p className="mt-1">Volume discounts: 6-12 seats (10% off), 13+ seats (20% off)</p>
                   {isAnnual && (
                     <p className="mt-1">Annual billing: Additional 10% discount</p>
                   )}

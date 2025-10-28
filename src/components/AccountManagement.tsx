@@ -894,7 +894,7 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
               {/* Junior Seats */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-white font-medium">Junior Broker Seats</p>
+                  <p className="text-white font-medium">Broker Seats</p>
                   <p className="text-gray-400 text-sm">Calculator access only</p>
                 </div>
                 <div className="flex items-center gap-3">
