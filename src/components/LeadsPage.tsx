@@ -379,6 +379,17 @@ export default function LeadsPage() {
     }
   };
 
+  // Reset search function
+  const handleResetSearch = () => {
+    setCompanySearchTerm('');
+    setCompanySearchResults([]);
+    setShownCompanies([]);
+    setHasSearched(false);
+    setCurrentOffset(0);
+    setTotalMatches(0);
+    setHasMoreResults(false);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#10051A' }}>
@@ -611,6 +622,16 @@ export default function LeadsPage() {
                   <p className="text-sm text-purple-300/60 text-center py-4">
                     No companies found. Try a different search term.
                   </p>
+                )}
+
+                {/* Reset Button */}
+                {(companySearchTerm || hasSearched) && (
+                  <button
+                    onClick={handleResetSearch}
+                    className="w-full mt-4 px-6 py-3 bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/20 hover:border-white/30 text-purple-200 hover:text-white rounded-lg transition-all duration-200 font-medium"
+                  >
+                    Reset
+                  </button>
                 )}
               </div>
             </CardContent>
