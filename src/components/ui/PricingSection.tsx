@@ -34,6 +34,7 @@ export default function PricingSection() {
                 <span className="text-3xl font-bold text-white">£30</span>
                 <span className="text-purple-200/70">/month</span>
               </div>
+              <p className="text-sm text-purple-300 mt-2">1-5 seats</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
@@ -77,8 +78,9 @@ export default function PricingSection() {
               <CardTitle className="text-2xl font-bold text-purple-200">Per User</CardTitle>
               <div className="mt-4">
                 <span className="text-3xl font-bold text-white">£27</span>
-                <span className="text-purple-200/70"> for 15-29 accounts</span>
+                <span className="text-purple-200/70">/month</span>
               </div>
+              <p className="text-sm text-purple-300 mt-2">6-12 seats</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
@@ -122,8 +124,9 @@ export default function PricingSection() {
               <CardTitle className="text-2xl font-bold text-purple-200">Per User</CardTitle>
               <div className="mt-4">
                 <span className="text-3xl font-bold text-white">£24</span>
-                <span className="text-purple-200/70"> for 30+ accounts</span>
+                <span className="text-purple-200/70">/month</span>
               </div>
+              <p className="text-sm text-purple-300 mt-2">13+ seats</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">

@@ -105,7 +105,7 @@ const PricingPage = () => {
                   </>
                 )}
               </div>
-              <p className="text-purple-300 mt-2 mb-6">1-14 seats</p>
+              <p className="text-purple-300 mt-2 mb-6">1-5 seats</p>
               
               <div className="space-y-3">
                 <div className="flex items-center text-purple-200/90">
@@ -151,7 +151,7 @@ const PricingPage = () => {
                   </>
                 )}
               </div>
-              <p className="text-purple-300 mt-2 mb-6">15-29 seats (10% off)</p>
+              <p className="text-purple-300 mt-2 mb-6">6-12 seats (10% off)</p>
               
               <div className="space-y-3">
                 <div className="flex items-center text-purple-200/90">
@@ -194,7 +194,7 @@ const PricingPage = () => {
                   </>
                 )}
               </div>
-              <p className="text-purple-300 mt-2 mb-6">30+ seats (20% off)</p>
+              <p className="text-purple-300 mt-2 mb-6">13+ seats (20% off)</p>
               
               <div className="space-y-3">
                 <div className="flex items-center text-purple-200/90">

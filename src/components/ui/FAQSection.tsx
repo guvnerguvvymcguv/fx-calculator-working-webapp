@@ -25,7 +25,7 @@ const faqs: FAQItem[] = [
   },
   {
     question: "How many team members can I add?",
-    answer: "You can add unlimited team members based on your subscription. Our pricing scales with your team size: £30/seat/month for 1-14 seats, £27/seat/month for 15-29 seats (10% discount), and £24/seat/month for 30+ seats (20% discount). Annual plans receive an additional 10% discount."
+    answer: "You can add unlimited team members based on your subscription. Our pricing scales with your team size: £30/seat/month for 1-5 seats, £27/seat/month for 6-12 seats (10% discount), and £24/seat/month for 13+ seats (20% discount). Annual plans receive an additional 10% discount."
   }
 ];
 

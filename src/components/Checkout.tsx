@@ -96,8 +96,8 @@ export default function Checkout() {
   };
 
   const calculatePricePerSeat = (totalSeats: number) => {
-    if (totalSeats <= 14) return 30;
-    if (totalSeats <= 29) return 27;
+    if (totalSeats <= 5) return 30;
+    if (totalSeats <= 12) return 27;
     return 24;
   };
 
@@ -353,8 +353,8 @@ export default function Checkout() {
               <div className="mt-4 p-3 bg-gray-800/50 rounded">
                 <p className="text-purple-400 text-sm mb-2">Pricing Tiers:</p>
                 <div className="space-y-1 text-sm">
-                  <div className={`flex justify-between ${totalSeats <= 14 ? 'text-purple-300' : 'text-gray-500'}`}>
-                    <span>1-14 seats:</span>
+                  <div className={`flex justify-between ${totalSeats <= 5 ? 'text-purple-300' : 'text-gray-500'}`}>
+                    <span>1-5 seats:</span>
                     <span>
                       {billingPeriod === 'monthly' 
                         ? '£30/seat/month'
@@ -362,8 +362,8 @@ export default function Checkout() {
                       }
                     </span>
                   </div>
-                  <div className={`flex justify-between ${totalSeats >= 15 && totalSeats <= 29 ? 'text-purple-300' : 'text-gray-500'}`}>
-                    <span>15-29 seats:</span>
+                  <div className={`flex justify-between ${totalSeats >= 6 && totalSeats <= 12 ? 'text-purple-300' : 'text-gray-500'}`}>
+                    <span>6-12 seats:</span>
                     <span>
                       {billingPeriod === 'monthly' 
                         ? '£27/seat/month (10% off)'
@@ -371,8 +371,8 @@ export default function Checkout() {
                       }
                     </span>
                   </div>
-                  <div className={`flex justify-between ${totalSeats >= 30 ? 'text-purple-300' : 'text-gray-500'}`}>
-                    <span>30+ seats:</span>
+                  <div className={`flex justify-between ${totalSeats >= 13 ? 'text-purple-300' : 'text-gray-500'}`}>
+                    <span>13+ seats:</span>
                     <span>
                       {billingPeriod === 'monthly' 
                         ? '£24/seat/month (20% off)'
