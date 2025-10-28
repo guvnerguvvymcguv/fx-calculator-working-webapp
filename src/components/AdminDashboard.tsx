@@ -1773,7 +1773,7 @@ setUserCalculationCounts(counts);
                             ? 'bg-purple-500/20 text-purple-300' 
                             : 'bg-blue-500/20 text-blue-300'
                         }`}>
-                          {member.role_type}
+                          {member.role_type === 'junior' ? 'broker' : member.role_type}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-purple-200/80">
