@@ -151,7 +151,7 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
                   <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
                     <span className="text-green-400 text-xs">✓</span>
                   </div>
-                  <span className="text-purple-200/90 text-sm">Search by company name or location</span>
+                  <span className="text-purple-200/90 text-sm">Search by company name</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
@@ -163,13 +163,7 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
                   <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
                     <span className="text-green-400 text-xs">✓</span>
                   </div>
-                  <span className="text-purple-200/90 text-sm">Access full company details & contact info</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
-                    <span className="text-green-400 text-xs">✓</span>
-                  </div>
-                  <span className="text-purple-200/90 text-sm">Build and manage your leads pipeline</span>
+                  <span className="text-purple-200/90 text-sm">Manage your leads pipeline inside Spread Checker</span>
                 </div>
               </div>
               </div>
@@ -211,13 +205,7 @@ export default function LandingPage({ isAuthenticated, onSignIn, onSignOut }: La
                   <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
                     <span className="text-green-400 text-xs">✓</span>
                   </div>
-                  <span className="text-purple-200/90 text-sm">Monitor team performance and trends</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 bg-green-500/20 rounded-full flex items-center justify-center mt-0.5">
-                    <span className="text-green-400 text-xs">✓</span>
-                  </div>
-                  <span className="text-purple-200/90 text-sm">Historical data for year-over-year comparison</span>
+                  <span className="text-purple-200/90 text-sm">Monitor client preferences</span>
                 </div>
               </div>
               </div>
