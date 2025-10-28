@@ -628,7 +628,7 @@ export default function LeadsPage() {
                 {(companySearchTerm || hasSearched) && (
                   <button
                     onClick={handleResetSearch}
-                    className="w-full mt-4 px-6 py-3 bg-white/5 hover:bg-white/10 active:bg-white/15 border border-white/20 hover:border-white/30 text-purple-200 hover:text-white rounded-lg transition-all duration-200 font-medium"
+                    className="w-full mt-4 px-6 py-3 bg-white/5 hover:bg-white/10 active:bg-white/15 border border-transparent hover:border-white/20 text-purple-200 hover:text-white rounded-lg transition-all duration-200 font-medium"
                   >
                     Reset
                   </button>
