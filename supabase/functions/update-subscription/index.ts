@@ -10,19 +10,20 @@ const corsHeaders = {
 }
 
 // Define pricing tiers with Stripe price IDs (these are VAT-inclusive prices)
+// Tier ranges: 1-5 (Standard), 6-12 (Team), 13+ (Enterprise)
 const PRICING_TIERS = {
   STANDARD: { 
     productId: 'prod_T8XJnL61gY927i',
     annualProductId: 'prod_TCLns1si1ulZ4p',
     priceId: 'price_1SCGF55du1W5ijSGxcs7zQQX', 
-    maxSeats: 14,
+    maxSeats: 5,
     pricePerSeat: 30
   },
   TEAM: { 
     productId: 'prod_T8XMTp9qKMSyVh',
     annualProductId: 'prod_TCLoT9ndmjiSkW',
     priceId: 'price_1SCGHX5du1W5ijSGSx4iqFXi', 
-    maxSeats: 29,
+    maxSeats: 12,
     pricePerSeat: 27
   },
   ENTERPRISE: { 
@@ -147,9 +148,9 @@ serve(async (req) => {
 
     // Determine which pricing tier to use based on NEW seat count
     let selectedTier;
-    if (newSeatCount <= 14) {
+    if (newSeatCount <= 5) {
       selectedTier = PRICING_TIERS.STANDARD;
-    } else if (newSeatCount <= 29) {
+    } else if (newSeatCount <= 12) {
       selectedTier = PRICING_TIERS.TEAM;
     } else {
       selectedTier = PRICING_TIERS.ENTERPRISE;

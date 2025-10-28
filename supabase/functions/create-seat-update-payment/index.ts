@@ -67,9 +67,9 @@ serve(async (req) => {
     
     // Determine pricing tier based on NEW seat count
     let pricePerSeat = 30 // Default to standard tier
-    if (newSeatCount <= 14) {
+    if (newSeatCount <= 5) {
       pricePerSeat = 30
-    } else if (newSeatCount <= 29) {
+    } else if (newSeatCount <= 12) {
       pricePerSeat = 27
     } else {
       pricePerSeat = 24
