@@ -97,10 +97,10 @@ const PricingPage = () => {
                   </>
                 ) : (
                   <>
-                    <span className="text-4xl font-bold text-white">£{annualPrices.small.toFixed(0)}</span>
-                    <span className="text-purple-200/80">/seat/year</span>
-                    <div className="text-sm text-purple-200/70 mt-1">
-                      £{(annualPrices.small / 12).toFixed(0)}/month
+                    <span className="text-4xl font-bold text-white">£{(monthlyPrices.small * 0.8).toFixed(0)}</span>
+                    <span className="text-purple-200/80">/seat/month</span>
+                    <div className="text-sm text-green-400 font-semibold mt-1">
+                      Save 20% (billed annually)
                     </div>
                   </>
                 )}
@@ -143,10 +143,10 @@ const PricingPage = () => {
                   </>
                 ) : (
                   <>
-                    <span className="text-4xl font-bold text-white">£{annualPrices.growing.toFixed(0)}</span>
-                    <span className="text-purple-200/80">/seat/year</span>
-                    <div className="text-sm text-purple-200/70 mt-1">
-                      £{(annualPrices.growing / 12).toFixed(0)}/month
+                    <span className="text-4xl font-bold text-white">£{(monthlyPrices.growing * 0.8).toFixed(1)}</span>
+                    <span className="text-purple-200/80">/seat/month</span>
+                    <div className="text-sm text-green-400 font-semibold mt-1">
+                      Save 20% (billed annually)
                     </div>
                   </>
                 )}
@@ -186,10 +186,10 @@ const PricingPage = () => {
                   </>
                 ) : (
                   <>
-                    <span className="text-4xl font-bold text-white">£{annualPrices.enterprise.toFixed(0)}</span>
-                    <span className="text-purple-200/80">/seat/year</span>
-                    <div className="text-sm text-purple-200/70 mt-1">
-                      £{(annualPrices.enterprise / 12).toFixed(0)}/month
+                    <span className="text-4xl font-bold text-white">£{(monthlyPrices.enterprise * 0.8).toFixed(1)}</span>
+                    <span className="text-purple-200/80">/seat/month</span>
+                    <div className="text-sm text-green-400 font-semibold mt-1">
+                      Save 20% (billed annually)
                     </div>
                   </>
                 )}
@@ -256,8 +256,8 @@ const PricingPage = () => {
                       <>
                         <span className="text-3xl font-bold text-white">£3</span>
                         <span className="text-green-200/80">/seat/month</span>
-                        <div className="text-sm text-green-200/70 mt-1">
-                          £36/seat/year (billed annually)
+                        <div className="text-sm text-green-400 font-semibold mt-1">
+                          Save 40% (billed annually)
                         </div>
                       </>
                     )}
@@ -313,8 +313,8 @@ const PricingPage = () => {
                       <>
                         <span className="text-3xl font-bold text-white">£3</span>
                         <span className="text-green-200/80">/seat/month</span>
-                        <div className="text-sm text-green-200/70 mt-1">
-                          £36/seat/year (billed annually)
+                        <div className="text-sm text-green-400 font-semibold mt-1">
+                          Save 40% (billed annually)
                         </div>
                       </>
                     )}

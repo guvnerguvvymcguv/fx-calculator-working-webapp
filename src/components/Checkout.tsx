@@ -527,11 +527,11 @@ export default function Checkout() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-white font-semibold text-lg">Annual</h3>
-                  <p className="text-green-400 text-sm mt-1">Save 20%</p>
+                  <p className="text-green-400 text-sm font-semibold mt-1">Save 20%</p>
                   <p className="text-white text-2xl font-bold mt-3">
                     £{Math.round(monthlyPrice * 0.8)}/month
                   </p>
-                  <p className="text-gray-400 text-xs">Billed annually</p>
+                  <p className="text-gray-400 text-xs mt-1">Billed annually at £{Math.round(monthlyPrice * 12 * 0.8)}</p>
                 </div>
                 {billingPeriod === 'annual' && (
                   <Check className="h-5 w-5 text-purple-400" />
