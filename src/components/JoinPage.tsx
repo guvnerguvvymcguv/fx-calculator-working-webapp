@@ -212,10 +212,10 @@ const { error: profileError } = await supabase.functions.invoke('create-user-pro
       </button>
 
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
+        <Card className="w-full max-w-md bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20">
           <CardContent className="p-8">
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Join {company?.name || 'Spread Checker'}</h1>
+              <h1 className="text-3xl font-bold text-white mb-2">Join {company?.name || 'creativedigitalsolutions'}</h1>
               <p className="text-gray-400">Create your account to get started</p>
             </div>
 
@@ -230,7 +230,7 @@ const { error: profileError } = await supabase.functions.invoke('create-user-pro
                 ) : (
                   <>
                     <User className="h-4 w-4 text-purple-400" />
-                    <span className="text-purple-300 font-medium">Junior Broker Account</span>
+                    <span className="text-purple-300 font-medium">Broker Account</span>
                   </>
                 )}
               </div>
@@ -238,43 +238,44 @@ const { error: profileError } = await supabase.functions.invoke('create-user-pro
 
             <form onSubmit={handleSignup} className="space-y-6">
               <div>
-                <Label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
                   Email
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="email"
-                    value={invitation?.email || ''}
-                    disabled
-                    className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-400 cursor-not-allowed"
-                  />
-                </div>
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={invitation?.email || ''}
+                  disabled
+                  className="w-full px-4 py-2 bg-gray-800/50 border border-gray-700 rounded-lg text-gray-400 cursor-not-allowed"
+                />
                 <p className="text-xs text-gray-500 mt-1">This email was invited to join the team</p>
               </div>
 
               <div>
-                <Label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-300 mb-2">
                   First Name
-                </Label>
-                <Input
+                </label>
+                <input
+                  id="firstName"
                   type="text"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Enter your first name"
                   required
                 />
               </div>
 
               <div>
-                <Label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
                   Password
-                </Label>
-                <Input
+                </label>
+                <input
+                  id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Create a password"
                   required
                   minLength={8}
@@ -282,14 +283,15 @@ const { error: profileError } = await supabase.functions.invoke('create-user-pro
               </div>
 
               <div>
-                <Label className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
                   Confirm Password
-                </Label>
-                <Input
+                </label>
+                <input
+                  id="confirmPassword"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0 rounded-lg placeholder-gray-500"
                   placeholder="Confirm your password"
                   required
                   minLength={8}
