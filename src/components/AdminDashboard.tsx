@@ -1220,7 +1220,7 @@ setUserCalculationCounts(counts);
           <CardContent>
             {!clientDataEnabled ? (
               // LOCKED STATE - Add-on not purchased
-              <div className="flex items-center justify-between p-6 bg-amber-900/20 border border-amber-600/30 rounded-lg">
+              <div className="flex items-center justify-between p-6 bg-amber-900/20 border border-amber-600/30 rounded-lg hover:border-amber-500/50 transition-all duration-300">
                 <div className="flex items-center gap-3">
                   <div className="h-12 w-12 rounded-full bg-amber-900/30 flex items-center justify-center">
                     <svg className="h-6 w-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1234,7 +1234,7 @@ setUserCalculationCounts(counts);
                 </div>
                 <Button
                   onClick={() => navigate('/admin/account')}
-                  className="bg-purple-600 hover:bg-purple-700 whitespace-nowrap"
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-semibold whitespace-nowrap shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
                 >
                   Upgrade Now
                 </Button>
@@ -1365,7 +1365,7 @@ setUserCalculationCounts(counts);
                   <Button
                     size="sm"
                     onClick={() => setEditingSchedule(true)}
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
                   >
                     Enable Weekly Export
                   </Button>
@@ -1457,7 +1457,7 @@ setUserCalculationCounts(counts);
                   <Button
                     size="sm"
                     onClick={() => setEditingMonthlySchedule(true)}
-                    className="bg-purple-600 hover:bg-purple-700"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
                   >
                     Enable Monthly Export
                   </Button>

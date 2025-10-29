@@ -194,7 +194,7 @@ export default function InviteMembers() {
           <Button
             onClick={() => navigate('/admin')}
             variant="outline"
-            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+            className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
@@ -206,7 +206,7 @@ export default function InviteMembers() {
         </div>
 
         {/* Available Seats Alert */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -225,7 +225,7 @@ export default function InviteMembers() {
         </Card>
 
         {/* Invitation Form */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardHeader>
             <CardTitle className="text-xl text-white">New Invitations</CardTitle>
           </CardHeader>
@@ -239,8 +239,8 @@ export default function InviteMembers() {
                   onClick={() => setRoleType('junior')}
                   variant={roleType === 'junior' ? 'default' : 'outline'}
                   className={roleType === 'junior' 
-                    ? 'bg-purple-600 hover:bg-purple-700' 
-                    : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                    ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default' 
+                    : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                 >
                   Broker
                 </Button>
@@ -249,8 +249,8 @@ export default function InviteMembers() {
                   onClick={() => setRoleType('admin')}
                   variant={roleType === 'admin' ? 'default' : 'outline'}
                   className={roleType === 'admin' 
-                    ? 'bg-purple-600 hover:bg-purple-700' 
-                    : 'border-gray-600 text-gray-300 hover:bg-gray-800'}
+                    ? 'bg-purple-600 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] cursor-default' 
+                    : 'text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200'}
                 >
                   Admin
                 </Button>
@@ -272,7 +272,7 @@ export default function InviteMembers() {
                       value={email}
                       onChange={(e) => updateEmail(index, e.target.value)}
                       placeholder="colleague@company.com"
-                      className="bg-gray-800 border-gray-700 text-white"
+                      className="bg-gray-950/50 border border-white/0 hover:border-white/20 focus:border-white/40 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] transition-colors duration-200 outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 focus:ring-offset-0"
                     />
                     {emails.length > 1 && (
                       <Button
@@ -280,7 +280,7 @@ export default function InviteMembers() {
                         onClick={() => removeEmailField(index)}
                         variant="outline"
                         size="sm"
-                        className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                        className="text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -293,7 +293,7 @@ export default function InviteMembers() {
                 type="button"
                 onClick={addEmailField}
                 variant="outline"
-                className="mt-2 border-gray-600 text-gray-300 hover:bg-gray-800"
+                className="mt-2 text-purple-200 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/10 transition-all duration-200"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Another Email
@@ -304,7 +304,7 @@ export default function InviteMembers() {
             <Button
               onClick={sendInvitations}
               disabled={loading || getAvailableSeatsForRole() === 0}
-              className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0"
             >
               <Mail className="h-4 w-4 mr-2" />
               {loading ? 'Sending...' : 'Send Invitations'}
@@ -313,7 +313,7 @@ export default function InviteMembers() {
         </Card>
 
         {/* Pending Invitations */}
-        <Card className="bg-gray-900/50 border-gray-800">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300">
           <CardHeader>
             <CardTitle className="text-xl text-white">Invitation History</CardTitle>
           </CardHeader>
