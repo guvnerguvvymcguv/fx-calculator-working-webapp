@@ -69,7 +69,7 @@ export function Navbar({ isSignedIn, onSignIn, onSignOut, userRole, loading }: N
                   <Button 
                     onClick={onSignOut}
                     variant="ghost"
-                    className="text-purple-200 hover:text-white hover:bg-white/10 transition-colors"
+                    className="text-purple-200 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/20 transition-all duration-200"
                   >
                     Sign Out
                   </Button>

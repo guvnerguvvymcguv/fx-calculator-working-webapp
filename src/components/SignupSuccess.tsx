@@ -8,7 +8,7 @@ export default function SignupSuccess() {
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#10051A' }}>
-      <Card className="w-full max-w-md bg-gray-900/90 border-gray-800">
+      <Card className="w-full max-w-md bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-xl border-white/30 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4),0_16px_48px_rgba(168,85,247,0.2),0_24px_64px_rgba(59,130,246,0.1)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5),0_20px_56px_rgba(168,85,247,0.3),0_28px_72px_rgba(59,130,246,0.15)] transition-all duration-300 hover:-translate-y-1 border-t-white/20">
         <CardHeader className="text-center">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
           <CardTitle className="text-2xl font-bold text-white">
@@ -20,7 +20,7 @@ export default function SignupSuccess() {
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+          <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4 shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(34,197,94,0.1),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(34,197,94,0.15),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:border-green-500/40 hover:-translate-y-0.5 transition-all duration-200">
             <div className="flex items-center gap-2 mb-2">
               <Calendar className="h-5 w-5 text-green-400" />
               <p className="text-green-300 font-semibold">2-Month Free Trial Active</p>
@@ -47,7 +47,7 @@ export default function SignupSuccess() {
           </div>
 
           {/* Documentation Link */}
-          <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
+          <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4 shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(168,85,247,0.1),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(168,85,247,0.15),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:border-purple-500/40 hover:-translate-y-0.5 transition-all duration-200">
             <div className="flex items-start gap-2">
               <BookOpen className="h-5 w-5 text-purple-400 mt-0.5 flex-shrink-0" />
               <div>
@@ -67,7 +67,7 @@ export default function SignupSuccess() {
             </div>
           </div>
           
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.05),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.08),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-200">
             <div className="flex items-start gap-2">
               <AlertCircle className="h-5 w-5 text-amber-400 mt-0.5 flex-shrink-0" />
               <div>
@@ -82,7 +82,7 @@ export default function SignupSuccess() {
           
           <Button 
             onClick={() => navigate('/admin')}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-2 rounded-lg shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
           >
             Go to Dashboard
           </Button>
