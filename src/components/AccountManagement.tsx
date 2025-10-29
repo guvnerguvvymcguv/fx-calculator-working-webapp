@@ -984,6 +984,97 @@ if (company.cancel_at_period_end && company.subscription_type === 'monthly' && !
           </CardContent>
         </Card>
 
+        {/* Add-ons Management - Trial Users (Locked) */}
+        {company?.isInTrial && (
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
+            <CardHeader>
+              <CardTitle className="text-xl text-white flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-purple-400" />
+                Add-ons
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Company Finder Add-on - Locked */}
+                <div className="relative flex items-center justify-between p-4 bg-gray-800/50 rounded-lg group">
+                  <div className="flex-1 opacity-60">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-white font-semibold">Company Finder</h3>
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      Unlimited AI-powered company search to expand your pipeline
+                    </p>
+                    <p className="text-purple-400 text-xs mt-1">
+                      £5/seat/month (£12.00/month with VAT)
+                    </p>
+                  </div>
+                  <div className="relative">
+                    <button
+                      disabled
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-600 cursor-not-allowed opacity-50"
+                    >
+                      <span className="inline-block h-4 w-4 transform rounded-full bg-gray-400 transition-transform translate-x-1" />
+                    </button>
+                    {/* Hover Tooltip */}
+                    <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-[#1a0f2e] border border-purple-500/30 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                      <div className="flex items-start gap-2">
+                        <div className="h-5 w-5 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-purple-400 text-xs">💡</span>
+                        </div>
+                        <div>
+                          <p className="text-purple-300 font-medium text-sm mb-1">Available for Paying Accounts</p>
+                          <p className="text-gray-400 text-xs">Upgrade to a paid subscription to unlock premium add-ons</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Client Data Tracking Add-on - Locked */}
+                <div className="relative flex items-center justify-between p-4 bg-gray-800/50 rounded-lg group">
+                  <div className="flex-1 opacity-60">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-white font-semibold">Client Data Tracking</h3>
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      Automated monthly PDF reports with client analytics
+                    </p>
+                    <p className="text-purple-400 text-xs mt-1">
+                      £5/seat/month (£12.00/month with VAT)
+                    </p>
+                  </div>
+                  <div className="relative">
+                    <button
+                      disabled
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-600 cursor-not-allowed opacity-50"
+                    >
+                      <span className="inline-block h-4 w-4 transform rounded-full bg-gray-400 transition-transform translate-x-1" />
+                    </button>
+                    {/* Hover Tooltip */}
+                    <div className="absolute right-0 top-full mt-2 w-64 p-3 bg-[#1a0f2e] border border-purple-500/30 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                      <div className="flex items-start gap-2">
+                        <div className="h-5 w-5 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-purple-400 text-xs">💡</span>
+                        </div>
+                        <div>
+                          <p className="text-purple-300 font-medium text-sm mb-1">Available for Paying Accounts</p>
+                          <p className="text-gray-400 text-xs">Upgrade to a paid subscription to unlock premium add-ons</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-900/20 border border-amber-600/30 rounded-lg">
+                  <p className="text-amber-300 text-sm">
+                    ⚠️ Add-ons are only available after upgrading to a paid subscription
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Add-ons Management */}
         {!company?.isInTrial && company?.subscription_status === 'active' && (
           <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
