@@ -104,8 +104,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // CRITICAL: Check add-on proration FIRST (before seat update check)
         // HANDLE ADD-ON PRORATED PAYMENT
-        if (isAddonProration && addonType && ongoingPriceId && addonSubscriptionId) {
+        if (isAddonProration) {
           console.log('🔧 ADD-ON PRORATION DETECTED - Processing add-on payment');
+          
+          // Validate we have required metadata
+          if (!addonType || !ongoingPriceId || !addonSubscriptionId) {
+            console.error('Add-on proration missing metadata:', { 
+              addonType, 
+              ongoingPriceId, 
+              addonSubscriptionId 
+            });
+            // Still break to prevent sending welcome email
+            break;
+          }
+          
           console.log('Processing add-on prorated payment:', { 
             companyId, 
             addonType, 
