@@ -137,7 +137,9 @@ export default function SalesforceSettings() {
       `code_challenge=${codeChallenge}&` +
       `code_challenge_method=S256`;
     
-    console.log('OAuth URL with PKCE:', authUrl); // Debug logging
+    console.log('🔗 Redirect URI being used:', redirectUri);
+    console.log('🔗 Full OAuth URL:', authUrl);
+    console.log('⚠️ Make sure this EXACT URL is in your Salesforce Connected App Callback URLs!');
     window.location.href = authUrl;
   };
 

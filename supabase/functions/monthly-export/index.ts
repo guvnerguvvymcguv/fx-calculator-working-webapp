@@ -172,26 +172,25 @@ serve(async (req) => {
     if (shouldRun) {
       console.log('✅ Should run! Processing...');
       
-      // Check if company account is locked
+      // Check if company account is locked or subscription inactive
       const { data: company } = await supabase
         .from('companies')
-        .select('account_locked')
+        .select('account_locked, subscription_active')
         .eq('id', schedule.company_id)
         .single();
 
-      if (company?.account_locked) {
-        console.log(`❌ Company ${schedule.company_id} account is locked (trial expired). Skipping export.`);
+      if (company?.account_locked || !company?.subscription_active) {
+        console.log(`❌ Company ${schedule.company_id} account is locked or subscription inactive. Skipping export.`);
         continue;
       }
       
-      // Check if already ran this hour (unless forced)
+      // Check if already ran this day (unless forced)
       if (!forceRun && schedule.last_run) {
         const lastRun = new Date(schedule.last_run);
         if (lastRun.getUTCFullYear() === now.getUTCFullYear() &&
             lastRun.getUTCMonth() === now.getUTCMonth() &&
-            lastRun.getUTCDate() === now.getUTCDate() &&
-            lastRun.getUTCHours() === now.getUTCHours()) {
-          console.log('Already ran this hour, skipping...');
+            lastRun.getUTCDate() === now.getUTCDate()) {
+          console.log('Already ran today, skipping...');
           continue;
         }
       }
