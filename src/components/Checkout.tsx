@@ -246,7 +246,7 @@ export default function Checkout() {
         <h1 className="text-3xl font-bold text-white mb-8">Complete Your Subscription</h1>
 
         {/* Seat Management */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Users className="h-5 w-5 text-purple-400" />
@@ -388,7 +388,7 @@ export default function Checkout() {
 
         {/* Add-ons Section - Only show if seats selected */}
         {totalSeats > 0 && (
-          <Card className="bg-gray-900/50 border-gray-800 mb-6">
+          <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
             <CardHeader>
               <CardTitle className="text-white">Optional Add-ons</CardTitle>
               <p className="text-gray-400 text-sm mt-2">
@@ -495,7 +495,7 @@ export default function Checkout() {
             className={`cursor-pointer transition-all ${
               billingPeriod === 'monthly' 
                 ? 'bg-purple-900/50 border-purple-600' 
-                : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'
+                : 'bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20'
             }`}
             onClick={() => setBillingPeriod('monthly')}
           >
@@ -519,7 +519,7 @@ export default function Checkout() {
             className={`cursor-pointer transition-all ${
               billingPeriod === 'annual' 
                 ? 'bg-purple-900/50 border-purple-600' 
-                : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'
+                : 'bg-white/5 backdrop-blur-sm border border-white/10 hover:border-white/20'
             }`}
             onClick={() => setBillingPeriod('annual')}
           >
@@ -542,7 +542,7 @@ export default function Checkout() {
         </div>
 
         {/* Order Summary */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-6">
+        <Card className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:border-white/20 transition-all duration-300 mb-6">
           <CardHeader>
             <CardTitle className="text-white">Order Summary</CardTitle>
           </CardHeader>
@@ -621,7 +621,7 @@ export default function Checkout() {
         <Button
           onClick={handleCheckout}
           disabled={processing}
-          className="w-full py-6 text-lg bg-purple-600 hover:bg-purple-700"
+          className="w-full py-6 text-lg bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-[0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2),inset_0_-1px_1px_rgba(0,0,0,0.2)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25),inset_0_-1px_1px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-200"
         >
           {processing ? (
             'Processing...'
